@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Isolated BookStack tenant lifecycle. Never prints subprocess output or secrets."""
+import signal, hashlib, hmac, datetime, pty, select, termios
 import base64, contextlib, fcntl, json, os, re, secrets, shlex, shutil, subprocess, sys, tempfile, time, urllib.request
 from pathlib import Path
 ROOT = Path('/home/flori/ventures2/bookstack/tenants')
@@ -7,9 +8,15 @@ HERE = Path(__file__).resolve().parent
 IMAGE = 'lscr.io/linuxserver/bookstack:v26.05.4-ls283'
 DB_IMAGE = 'mariadb:11.4@sha256:611a2fcc5fa7c6ceb8644c6f74b25ede004ff6c3a6b38c8f8c23d3bbf6c26430'
 os.umask(0o077)
+KEY = Path('/home/flori/ventures2/bookstack/work/.backup.key')
+RESERVED = set(json.loads((HERE/'reserved-slugs.json').read_text()))
+
+def valid_slug(slug):
+    return bool(re.fullmatch(r'[a-z0-9](?:[a-z0-9-]{1,28}[a-z0-9])', slug)) and '--' not in slug and not slug.startswith('restore') and slug not in RESERVED
+
 
 def run(args, data=None):
-    p = subprocess.run(args, input=data, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    p = subprocess.run(['timeout','--foreground','--kill-after=10s','180s',*args], input=data, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if p.returncode: raise RuntimeError('Command failed: ' + ' '.join(args[:4]))
     return p.stdout
 
@@ -73,6 +80,12 @@ def provision(path,email):
     if fresh:
         values={'APP_URL':'https://'+path.name+'.wissen.app.mintapis.com','APP_KEY':'base64:'+base64.b64encode(secrets.token_bytes(32)).decode(),'DB_PASSWORD':secrets.token_hex(32),'DB_ROOT_PASSWORD':secrets.token_hex(32),'BOOKSTACK_ADMIN_EMAIL':email,'BOOKSTACK_ADMIN_PASSWORD':secrets.token_urlsafe(24)}
         ef.write_text(''.join(k+'='+shlex.quote(v)+'\n' for k,v in values.items())); ef.chmod(0o600)
+    if not fresh:
+        if not (path/'.initialized').exists() or not (path/'docker-compose.yml').exists():
+            raise ValueError('Incomplete existing tenant requires operator repair')
+        compose(path,'up','-d'); ready_internal(path); public_ready(env_read(ef)['APP_URL'])
+        print('RESUMED '+path.name)
+        return
     values=env_read(ef); config(path)
     # Bootstrap without public routing so default credentials are never exposed.
     config(path,False) if not (path/'.initialized').exists() else None
@@ -86,42 +99,128 @@ def provision(path,email):
 def sql(path,query):
     return compose(path,'exec','-T','db','sh','-c','MYSQL_PWD="$MARIADB_PASSWORD" exec mariadb -ubookstack bookstack -N -B',data=query.encode()).decode().strip()
 
+def ensure_key():
+    if not KEY.exists():
+        try:
+            with KEY.open('x') as f: f.write(secrets.token_hex(32)+'\n')
+        except FileExistsError: pass
+    KEY.chmod(0o600)
+
+def crypt(src, dst, decrypt=False):
+    ensure_key()
+    if (src.suffix == '.age') if decrypt else bool(shutil.which('age')):
+        # age reads passphrases from a controlling terminal, never argv/env.
+        args=['age', '-d' if decrypt else '-p', '-o',str(dst),str(src)]
+        pid, fd=pty.fork()
+        if pid == 0:
+            attrs=termios.tcgetattr(0); attrs[3] &= ~termios.ECHO; termios.tcsetattr(0,termios.TCSANOW,attrs)
+            os.execvp(args[0],args)
+        buf=b''; deadline=time.monotonic()+180
+        try:
+            while time.monotonic()<deadline:
+                if select.select([fd],[],[],1)[0]:
+                    try: chunk=os.read(fd,4096)
+                    except OSError: break
+                    if not chunk: break
+                    buf+=chunk
+                    if b':' in buf:
+                        os.write(fd,KEY.read_bytes().strip()+b'\n'); buf=b''
+                done,status=os.waitpid(pid,os.WNOHANG)
+                if done:
+                    if status: raise RuntimeError('age encryption/decryption failed')
+                    return
+            done,status=os.waitpid(pid,os.WNOHANG)
+            if not done:
+                os.kill(pid,signal.SIGKILL); os.waitpid(pid,0)
+                raise RuntimeError('age timeout')
+            if status: raise RuntimeError('age encryption/decryption failed')
+        finally: os.close(fd)
+    else:
+        run(['openssl','enc','-aes-256-cbc','-pbkdf2','-salt',*(['-d'] if decrypt else []),'-pass','file:'+str(KEY),'-in',str(src),'-out',str(dst)])
+
+def retention(path):
+    backups=path/'backups'
+    if not backups.exists(): return
+    cutoff=time.time()-7*86400
+    for old in backups.iterdir():
+        try: stamp=datetime.datetime.strptime(old.name[:16],'%Y%m%dT%H%M%SZ').replace(tzinfo=datetime.timezone.utc).timestamp()
+        except ValueError: stamp=old.stat().st_mtime
+        if stamp < cutoff or (old.name.startswith('.tmp-') and old.stat().st_mtime < time.time()-86400):
+            run(['sudo','-n','rm','-rf','--',str(old)])
+
+def content(path):
+    return { 'pages':sql(path,"SELECT COUNT(*) FROM entities WHERE type='page';"),
+             'books':sql(path,"SELECT COUNT(*) FROM entities WHERE type='book';"),
+             'book_titles':sql(path,"SELECT name FROM entities WHERE type='book' ORDER BY id;"),
+             'latest_page':sql(path,"SELECT name FROM entities WHERE type='page' ORDER BY updated_at DESC,id DESC LIMIT 1;") }
+
 def backup(path):
+    retention(path)
     if b'bookstack' not in compose(path,'ps','--status','running','--services').splitlines():
-        raise RuntimeError('Backup requires running tenant; suspended tenant remains stopped')
-    dest=path/'backups'/time.strftime('%Y%m%dT%H%M%SZ',time.gmtime()); dest.mkdir(parents=True)
-    compose(path,'stop','bookstack')
+        print('BACKUP SKIP suspended '+path.name); return
+    ensure_key()
+    dest=path/'backups'; dest.mkdir(exist_ok=True)
+    stage=Path(tempfile.mkdtemp(prefix='.tmp-',dir=dest))
+    name=time.strftime('%Y%m%dT%H%M%SZ',time.gmtime())
+    encrypted=stage/('snapshot.age' if shutil.which('age') else 'snapshot.enc')
     try:
-        dump=compose(path,'exec','-T','db','sh','-c','MYSQL_PWD="$MARIADB_PASSWORD" exec mariadb-dump -ubookstack --single-transaction --routines --triggers bookstack')
-        (dest/'database.sql').write_bytes(dump)
-        (dest/'pages.count').write_text(sql(path,"SELECT COUNT(*) FROM entities WHERE type='page';"))
-        run(['sudo','-n','tar','-czf',str(dest/'bookstack.tar.gz'),'-C',str(path),'bookstack'])
-        shutil.copy2(path/'.env',dest/'.env'); shutil.copy2(path/'docker-compose.yml',dest/'docker-compose.yml')
-        (dest/'.complete').touch()
-    finally: compose(path,'start','bookstack')
-    complete=sorted(p for p in (path/'backups').iterdir() if (p/'.complete').exists())
-    for old in complete[:-7]: run(['sudo','-n','rm','-rf','--',str(old)])
-    print('BACKUP '+str(dest))
+        compose(path,'stop','bookstack')
+        (stage/'database.sql').write_bytes(compose(path,'exec','-T','db','sh','-c','MYSQL_PWD="$MARIADB_PASSWORD" exec mariadb-dump -ubookstack --single-transaction --routines --triggers bookstack'))
+        (stage/'content.json').write_text(json.dumps(content(path)))
+        run(['sudo','-n','tar','-czf',str(stage/'bookstack.tar.gz'),'-C',str(path),'bookstack'])
+        shutil.copy2(path/'.env',stage/'.env'); shutil.copy2(path/'docker-compose.yml',stage/'docker-compose.yml')
+        run(['tar','-cf',str(stage/'snapshot.tar'),'-C',str(stage),'database.sql','content.json','bookstack.tar.gz','.env','docker-compose.yml'])
+        crypt(stage/'snapshot.tar',encrypted)
+        # Authenticate both formats before decryption (CBC itself is not authenticated).
+        tag=hmac.new(KEY.read_bytes(),encrypted.read_bytes(),hashlib.sha256).hexdigest()
+        final=dest/(name+encrypted.suffix)
+        final.with_suffix(final.suffix+'.hmac').write_text(tag)
+        encrypted.rename(final)
+        print('BACKUP '+str(final))
+    finally:
+        try: compose(path,'start','bookstack')
+        finally: run(['sudo','-n','rm','-rf','--',str(stage)])
 
 def restore(path):
-    choices=sorted(p for p in (path/'backups').iterdir() if (p/'.complete').exists())
-    if not choices: raise ValueError('No complete backup')
-    src=choices[-1]; tmp=ROOT/('restore-'+path.name+'-'+secrets.token_hex(4)); tmp.mkdir()
+    choices=sorted(p for p in (path/'backups').iterdir() if p.suffix in {'.age','.enc'} and p.with_suffix(p.suffix+'.hmac').exists())
+    if not choices: raise ValueError('No complete encrypted backup')
+    src=choices[-1]
+    if not hmac.compare_digest(hmac.new(KEY.read_bytes(),src.read_bytes(),hashlib.sha256).hexdigest(),src.with_suffix(src.suffix+'.hmac').read_text()):
+        raise ValueError('Backup authentication failed')
+    tmp=ROOT/('restore-'+path.name+'-'+secrets.token_hex(4)); tmp.mkdir()
     try:
-        shutil.copy2(src/'.env',tmp/'.env'); config(tmp,False)
-        run(['sudo','-n','tar','-xzf',str(src/'bookstack.tar.gz'),'-C',str(tmp)])
-        compose(tmp,'up','-d','--wait','db')
-        sql(tmp,(src/'database.sql').read_text())
-        actual=sql(tmp,"SELECT COUNT(*) FROM entities WHERE type='page';"); expected=(src/'pages.count').read_text()
-        if actual!=expected: raise RuntimeError('Restored page count mismatch')
+        crypt(src,tmp/'snapshot.tar',True)
+        run(['tar','-xf',str(tmp/'snapshot.tar'),'-C',str(tmp)])
+        # Preserve backed-up images/config; remove all public routing and networks.
+        saved=json.loads((tmp/'docker-compose.yml').read_text())
+        saved['networks']={'private':{'internal':True}}
+        for service in saved['services'].values():
+            service['networks']=['private']; service['labels']={'traefik.enable':'false'}
+            service.pop('ports',None); service.pop('container_name',None)
+        (tmp/'docker-compose.yml').write_text(json.dumps(saved))
+        run(['sudo','-n','tar','-xzf',str(tmp/'bookstack.tar.gz'),'-C',str(tmp)])
+        compose(tmp,'up','-d','--wait','db'); sql(tmp,(tmp/'database.sql').read_text())
+        expected=json.loads((tmp/'content.json').read_text()); actual=content(tmp)
+        if actual!=expected: raise RuntimeError('Restored content mismatch')
         compose(tmp,'up','-d'); ready_internal(tmp)
-        print('RESTORE OK pages='+actual)
+        if content(tmp)!=expected: raise RuntimeError('Restored content changed after startup')
+        print('RESTORE OK '+json.dumps(actual,ensure_ascii=False))
     finally:
-        compose(tmp,'down','--remove-orphans'); run(['sudo','-n','rm','-rf','--',str(tmp)])
+        try:
+            if (tmp/'docker-compose.yml').exists(): compose(tmp,'down','--remove-orphans')
+        finally: run(['sudo','-n','rm','-rf','--',str(tmp)])
+
+def purge(path, now=False):
+    marker=path/'.destroy_requested_at'
+    if not now and (not marker.exists() or time.time()-float(marker.read_text()) < 30*86400):
+        print('PURGE deferred '+path.name); return
+    compose(path,'down','--remove-orphans')
+    run(['sudo','-n','rm','-rf','--',str(path)])
+    print('PURGED '+path.name)
 
 def main():
     action=sys.argv[1]; slug=sys.argv[2]
-    if not re.fullmatch(r'[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?',slug) or slug in {'www','mail','api','admin','restore'} or slug.startswith('restore-'): raise ValueError('Invalid or reserved slug')
+    if not valid_slug(slug) and not (slug=='demo' and (ROOT/slug/'.initialized').exists()): raise ValueError('Invalid or reserved slug')
     ROOT.mkdir(parents=True,exist_ok=True); path=ROOT/slug
     if path.is_symlink(): raise ValueError('Symlink tenant refused')
     if action=='provision': path.mkdir(mode=0o700,exist_ok=True)
@@ -129,11 +228,27 @@ def main():
     locks=ROOT/'.locks'; locks.mkdir(exist_ok=True)
     with (locks/(slug+'.lock')).open('w') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX)
-        if action=='provision': provision(path,sys.argv[3] if len(sys.argv)>3 else 'admin@'+slug+'.wissen.app.mintapis.com')
+        if action=='provision':
+            if (path/'.destroy_requested_at').exists() or (ROOT/'.destroy-requests'/slug).exists(): raise ValueError('Tenant marked for destruction')
+            def interrupted(*_): raise RuntimeError('Provisioning interrupted')
+            signal.signal(signal.SIGTERM,interrupted)
+            try: provision(path,sys.argv[3] if len(sys.argv)>3 else 'admin@'+slug+'.wissen.app.mintapis.com')
+            except BaseException:
+                signal.signal(signal.SIGTERM,signal.SIG_IGN)
+                if (path/'docker-compose.yml').exists(): compose(path,'down','--remove-orphans')
+                raise
         elif action=='deprovision': compose(path,'down')
         elif action=='destroy':
-            if sys.argv[3:]!=['--yes']: raise ValueError('Destruction requires --yes')
-            compose(path,'down'); run(['sudo','-n','rm','-rf','--',str(path)]); print('DESTROYED '+slug)
+            if sys.argv[3:]==['--now','--yes']: purge(path,True)
+            elif not sys.argv[3:]:
+                marker=path/'.destroy_requested_at'
+                if not marker.exists(): marker.write_text(str(time.time()))
+                requests=ROOT/'.destroy-requests'; requests.mkdir(exist_ok=True)
+                (requests/slug).write_text(marker.read_text())
+                compose(path,'down'); print('DESTROY MARKED '+slug)
+            else: raise ValueError('Use destroy <slug> or destroy <slug> --now --yes')
+        elif action=='purge': purge(path)
+        elif action=='retention': retention(path)
         elif action=='backup': backup(path)
         elif action=='restore-test': restore(path)
         else: raise ValueError('Unknown action')

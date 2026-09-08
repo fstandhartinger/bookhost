@@ -10,3 +10,5 @@ CREATE TABLE IF NOT EXISTS tenants (
     created_at timestamptz default now(),
     updated_at timestamptz default now()
 );
+ALTER TABLE tenants ADD COLUMN IF NOT EXISTS desired_state text NOT NULL DEFAULT 'running'
+    CHECK (desired_state IN ('running','suspended'));

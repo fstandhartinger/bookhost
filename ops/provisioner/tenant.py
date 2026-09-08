@@ -181,8 +181,8 @@ def backup(path):
         try: compose(path,'start','bookstack')
         finally: run(['sudo','-n','rm','-rf','--',str(stage)])
 
-def restore(path):
-    choices=sorted(p for p in (path/'backups').iterdir() if p.suffix in {'.age','.enc'} and p.with_suffix(p.suffix+'.hmac').exists())
+def restore(path, src=None):
+    choices=[Path(src)] if src is not None else sorted(p for p in (path/'backups').iterdir() if p.suffix in {'.age','.enc'} and p.with_suffix(p.suffix+'.hmac').exists())
     if not choices: raise ValueError('No complete encrypted backup')
     src=choices[-1]
     if not hmac.compare_digest(hmac.new(KEY.read_bytes(),src.read_bytes(),hashlib.sha256).hexdigest(),src.with_suffix(src.suffix+'.hmac').read_text()):

@@ -13,7 +13,7 @@ export default async function IntakePage() {
   if (!session?.user?.id) redirect("/login");
   const tenants = (
     await db.query(
-      "SELECT t.id,t.slug FROM tenants t JOIN memberships m ON m.team_id=t.team_id WHERE m.user_id=$1 AND t.status='running' ORDER BY t.slug",
+      "SELECT t.id,t.slug FROM tenants t JOIN memberships m ON m.team_id=t.team_id WHERE m.user_id=$1 AND t.status='running' AND t.desired_state='running' AND (SELECT CASE WHEN status='trialing' AND (trial_end IS NULL OR trial_end<=now()) THEN 'expired' ELSE status END FROM subscriptions WHERE team_id=t.team_id ORDER BY updated_at DESC LIMIT 1) IN ('trialing','active') ORDER BY t.slug",
       [session.user.id],
     )
   ).rows;

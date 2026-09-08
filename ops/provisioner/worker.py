@@ -79,7 +79,10 @@ def once():
             if not row: continue
             try:
                 command('provision',slug,email)
-                store_token(db, ident, slug)
+                try:
+                    store_token(db, ident, slug)
+                except Exception:
+                    print("Intake token setup failed; healthy tenant remains available", flush=True)
                 values=env_read(path/'.env')
                 if existing:
                     db.execute("UPDATE tenants SET status='running',bookstack_url=%s,error=NULL,updated_at=now() WHERE id=%s AND status='provisioning'",(values['APP_URL'],ident))

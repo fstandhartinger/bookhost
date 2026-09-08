@@ -27,7 +27,8 @@
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
     "sanitize-html": "^2.17.7",
-    "stripe": "^18.5.0"
+    "stripe": "^18.5.0",
+    "yauzl": "^3.4.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.0",

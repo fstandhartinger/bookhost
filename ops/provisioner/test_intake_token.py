@@ -22,11 +22,13 @@ class IntakeTokenTests(unittest.TestCase):
             tenant.mkdir()
             (tenant / '.initialized').touch()
             (tenant / '.env').write_text('BOOKSTACK_ADMIN_EMAIL=admin@example.invalid\n')
-            with patch.object(token, 'ROOT', root), patch.object(token, 'kms_key', return_value=bytes.fromhex('ab' * 32)), patch.object(token, 'php') as php:
+            with patch.object(token, 'ROOT', root), patch.object(token, 'kms_key', return_value=bytes.fromhex('ab' * 32)), patch.object(token, 'php', return_value=b'service') as php, patch.object(token, 'api_valid', return_value=True):
                 first = token.ensure_token('demo')
                 second = token.ensure_token('demo')
                 self.assertEqual(first, second)
                 self.assertEqual(php.call_count, 2)
+                rotated = token.ensure_token('demo', rotate=True)
+                self.assertNotEqual(first[0], rotated[0])
                 values = token.env_read(tenant / '.env')
                 self.assertTrue(values['BOOKSTACK_API_ID'].startswith('v1:'))
                 self.assertTrue(values['BOOKSTACK_API_SECRET'].startswith('v1:'))

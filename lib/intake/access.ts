@@ -15,12 +15,16 @@ export async function workspace(userId: string, tenantId: string) {
   if (!uuid(tenantId)) throw new IntakeError("Workspace not found.", 404);
   const row = (
     await db.query(
-      `SELECT t.id,t.team_id,t.slug,t.status,m.role FROM tenants t JOIN memberships m ON m.team_id=t.team_id WHERE t.id=$1 AND m.user_id=$2`,
+      `SELECT t.id,t.team_id,t.slug,t.status,t.desired_state,m.role,(SELECT CASE WHEN status='trialing' AND (trial_end IS NULL OR trial_end<=now()) THEN 'expired' ELSE status END FROM subscriptions WHERE team_id=t.team_id ORDER BY updated_at DESC LIMIT 1) AS subscription_status FROM tenants t JOIN memberships m ON m.team_id=t.team_id WHERE t.id=$1 AND m.user_id=$2`,
       [tenantId, userId],
     )
   ).rows[0];
   if (!row) throw new IntakeError("Workspace not found.", 404);
-  if (row.status !== "running")
+  if (
+    row.status !== "running" ||
+    row.desired_state !== "running" ||
+    !["trialing", "active"].includes(row.subscription_status)
+  )
     throw new IntakeError("Your workspace is not running.", 409);
   return row;
 }
@@ -28,12 +32,16 @@ export async function itemForUser(userId: string, id: string) {
   if (!uuid(id)) throw new IntakeError("Document not found.", 404);
   const row = (
     await db.query(
-      `SELECT i.*,m.role,t.slug,t.status AS tenant_status FROM intake_items i JOIN tenants t ON t.id=i.tenant_id AND t.team_id=i.team_id JOIN memberships m ON m.team_id=i.team_id WHERE i.id=$1 AND m.user_id=$2`,
+      `SELECT i.*,m.role,t.slug,t.status AS tenant_status,t.desired_state,(SELECT CASE WHEN status='trialing' AND (trial_end IS NULL OR trial_end<=now()) THEN 'expired' ELSE status END FROM subscriptions WHERE team_id=t.team_id ORDER BY updated_at DESC LIMIT 1) AS subscription_status FROM intake_items i JOIN tenants t ON t.id=i.tenant_id AND t.team_id=i.team_id JOIN memberships m ON m.team_id=i.team_id WHERE i.id=$1 AND m.user_id=$2`,
       [id, userId],
     )
   ).rows[0];
   if (!row) throw new IntakeError("Document not found.", 404);
-  if (row.tenant_status !== "running")
+  if (
+    row.tenant_status !== "running" ||
+    row.desired_state !== "running" ||
+    !["trialing", "active"].includes(row.subscription_status)
+  )
     throw new IntakeError("Your workspace is not running.", 409);
   return row;
 }
@@ -63,7 +71,13 @@ export function errorResponse(error: unknown) {
           ? error.message
           : "The request could not be completed. Please try again or contact support.",
     },
-    { status: error instanceof IntakeError ? error.status : 503 },
+    {
+      status: error instanceof IntakeError ? error.status : 503,
+      headers:
+        error instanceof IntakeError && error.status === 429
+          ? { "Retry-After": "30" }
+          : {},
+    },
   );
 }
 export async function boundedBody(request: Request, limit: number) {

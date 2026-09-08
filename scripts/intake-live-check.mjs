@@ -10,7 +10,7 @@ if (process.env.INTAKE_LIVE_CHECK !== "demo")
     "Set INTAKE_LIVE_CHECK=demo to run the real demo acceptance test.",
   );
 const pool = new pg.Pool(databaseConfig());
-const base = "http://127.0.0.1:3995";
+const base = "http://127.0.0.1:3993";
 const userIds = [];
 let teamId;
 let demoId;
@@ -28,7 +28,7 @@ function decrypt(value, slug) {
 async function identity(label) {
   const user = (
     await pool.query(
-      "INSERT INTO users(email,name) VALUES($1,$2) RETURNING id",
+      "INSERT INTO users(email,name) VALUES($1,$2) RETURNING id,session_version",
       [
         `intake-${label}-${Date.now()}@example.invalid`,
         `Intake acceptance ${label}`,
@@ -43,6 +43,8 @@ async function identity(label) {
       (await encode({
         token: {
           sub: user.id,
+          session_version: user.session_version,
+          auth_time: Math.floor(Date.now() / 1000),
           email: `intake-${label}@example.invalid`,
           name: "Intake acceptance",
         },
@@ -74,6 +76,10 @@ try {
     "INSERT INTO memberships(user_id,team_id,role) VALUES($1,$3,'owner'),($2,$3,'member')",
     [owner.id, member.id, teamId],
   );
+  await pool.query(
+    "INSERT INTO subscriptions(team_id,stripe_subscription_id,status,trial_end) VALUES($1,$2,'trialing',now()+interval '14 days')",
+    [teamId, "intake-test-" + teamId],
+  );
   const assigned = await pool.query(
     "UPDATE tenants SET team_id=$1 WHERE slug='demo' AND team_id IS NULL AND status='running' RETURNING id",
     [teamId],
@@ -98,13 +104,22 @@ try {
     new Blob([markdown], { type: "text/markdown" }),
     "reviewed-intake-checklist.md",
   );
-  const uploaded = await api(owner, "/api/intake", {
+  const uploaded = await api(owner, `/api/intake?tenant=${demoId}`, {
     method: "POST",
     body: form,
   });
-  assert.equal(uploaded.status, 201, JSON.stringify(uploaded.body));
+  assert.equal(uploaded.status, 202, JSON.stringify(uploaded.body));
   const id = uploaded.body.id;
-  const draft = await api(owner, `/api/intake/${id}`);
+  assert.equal(uploaded.body.status, "queued");
+  async function waitDraft(itemId) {
+    for (let attempt = 0; attempt < 120; attempt++) {
+      const result = await api(owner, `/api/intake/${itemId}`);
+      if (!["queued", "drafting"].includes(result.body.status)) return result;
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+    throw Error("Draft timed out");
+  }
+  const draft = await waitDraft(id);
   assert.equal(draft.body.status, "draft", JSON.stringify(draft.body));
   assert.ok(draft.body.draft_html.includes("Things a reviewer should check"));
   assert.equal((await api(outsider, `/api/intake/${id}`)).status, 404);
@@ -121,14 +136,54 @@ try {
   assert.equal((await api(outsider, `/api/intake/${id}`, publish)).status, 404);
   const published = await api(owner, `/api/intake/${id}`, publish);
   assert.equal(published.status, 200, JSON.stringify(published.body));
-  assert.equal((await api(owner, `/api/intake/${id}`, publish)).status, 409);
+  const second = await api(owner, `/api/intake/${id}`, publish);
+  assert.equal(second.status, 200);
+  assert.equal(second.body.url, published.body.url);
+  // Simulate lost DB acknowledgement: retry must reconcile the tag, not create again.
+  await pool.query(
+    "UPDATE intake_items SET status='failed',bookstack_page_id=NULL WHERE id=$1",
+    [id],
+  );
+  const reconciled = await api(owner, `/api/intake/${id}`, publish);
+  assert.equal(reconciled.status, 200, JSON.stringify(reconciled.body));
+  assert.equal(reconciled.body.url, published.body.url);
+  await pool.query("UPDATE intake_quota SET draft_limit=1 WHERE team_id=$1", [
+    teamId,
+  ]);
+  const exhausted = await api(owner, `/api/intake?tenant=${demoId}`, {
+    method: "POST",
+    body: form,
+  });
+  assert.equal(exhausted.status, 402, JSON.stringify(exhausted.body));
+  await pool.query("UPDATE intake_quota SET draft_limit=20 WHERE team_id=$1", [
+    teamId,
+  ]);
+  const parallel = await Promise.all(
+    [1, 2, 3].map(() =>
+      api(owner, `/api/intake?tenant=${demoId}`, {
+        method: "POST",
+        body: form,
+      }),
+    ),
+  );
+  assert.deepEqual(parallel.map((r) => r.status).sort(), [202, 202, 429]);
+  for (const result of parallel.filter((r) => r.status === 202))
+    assert.equal((await waitDraft(result.body.id)).body.status, "draft");
+  await pool.query("UPDATE tenants SET desired_state='suspended' WHERE id=$1", [
+    demoId,
+  ]);
+  assert.equal((await api(owner, `/api/intake?tenant=${demoId}`)).status, 409);
+  await pool.query("UPDATE tenants SET desired_state='running' WHERE id=$1", [
+    demoId,
+  ]);
   const row = (
     await pool.query(
-      "SELECT status,bookstack_page_id FROM intake_items WHERE id=$1",
+      "SELECT status,bookstack_page_id,extracted_text FROM intake_items WHERE id=$1",
       [id],
     )
   ).rows[0];
   assert.equal(row.status, "published");
+  assert.equal(row.extracted_text, null);
   const secret = (
     await pool.query(
       "SELECT api_id,api_secret_enc FROM tenant_secrets WHERE tenant_id=$1",
@@ -159,7 +214,10 @@ try {
       "member publish 403",
       "foreign team GET/POST 404",
       "owner publish 200",
-      "second publish 409",
+      "second publish returns same page; failed acknowledgement reconciles tag",
+      "three parallel uploads: 202/202/429",
+      "quota limit 1: 402",
+      "desired suspension: 409",
       "BookStack API confirms normal page",
     ],
     timestamp: new Date().toISOString(),
@@ -172,12 +230,13 @@ try {
 } finally {
   if (demoId)
     await pool.query(
-      "UPDATE tenants SET team_id=NULL WHERE id=$1 AND team_id=$2",
+      "UPDATE tenants SET team_id=NULL,desired_state='running' WHERE id=$1 AND team_id=$2",
       [demoId, teamId],
     );
   if (teamId) {
     await pool.query("DELETE FROM intake_items WHERE team_id=$1", [teamId]);
     await pool.query("DELETE FROM memberships WHERE team_id=$1", [teamId]);
+    await pool.query("DELETE FROM subscriptions WHERE team_id=$1", [teamId]);
     await pool.query("DELETE FROM teams WHERE id=$1", [teamId]);
     await pool.query("DELETE FROM rate_limits WHERE key=$1", [
       "intake-team:" + teamId,

@@ -55,7 +55,16 @@ it("returns 404 for another team's workspace before accessing API credentials", 
 });
 it("denies a member publishing even with a forged client request", async () => {
   vi.mocked(db.query).mockResolvedValue({
-    rows: [{ id, role: "member", status: "draft", tenant_status: "running" }],
+    rows: [
+      {
+        id,
+        role: "member",
+        status: "draft",
+        tenant_status: "running",
+        desired_state: "running",
+        subscription_status: "trialing",
+      },
+    ],
   } as never);
   expect(
     (
@@ -69,7 +78,16 @@ it("denies a member publishing even with a forged client request", async () => {
 });
 it("refuses publication of a previously approved draft", async () => {
   vi.mocked(db.query).mockResolvedValue({
-    rows: [{ id, role: "admin", status: "approved", tenant_status: "running" }],
+    rows: [
+      {
+        id,
+        role: "admin",
+        status: "approved",
+        tenant_status: "running",
+        desired_state: "running",
+        subscription_status: "trialing",
+      },
+    ],
   } as never);
   expect(
     (

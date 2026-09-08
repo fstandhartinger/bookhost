@@ -5,5 +5,7 @@ export async function register() {
   ) {
     const { startAuthCleanup } = await import("./lib/auth-cleanup");
     startAuthCleanup();
+    const { startIntakeCleanup } = await import("./lib/intake/jobs");
+    startIntakeCleanup();
   }
 }

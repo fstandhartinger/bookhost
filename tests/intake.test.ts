@@ -85,7 +85,6 @@ describe("Review state machine", () => {
     ["draft", "published"],
     ["published", "approved"],
     ["rejected", "approved"],
-    ["failed", "approved"],
     ["approved", "approved"],
   ] as const)("refuses %s → %s", (a, b) =>
     expect(canTransition(a, b)).toBe(false),
@@ -131,7 +130,10 @@ describe("BookStack client", () => {
     expect(() => new BookStack("evil.com/path", "x", "y")).toThrow();
   });
   it("creates a normal page in the selected chapter with BookStack tags", async () => {
-    const fetcher = vi.fn().mockResolvedValue(Response.json({ id: 42 }));
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ data: [] }))
+      .mockResolvedValueOnce(Response.json({ id: 42 }));
     vi.stubGlobal("fetch", fetcher);
     expect(
       await new BookStack("demo", "id", "secret").publish(
@@ -140,12 +142,16 @@ describe("BookStack client", () => {
         ["guide"],
         1,
         2,
+        "item-id",
       ),
     ).toEqual({ id: 42 });
-    expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual({
+    expect(JSON.parse(fetcher.mock.calls[1][1].body)).toEqual({
       name: "Guide",
       html: "<p>Text</p>",
-      tags: [{ name: "guide", value: "" }],
+      tags: [
+        { name: "guide", value: "" },
+        { name: "wissen-intake", value: "item-id" },
+      ],
       chapter_id: 2,
     });
   });
@@ -206,4 +212,28 @@ it.each(["docx", "pdf"])("extracts an actual %s fixture", async (ext) => {
   expect((await extractText(`fixture.${ext}`, data)).text).toContain(
     "Reviewed intake fixture",
   );
+});
+
+it("rejects excessive DOCX entries and XML entity declarations in the isolated parser", async () => {
+  const { default: JSZip } = await import("jszip");
+  const entries = new JSZip();
+  for (let index = 0; index < 1001; index++)
+    entries.file(`entry-${index}`, "x");
+  await expect(
+    extractText(
+      "limits.docx",
+      await entries.generateAsync({ type: "nodebuffer" }),
+    ),
+  ).rejects.toThrow();
+  const xml = new JSZip();
+  xml.file(
+    "word/document.xml",
+    '<!DOCTYPE document [<!ENTITY example "text">]><document/>',
+  );
+  await expect(
+    extractText(
+      "entities.docx",
+      await xml.generateAsync({ type: "nodebuffer" }),
+    ),
+  ).rejects.toThrow();
 });

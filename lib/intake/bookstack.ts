@@ -1,3 +1,4 @@
+import { IntakeError } from "./access";
 export type Destination = { id: number; name: string; book_id?: number };
 export class BookStack {
   readonly base: string;
@@ -21,12 +22,19 @@ export class BookStack {
       cache: "no-store",
       redirect: "error",
       signal: AbortSignal.timeout(20000),
+    }).catch(() => {
+      throw new IntakeError("Tenant not reachable. Try again shortly.", 503);
     });
     if (!response.ok)
-      throw new Error(
-        response.status === 429
-          ? "BookStack rate limit reached. Please wait before trying again."
-          : `BookStack request failed (${response.status}).`,
+      throw new IntakeError(
+        [401, 403].includes(response.status)
+          ? "BookStack token rejected. Contact support to restore intake access."
+          : response.status === 404
+            ? "Book or chapter not found. Choose another destination."
+            : response.status === 429
+              ? "BookStack rate limit reached. Try again shortly."
+              : "Tenant not reachable. Try again shortly.",
+        response.status === 429 ? 429 : 502,
       );
     return response.json();
   }
@@ -43,24 +51,40 @@ export class BookStack {
     }
   }
   async validateTarget(bookId: number, chapterId: number | null) {
-    await this.request(`books/${bookId}`);
+    const book = await this.request<Destination>(`books/${bookId}`);
+    let chapter: Destination | null = null;
     if (chapterId) {
-      const chapter = await this.request<Destination>(`chapters/${chapterId}`);
+      chapter = await this.request<Destination>(`chapters/${chapterId}`);
       if (chapter.book_id !== bookId)
-        throw new Error("The chapter does not belong to the selected book.");
+        throw new IntakeError(
+          "The chapter does not belong to the selected book.",
+        );
     }
+    return { book, chapter };
   }
-  publish(
+  async findPublished(itemId: string) {
+    const result = await this.request<{ data: { id: number; type: string }[] }>(
+      `search?query=${encodeURIComponent(`[wissen-intake=${itemId}] {type:page}`)}`,
+    );
+    return result.data.find((page) => page.type === "page") || null;
+  }
+  async publish(
     title: string,
     html: string,
     tags: string[],
     bookId: number,
     chapterId: number | null,
+    itemId: string,
   ) {
+    const existing = await this.findPublished(itemId);
+    if (existing) return existing;
     return this.request<{ id: number }>("pages", {
       name: title,
       html,
-      tags: tags.map((name) => ({ name, value: "" })),
+      tags: [
+        ...tags.map((name) => ({ name, value: "" })),
+        { name: "wissen-intake", value: itemId },
+      ],
       ...(chapterId ? { chapter_id: chapterId } : { book_id: bookId }),
     });
   }

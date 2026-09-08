@@ -2,38 +2,22 @@ import { cleanHtml } from "./html";
 export { cleanHtml } from "./html";
 export const MAX_FILE = 10 * 1024 * 1024;
 export const MAX_TEXT = 60000;
+// Compatibility helper for callers with an existing buffer; HTTP uploads stream to disk.
 export async function extractText(filename: string, data: Buffer) {
+  const { mkdtemp, writeFile, rm } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { extractFile } = await import("./extract");
   if (!data.length || data.length > MAX_FILE)
     throw new Error("Choose a non-empty file up to 10 MB.");
-  const ext = filename.split(".").pop()?.toLowerCase();
-  let text: string;
-  let mime: string;
-  if (ext === "md" || ext === "txt") {
-    text = new TextDecoder("utf-8", { fatal: true }).decode(data);
-    mime = ext === "md" ? "text/markdown" : "text/plain";
-  } else if (ext === "docx") {
-    const mammoth = await import("mammoth");
-    text = (await mammoth.extractRawText({ buffer: data })).value;
-    mime =
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-  } else if (ext === "pdf") {
-    const { PDFParse } = await import("pdf-parse");
-    const parser = new PDFParse({ data: new Uint8Array(data) });
-    try {
-      text = (await parser.getText()).text;
-    } finally {
-      await parser.destroy();
-    }
-    mime = "application/pdf";
-  } else throw new Error("Use a PDF, DOCX, Markdown or TXT file.");
-  text = text.replace(/\u0000/g, "").trim();
-  if (!text)
-    throw new Error("No readable text found. Scanned PDFs need OCR first.");
-  if (text.length > MAX_TEXT)
-    throw new Error(
-      "This document is too long. Split it into files of up to 60,000 characters.",
-    );
-  return { text, mime };
+  const dir = await mkdtemp(join(tmpdir(), "wissen-parser-"));
+  try {
+    const path = join(dir, "source");
+    await writeFile(path, data, { mode: 0o600 });
+    return await extractFile(path, filename);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 }
 export function buildPrompt(text: string) {
   return [
@@ -76,6 +60,7 @@ export function parseDraft(raw: string) {
   };
 }
 export type Status =
+  | "queued"
   | "uploaded"
   | "drafting"
   | "draft"
@@ -85,11 +70,12 @@ export type Status =
   | "rejected";
 export function canTransition(from: Status, to: Status) {
   const transitions: Record<Status, Status[]> = {
+    queued: ["drafting", "failed"],
     uploaded: ["drafting", "failed"],
     drafting: ["draft", "failed"],
     draft: ["approved", "rejected"],
     approved: ["published", "failed"],
-    failed: ["rejected"],
+    failed: ["approved", "rejected"],
     published: [],
     rejected: [],
   };

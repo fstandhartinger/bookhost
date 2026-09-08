@@ -116,7 +116,7 @@ both before storage/publication and in the preview.
 | `BOOKSTACK_API_ID` / `BOOKSTACK_API_SECRET` | Generated tenant files only | Both values in `tenants/<slug>/.env` are encrypted `v1:` envelopes, not directly usable API credentials. |
 | `INTAKE_LIVE_CHECK` | Test only | Set to `demo` to explicitly enable the operator acceptance script. Not needed at runtime. |
 
-Apply migration `010_intake.sql` with `npm run migrate` **before deploying the new
+Apply migrations `010_intake.sql` and `011_intake_limits.sql` with `npm run migrate` **before deploying the new
 worker**. Install `ops/provisioner/requirements.txt` into its existing `.venv`.
 Generate the key once outside the repository, for example:
 
@@ -135,13 +135,23 @@ set +a`). The host worker reads `INTAKE_KMS_KEY` from its environment or the
 operator file `/home/flori/ventures2/bookstack/work/.intake.env`. The worker invokes
 the same token bootstrap as `ops/provisioner/bookstack-api-token.sh <slug>` after
 successful provision/resume and before marking the tenant running. Run this script
-once for existing tenants such as `demo`. It uses the tenant's existing admin,
-ensures its admin role has `access-api`, and stores a bcrypt token hash in
-BookStack. It never prints credentials. Repeating it reuses the same token;
-credential values are persisted atomically before BookStack creation so a crash
-can be resumed. `tenant_secrets` stores the API ID and encrypted secret; ciphertext
-uses a random 12-byte nonce and tenant-slug AAD. Both app and worker use the same
-`v1:` base64(nonce + ciphertext + 16-byte tag) format.
+once for existing tenants such as `demo`. It creates the passwordless system user
+`Wissen Intake` (`system_name=wissen-intake`) and a dedicated role with only
+`access-api`, `book-view-all`, `chapter-view-all`, `page-view-all`,
+`page-create-all`, and `page-update-all`. Intake is a **team-wide** shared inbox:
+all Control-Plane members can read these destinations and drafts; only owners/admins
+can publish. Individual BookStack user ACLs are not mirrored; use the service role's
+book permissions to restrict destinations. The user has an empty password and a
+non-deliverable internal email, with no admin, settings, users, roles or delete rights.
+
+`bookstack-api-token.sh --rotate <slug>` deletes earlier service tokens and the old
+legacy intake token, creates fresh credentials, then stores encrypted local values
+atomically and updates `tenant_secrets`. Normal resume checks the stored token's
+service-user association and a real `GET /api/books?count=1`: a valid token is reused;
+a revoked/expired token is replaced with fresh credentials, never resurrected.
+Network errors fail intake preparation without stopping a healthy tenant. Explicit
+rotation is operator-authorized reissuance. Both encrypted stores use a random
+12-byte nonce and tenant-slug AAD, in `v1:` base64(nonce + ciphertext + 16-byte tag).
 
 Do not simply replace the KMS key: existing credentials must first be decrypted
 with the old key and re-encrypted with the new one in both stores. Keep the old key
@@ -149,24 +159,43 @@ until the new deployment and backups are verified. No key rotation UI is include
 
 ### Review state and failures
 
-`uploaded → drafting → draft → approved → published`; a draft can instead be
-rejected. Extraction errors do not create an item. Generation failures become
-`failed` with a safe error. The provider receives the document as untrusted source
-material and must return JSON with a summary, 3–6 tags and reviewer checklist.
-Generation tries a second model on invalid/unavailable output, but honors 429
-without immediate retries. Each model has a 90-second timeout.
+`queued → drafting → draft → approved → published`; drafts can be rejected.
+Upload streams multipart to a private temporary directory (10 MB file and bounded
+body/fields, 30-second read deadline). Tenant authorization comes from the `tenant`
+query parameter before reading the body. A process-wide gate admits at most two
+uploads/extractions/model jobs; further requests receive 429 with `Retry-After: 30`.
+The response is `202 {id,status:"queued"}`; the UI polls every two seconds. This
+in-process worker requires a persistent Node server, not a request-only serverless
+runtime. Each parser child has a 256 MB V8 heap limit and is killed after 20 seconds;
+DOCX entries, actual decompression (20 MB) and XML entities are checked, and PDFs
+are limited to 200 pages. Temporary files are removed when work ends; stale crash
+files are removed after 30 minutes by the startup/hourly cleanup.
 
-Publication first atomically claims `draft → approved`, saving the human edits,
-then calls BookStack. Concurrent or repeated requests receive 409. There is no
-automatic retry of a page creation: a network failure may occur after BookStack
-has committed. Such failures become `failed` and instruct the reviewer to check
-BookStack before resubmitting. A process crash can leave `drafting` or `approved`;
-the UI explains recovery. Operators must reconcile `approved` against BookStack
-before resetting anything. Durable background jobs/reconciliation are a later
-slice. Records remain until team deletion or operator retention cleanup; establish
-the customer retention policy before public launch.
+Migration `011_intake_limits.sql` adds atomic per-team quotas: **20 lifetime trial
+attempts**, or **300 attempts per UTC calendar month** while active. Reservations,
+including failed processing and model fallback, consume one draft; there is no
+automatic refund. Remaining allowance appears in the UI; exhaustion returns 402
+with billing-portal guidance. Teams must have a running tenant, running desired
+state and active or unexpired trial subscription. Permissions are checked again
+before model work and publication claim. At most two models run sequentially per
+attempt, each with a 90-second timeout and at most 6,000 output tokens. Revocation
+cannot recall a model request already sent; later stages recheck authorization.
+
+Review shows the first 2,000 source characters, stored book/chapter names, editable
+destination, formatted content, HTML and tags. BookStack errors leave the local
+inbox available. Publication atomically claims the item and searches BookStack for
+`[wissen-intake=<item UUID>] {type:page}` before creation; every new page carries
+that tag. Retry after a lost acknowledgement reconciles the same page. Repeated
+successful publication returns the stored URL; simultaneous claims return 409.
+Retain the correlation tag for this guarantee. Startup/hourly recovery marks jobs
+stalled over ten minutes as failed, including uncertain publication; a reviewed
+failed draft may be retried using the same reconciliation. Source text is NULLed
+immediately on publish/reject. Items older than 30 days are deleted hourly; backups
+retain their independently configured retention period.
 
 ### Verification
+
+`INTAKE_DB_TEST=1 npx vitest run tests/intake-db.integration.test.ts` (with the operator DB/TLS environment) proves concurrent quota reservation and stale-job recovery against real Postgres. It removes its test rows.
 
 `npm test` includes all four extraction formats, invalid uploads, prompt structure,
 HTML sanitization, authenticated encryption, state transitions, membership
@@ -174,8 +203,8 @@ isolation/roles, Chutes fallbacks and mocked BookStack fetch calls.
 `python -m unittest discover -s ops/provisioner -p 'test_*.py'` checks token
 idempotence/encryption as well as existing lifecycle tests.
 
-For an operator-run end-to-end check, start a production build on **127.0.0.1:3995**
-with `AUTH_URL=http://127.0.0.1:3995`, `AUTH_TRUST_HOST=true`, database TLS settings,
+For an operator-run end-to-end check, start a production build on **127.0.0.1:3993**
+with `AUTH_URL=http://127.0.0.1:3993`, `AUTH_TRUST_HOST=true`, database TLS settings,
 `DATABASE_URL=$DATABASE_URL_LOCAL`, the usual auth/Stripe environment, and the new
 intake variables. Run `INTAKE_LIVE_CHECK=demo node scripts/intake-live-check.mjs`
 with the same DB/auth/KMS environment. This deliberately creates SQL test identities

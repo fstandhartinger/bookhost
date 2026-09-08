@@ -5,7 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], display: "swap" });
 export const metadata: Metadata = {
   title: {
-    default: "Wissen — Hosted BookStack for teams",
+    default: "Wissen — Hosted BookStack for Teams | €39/month",
     template: "%s · Wissen",
   },
   description:
@@ -78,12 +78,14 @@ export default function RootLayout({
                 <Link href="/legal/datenschutz">Datenschutz</Link>
                 <Link href="/legal/agb">AGB</Link>
                 <Link href="/legal/avv">AVV</Link>
-                <Link href="/login">Log in</Link>
+                <Link href="/cancel">Cancel subscription</Link>
+                <Link href="/cancel?kind=withdrawal">Withdraw contract</Link>
+                <a href="mailto:info@productivity-boost.com">Contact</a>
               </nav>
             </div>
             <p className="mt-8 text-xs text-slate-500">
               © {new Date().getFullYear()} productivity-boost.com Betriebs UG
-              &amp; Co. KG · Passau, Germany
+              (haftungsbeschränkt) &amp; Co. KG · Passau, Germany
               <br />
               Wissen is an independent hosting service. BookStack is an
               open-source project; we are not affiliated with its maintainers.

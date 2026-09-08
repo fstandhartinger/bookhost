@@ -1,6 +1,15 @@
 import type { NextConfig } from "next";
 const config: NextConfig = {
   output: "standalone",
+  // Keep PDF.js worker/native module resolution intact in the Node runtime.
+  serverExternalPackages: ["pdf-parse", "pdfjs-dist"],
+  outputFileTracingIncludes: {
+    "/api/intake": [
+      "./node_modules/pdf-parse/dist/**/*",
+      "./node_modules/pdfjs-dist/legacy/build/**/*",
+      "./node_modules/@napi-rs/canvas*/**/*",
+    ],
+  },
   poweredByHeader: false,
   experimental: { cpus: 2 },
   async headers() {

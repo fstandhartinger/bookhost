@@ -99,7 +99,9 @@ Limits: 10 MB per file, 60,000 extracted characters, 30 upload requests per user
 and 60 per team per hour. Original files are held in memory for extraction only;
 PostgreSQL stores extracted text and review data. Empty/scanned/encrypted or invalid
 files fail clearly. OCR and email intake are outside this slice. PDF/DOCX parsers
-run server-side. The HTML allowlist removes scripts, images, links and attributes
+run server-side. Next.js keeps `pdf-parse`/`pdfjs-dist` external and explicitly traces
+the worker/native canvas assets into the standalone runtime; keep this configuration
+when changing the deployment. The HTML allowlist removes scripts, images, links and attributes
 both before storage/publication and in the preview.
 
 ### New environment variables

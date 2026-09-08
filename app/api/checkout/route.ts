@@ -1,3 +1,4 @@
+import { normalizeEmail } from "@/lib/email";
 import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
@@ -5,17 +6,18 @@ import { db } from "@/lib/db";
 import { baseUrl } from "@/lib/config";
 import { stripeClient } from "@/lib/stripe";
 import { checkoutParams } from "@/lib/checkout";
-import { digest, rateLimit, sameOrigin } from "@/lib/security";
+import { clientIp, digest, rateLimit, sameOrigin } from "@/lib/security";
 export async function POST(request: Request) {
   if (!sameOrigin(request))
     return Response.json({ error: "Invalid origin" }, { status: 403 });
   try {
     const session = await auth();
     const body = await request.json().catch(() => ({}));
-    const email = session?.user?.email || body.email;
+    const rawEmail = session?.user?.email || body.email;
+    const email = normalizeEmail(rawEmail);
     if (
-      email &&
-      (typeof email !== "string" ||
+      rawEmail &&
+      (typeof rawEmail !== "string" ||
         email.length > 254 ||
         !/^\S+@\S+\.\S+$/.test(email))
     )
@@ -23,11 +25,10 @@ export async function POST(request: Request) {
         { error: "Enter a valid email address." },
         { status: 400 },
       );
-    const key = digest(
-      session?.user?.id ||
-        request.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
-        "anonymous",
-    );
+    const ip = clientIp(request);
+    if (!ip)
+      return Response.json({ error: "Missing client IP" }, { status: 400 });
+    const key = digest(session?.user?.id || ip);
     if (!(await rateLimit("checkout:" + key, 15)))
       return Response.json(
         { error: "Too many requests. Please try again in an hour." },
@@ -60,7 +61,7 @@ export async function POST(request: Request) {
     if (
       !session &&
       email &&
-      (await db.query("SELECT 1 FROM users WHERE email=lower($1)", [email]))
+      (await db.query("SELECT 1 FROM users WHERE lower(email)=$1", [email]))
         .rowCount
     )
       return Response.json(

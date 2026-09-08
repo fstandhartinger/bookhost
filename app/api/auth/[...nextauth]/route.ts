@@ -1,7 +1,10 @@
+import { clientIp } from "@/lib/security";
 import { handlers } from "@/auth";
 import { NextRequest } from "next/server";
 export const GET = handlers.GET;
 export async function POST(request: NextRequest) {
+  if (!clientIp(request))
+    return Response.json({ error: "Missing client IP" }, { status: 400 });
   const response = await handlers.POST(request);
   // Auth.js normally reports CredentialsSignin using a redirect (or JSON URL).
   // Preserve that response while exposing throttling as an actual HTTP 429.

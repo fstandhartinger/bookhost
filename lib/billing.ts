@@ -1,3 +1,4 @@
+import { normalizeEmail } from "./email";
 import type Stripe from "stripe";
 import type { PoolClient } from "pg";
 export type Queryable = Pick<PoolClient, "query">;
@@ -7,9 +8,9 @@ export async function syncCheckout(
 ) {
   if (session.metadata?.venture !== "wissen" || session.status !== "complete")
     return null;
-  const email = (session.customer_details?.email || session.customer_email)
-    ?.trim()
-    .toLowerCase();
+  const email = normalizeEmail(
+    session.customer_details?.email || session.customer_email,
+  );
   const customer =
     typeof session.customer === "string"
       ? session.customer
@@ -22,13 +23,13 @@ export async function syncCheckout(
   );
   if (existing.rows[0]) return existing.rows[0];
   const account = await client.query(
-    `INSERT INTO users(email,name,checkout_session_id) VALUES($1,$2,$3) ON CONFLICT(email) DO NOTHING RETURNING *`,
+    `INSERT INTO users(email,name,checkout_session_id) VALUES($1,$2,$3) ON CONFLICT (lower(email)) DO NOTHING RETURNING *`,
     [email, session.customer_details?.name || null, session.id],
   );
   let u = account.rows[0];
   if (!u) {
     const bound = await client.query(
-      "SELECT u.* FROM users u JOIN checkout_attempts a ON a.user_id=u.id WHERE a.session_id=$1 AND u.email=$2",
+      "SELECT u.* FROM users u JOIN checkout_attempts a ON a.user_id=u.id WHERE a.session_id=$1 AND lower(u.email)=$2",
       [session.id, email],
     );
     u = bound.rows[0];
@@ -54,9 +55,9 @@ export async function cancelDuplicateCheckout(
   session: Stripe.Checkout.Session,
   stripe: Pick<Stripe, "subscriptions">,
 ) {
-  const email = (session.customer_details?.email || session.customer_email)
-    ?.trim()
-    .toLowerCase();
+  const email = normalizeEmail(
+    session.customer_details?.email || session.customer_email,
+  );
   const id =
     typeof session.subscription === "string"
       ? session.subscription
@@ -64,7 +65,7 @@ export async function cancelDuplicateCheckout(
   if (!email || !id) return false;
   const existing = await client.query(
     `SELECT s.stripe_subscription_id FROM users u JOIN teams t ON t.owner_user_id=u.id
-     JOIN subscriptions s ON s.team_id=t.id WHERE u.email=$1
+     JOIN subscriptions s ON s.team_id=t.id WHERE lower(u.email)=$1
      AND s.status IN ('trialing','active','past_due') AND s.stripe_subscription_id<>$2 LIMIT 1`,
     [email, id],
   );

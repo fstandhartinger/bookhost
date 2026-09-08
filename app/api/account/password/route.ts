@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import { encode } from "next-auth/jwt";
 import { auth, sessionCookie } from "@/auth";
 import { changePassword, validNewPassword } from "@/lib/password";
-import { sameOrigin, rateLimit } from "@/lib/security";
+import { clientIp, sameOrigin, rateLimit } from "@/lib/security";
 export async function POST(request: Request) {
   if (!sameOrigin(request))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!clientIp(request))
+    return NextResponse.json({ error: "Missing client IP" }, { status: 400 });
   const session = await auth();
   if (!session?.user?.id)
     return NextResponse.json({ error: "Sign in first" }, { status: 401 });
@@ -27,15 +29,20 @@ export async function POST(request: Request) {
     session.user.id,
     data.password,
     String(data.oldPassword || "").slice(0, 1024),
+    session.auth_time,
   );
   if (!user)
     return NextResponse.json(
-      { error: "Current password is incorrect" },
+      {
+        error:
+          "Current password is incorrect or sign in again to set a password",
+      },
       { status: 400 },
     );
   const cookie = sessionCookie();
   const token = await encode({
     token: {
+      auth_time: session.auth_time,
       sub: user.id,
       email: user.email,
       name: user.name,

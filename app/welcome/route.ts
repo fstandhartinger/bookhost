@@ -9,7 +9,7 @@ import {
   cancelDuplicateCheckout,
 } from "@/lib/billing";
 import { baseUrl } from "@/lib/config";
-import { digest } from "@/lib/security";
+import { clientIp, digest } from "@/lib/security";
 export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   const id = request.nextUrl.searchParams.get("session_id");
@@ -80,11 +80,7 @@ export async function GET(request: NextRequest) {
             team.id,
             document,
             "2026-09-08",
-            request.headers
-              .get("x-forwarded-for")
-              ?.split(",")[0]
-              .trim()
-              .slice(0, 128) || null,
+            clientIp(request),
             request.headers.get("user-agent")?.slice(0, 1024) || null,
           ],
         );
@@ -93,6 +89,7 @@ export async function GET(request: NextRequest) {
       // Encode before consuming: a configuration error must not burn the login.
       const token = await encode({
         token: {
+          auth_time: Math.floor(Date.now() / 1000),
           sub: user.id,
           email: user.email,
           name: user.name,

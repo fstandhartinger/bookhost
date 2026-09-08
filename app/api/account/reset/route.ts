@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { smtpReady } from "@/lib/config";
-import { digest, rateLimit, sameOrigin } from "@/lib/security";
+import { clientIp, digest, rateLimit, sameOrigin } from "@/lib/security";
 import { normalizeEmail, validNewPassword } from "@/lib/password";
 import { sendPasswordReset, resetPassword } from "@/lib/password-reset";
 export async function POST(request: Request) {
@@ -16,18 +16,21 @@ export async function POST(request: Request) {
     );
   const data = await request.json().catch(() => ({}));
   const email = normalizeEmail(data.email);
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",").pop()?.trim() ||
-    "unknown";
-  if (
-    !(await rateLimit("password-reset-ip:" + digest(ip), 10, 900)) ||
-    !(await rateLimit("password-reset-email:" + digest(email), 5, 900))
-  )
-    return NextResponse.json(
-      { error: "Try again in 15 minutes" },
-      { status: 429 },
-    );
+  const ip = clientIp(request);
+  if (!ip)
+    return NextResponse.json({ error: "Missing client IP" }, { status: 400 });
+  const limited = () =>
+    NextResponse.json({ error: "Try again in 15 minutes" }, { status: 429 });
   if (data.token) {
+    if (
+      !(await rateLimit(
+        "password-reset-token:" + digest(String(data.token)) + ":" + digest(ip),
+        10,
+        900,
+      )) ||
+      !(await rateLimit("password-reset-redeem-ip:" + digest(ip), 10, 900))
+    )
+      return limited();
     if (
       typeof data.password !== "string" ||
       !validNewPassword(data.password, data.confirmation)
@@ -43,15 +46,22 @@ export async function POST(request: Request) {
       );
     return NextResponse.json({ ok: true, reset: true });
   }
-  if (!/^\S+@\S+\.\S+$/.test(email))
+  if (email.length > 254 || !/^\S+@\S+\.\S+$/.test(email))
     return NextResponse.json(
       { error: "Enter a valid email address" },
       { status: 400 },
     );
-  try {
-    await sendPasswordReset(email);
-  } catch {
-    console.error("Password reset delivery failed");
-  }
+  if (
+    !(await rateLimit("password-reset-ip:" + digest(ip), 10, 900)) ||
+    !(await rateLimit("password-reset-email:" + digest(email), 5, 900))
+  )
+    return limited();
+  after(async () => {
+    try {
+      await sendPasswordReset(email);
+    } catch {
+      console.error("Password reset delivery failed");
+    }
+  });
   return NextResponse.json({ ok: true });
 }

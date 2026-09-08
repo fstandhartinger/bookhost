@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { sessionToken } from "./lib/session";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
@@ -81,6 +82,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return account?.provider !== "google" || profile?.email_verified === true;
     },
     async jwt({ token, user, account }) {
+      if (user) token.auth_time = Math.floor(Date.now() / 1000);
       if (user && account?.provider === "credentials") {
         return sessionToken({
           ...token,
@@ -93,12 +95,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async session({ session, token }) {
       if (session.user && token.sub) session.user.id = token.sub;
+      session.auth_time =
+        typeof token.auth_time === "number" ? token.auth_time : undefined;
       return session;
     },
   },
   logger: {
-    error() {
-      console.error("Authentication request failed");
+    error(error) {
+      const name = /^[A-Za-z]{1,80}$/.test(error.name)
+        ? error.name
+        : "AuthError";
+      console.error("Authentication request failed", {
+        name,
+        correlationId: randomUUID(),
+      });
     },
     warn(code) {
       console.warn("Authentication warning:", code);

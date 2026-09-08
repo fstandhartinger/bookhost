@@ -1,3 +1,4 @@
+import { isIP } from "node:net";
 import { createHash } from "node:crypto";
 import { db } from "./db";
 import { baseUrl } from "./config";
@@ -13,4 +14,23 @@ export async function rateLimit(key: string, limit = 10, windowSeconds = 3600) {
     [key, windowSeconds],
   );
   return result.rows[0].hits <= limit;
+}
+
+// Only enable TRUST_PROXY on a listener reachable exclusively through the proxy.
+export function clientIp(request: Request): string | null {
+  const socket = (request as Request & { socket?: { remoteAddress?: string } })
+    .socket?.remoteAddress;
+  const value =
+    process.env.TRUST_PROXY === "true"
+      ? request.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() ||
+        socket ||
+        request.headers.get("x-real-ip")
+      : socket || request.headers.get("x-real-ip");
+  return value && isIP(value) ? value : null;
+}
+export function freshAuthentication(authTime: unknown): boolean {
+  const now = Math.floor(Date.now() / 1000);
+  return (
+    typeof authTime === "number" && authTime <= now && now - authTime < 900
+  );
 }

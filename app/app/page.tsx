@@ -1,3 +1,4 @@
+import { freshAuthentication } from "@/lib/security";
 import { PasswordForm } from "@/components/password-form";
 import { auth, signOut } from "@/auth";
 import { redirect } from "next/navigation";
@@ -123,10 +124,16 @@ export default async function Dashboard({
             Password set on {date(user.password_set_at)}
           </p>
         )}
-        <PasswordForm
-          key={String(user?.password_set_at)}
-          hasPassword={Boolean(user?.password_set_at)}
-        />
+        {!user?.password_set_at &&
+        !user?.email_verified_at &&
+        !freshAuthentication(session.auth_time) ? (
+          <a href="/login">Sign in again to set a password</a>
+        ) : (
+          <PasswordForm
+            key={String(user?.password_set_at)}
+            hasPassword={Boolean(user?.password_set_at)}
+          />
+        )}
       </section>
       <div className="mt-10 grid items-start gap-6 lg:grid-cols-[1.6fr_1fr]">
         <div className="price-card">

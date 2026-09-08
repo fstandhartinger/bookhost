@@ -11,6 +11,7 @@ vi.mock("@/auth", () => ({
   auth: async () => ({ user: { id: "owner", email: "owner@example.invalid" } }),
 }));
 vi.mock("@/lib/security", () => ({
+  clientIp: () => "192.0.2.1",
   sameOrigin: () => true,
   rateLimit: async () => true,
   digest: () => "hash",

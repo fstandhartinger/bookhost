@@ -21,6 +21,9 @@ vi.mock("@/lib/db", () => {
 });
 vi.mock("@/lib/security", () => ({
   digest: (s: string) => s,
+  clientIp: () => "1.2.3.4",
+  freshAuthentication: (t: number) =>
+    typeof t === "number" && Date.now() / 1000 - t < 900,
   rateLimit: vi.fn(async () => state.allowed),
 }));
 import {
@@ -110,7 +113,7 @@ it("requires the old password and bumps the version only on a successful change"
   );
 });
 it("sets the first password and validates length and confirmation", async () => {
-  state.user = { password_hash: null };
+  state.user = { password_hash: null, email_verified_at: new Date() };
   expect(await changePassword("user", "new-password", "")).toMatchObject({
     session_version: 2,
   });

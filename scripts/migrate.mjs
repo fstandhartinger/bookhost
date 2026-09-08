@@ -2,6 +2,9 @@ import pg from "pg";
 import { databaseConfig } from "./db-config.mjs";
 import { readdir, readFile } from "node:fs/promises";
 const pool = new pg.Pool(databaseConfig());
+pool.on("error", () =>
+  console.error("Database migration pool connection failed"),
+);
 let client;
 try {
   client = await pool.connect();

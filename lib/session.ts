@@ -1,7 +1,8 @@
 import type { JWT } from "next-auth/jwt";
 import { db } from "./db";
 
-// Only called with userId after a completed, verified provider login.
+// userId is supplied only for verified providers. Credentials pass their
+// authenticated version in token so a concurrent password change rejects it.
 export async function sessionToken(
   token: JWT,
   userId?: string,

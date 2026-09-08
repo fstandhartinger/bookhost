@@ -1,5 +1,7 @@
 import { sessionToken } from "./lib/session";
 import NextAuth from "next-auth";
+import Credentials from "next-auth/providers/credentials";
+import { authorizePassword } from "./lib/password";
 import Google from "next-auth/providers/google";
 import Nodemailer from "next-auth/providers/nodemailer";
 import { createTransport } from "nodemailer";
@@ -23,6 +25,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   pages: { signIn: "/login", verifyRequest: "/login?sent=1", error: "/login" },
   cookies: { sessionToken: sessionCookie() },
   providers: [
+    Credentials({
+      credentials: { email: { type: "email" }, password: { type: "password" } },
+      authorize: authorizePassword,
+    }),
     ...(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET
       ? [
           Google({
@@ -74,7 +80,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signIn({ account, profile }) {
       return account?.provider !== "google" || profile?.email_verified === true;
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
+      if (user && account?.provider === "credentials") {
+        return sessionToken({
+          ...token,
+          sub: user.id,
+          session_version: (user as typeof user & { session_version: number })
+            .session_version,
+        });
+      }
       return sessionToken(token, user?.id);
     },
     async session({ session, token }) {

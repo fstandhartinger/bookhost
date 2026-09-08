@@ -36,7 +36,7 @@ docker run --rm -p 127.0.0.1:3999:3000 --env-file /secure/path/runtime.env wisse
 | `SMTP_PORT` | SMTP port, default 587; 465 enables implicit TLS. |
 | `SMTP_USER` | SMTP user, if the relay requires authentication. |
 | `SMTP_PASS` | SMTP password, paired with SMTP_USER. |
-| `SMTP_FROM` | Sender identity for magic-link messages. |
+| `SMTP_FROM` | Sender identity for magic-link and password-reset messages. |
 | `NEXTAUTH_URL` | Legacy fallback for AUTH_URL; prefer AUTH_URL and do not set contradictory values. |
 | `NODE_ENV` | `production` for deployment (set in Docker). |
 | `PORT` | Listen port, default 3000 (set in Docker). |
@@ -53,10 +53,11 @@ Do not mix URL `sslmode` options with `DATABASE_SSL_CA_BASE64`, since node-postg
 - The start endpoint stores a hash of a random HttpOnly browser nonce. `/welcome` retrieves the session directly from Stripe, checks completion, the venture marker and browser binding, and consumes the session once inside a DB transaction. It emits an Auth.js-compatible encrypted JWT and redirects to `/app`.
 - An unverified email supplied to Checkout cannot authenticate an existing account. Existing users must first sign in; this is an intentional security constraint. A new Checkout account's email is not marked verified. Checkout first-login is not an identity-verification service.
 - Completed new-user checkout webhook processing and welcome processing share a transaction lock. Duplicate webhook IDs are ignored atomically. Subscription changes retrieve current Stripe state, so delayed updates do not overwrite newer state. Missing-team events are harmless; checkout/welcome fetches the current subscription again.
-- JWTs last seven days; magic links last 15 minutes. Without SMTP, production shows the setup message and a trial CTA. Development logs magic links explicitly; never forward development logs to a shared service.
+- Checkout JWTs last seven days; provider/password sessions last 30 days; magic links last 15 minutes. Password sign-in is always available. Set the first dashboard password after checkout at `/app?setup=password`; changes require the current password and revoke other sessions while renewing the current cookie. Password login neither verifies email nor revokes sessions. Argon2id hashes use 19 MiB memory, two iterations and one lane; passwords require 10–1024 characters.
+- `/login/reset` sends single-use, SHA256-hashed reset tokens valid for 30 minutes when SMTP is configured. Reset revokes all sessions and requires a fresh login. Without SMTP the page directs users to support. Delivery errors are logged generically, and account existence is not disclosed. Development logs magic links explicitly; never forward development logs to a shared service.
 - Google does not silently link an existing email account. Sign in with the original email method first. Production email needs configuring before launch for durable return access.
 - Checkout session URLs and callback query strings are bearer-like sensitive data. Redact them in proxy/access logs; responses are not logged by this app.
-- Checkout is limited to 15 attempts per caller per hour; magic-link email to 5 per recipient per hour. Configure trusted proxy IP headers. Clean expired `rate_limits`, `verification_tokens` and abandoned `checkout_attempts` periodically under the operator's retention policy.
+- Checkout is limited to 15 attempts per caller per hour; magic-link email to 5 per recipient per hour. Password login is limited to 10 attempts per normalized email + IP per 15 minutes (HTTP 429 on attempt 11); password changes and reset requests are also throttled. Configure trusted proxy IP headers: the final `x-forwarded-for` entry must be set by the trusted proxy. Clean expired `password_reset_tokens`, `rate_limits`, `verification_tokens` and abandoned `checkout_attempts` periodically under the operator's retention policy.
 
 Stripe reference: [no-card trials](https://docs.stripe.com/payments/checkout/free-trials). Auth reference: [Auth.js](https://authjs.dev/). Dependency lockfile pins the installed versions.
 
@@ -77,7 +78,7 @@ Before public launch:
 - Complete legal/operator fields and review the supplied terms. Persist customer-specific AVV acceptance and provide durable contract confirmations. Consumer public cancellation/withdrawal forms described in the draft terms are not implemented by this task; the app has an authenticated Stripe portal and support links only.
 - Align the terms' separate paid-order wording with the requested Stripe subscription trial behavior, which starts billing if a payment method is added.
 - Confirm tax collection. The existing price is exclusive of tax; this requested Checkout does not enable automatic tax or attach tax rates. The price label alone does not collect VAT.
-- Configure SMTP or Google and exercise return login without disabling verification; this task sends no emails and automates no third-party logins.
+- Configure SMTP or Google and exercise real email delivery / OAuth. Password return login is available independently; reset delivery is covered with a mocked SMTP transport until SMTP is configured.
 - Deploy through the operator and verify the live webhook, TLS and proxy header handling. This local acceptance test only creates, then expires, an unpaid live Checkout session.
 - Confirm actual provisioning, tenant isolation, backup retention and successful restore independently. The control plane does not verify those external services and does not promise already-tested restores.
 - Keep document/email intake and AI features disabled until their independent implementation and permission checks are complete.

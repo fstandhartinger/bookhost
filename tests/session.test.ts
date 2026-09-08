@@ -26,3 +26,11 @@ it("rejects legacy tokens without a version", async () => {
   expect(await sessionToken({ sub: "owner" })).toBeNull();
   expect(await sessionToken({})).toBeNull();
 });
+it("password login neither verifies email nor revokes existing sessions", async () => {
+  const existing = { sub: "owner", session_version: 1 };
+  expect(await sessionToken({ sub: "owner", session_version: 1 })).toEqual(
+    existing,
+  );
+  expect(state.version).toBe(1);
+  expect(await sessionToken(existing)).toEqual(existing);
+});

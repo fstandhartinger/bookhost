@@ -112,7 +112,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(
         new URL("/login?checkout=existing", baseUrl()),
       );
-    const response = NextResponse.redirect(new URL("/app", baseUrl()));
+    const response = NextResponse.redirect(
+      new URL("/app?setup=password", baseUrl()),
+    );
     response.cookies.set(result.cookie.name, result.token, {
       ...result.cookie.options,
       maxAge: 7 * 86400,

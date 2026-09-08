@@ -106,7 +106,7 @@ describe("Checkout-first login", () => {
   it("issues an Auth.js-compatible HttpOnly JWT once and rejects replay", async () => {
     const response = await GET(request());
     expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toBe("http://127.0.0.1:3999/app");
+    expect(response.headers.get("location")).toBe("http://127.0.0.1:3999/app?setup=password");
     const cookie = response.cookies.get("authjs.session-token");
     expect(cookie).toBeTruthy();
     const token = await decode({

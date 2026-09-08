@@ -1,3 +1,4 @@
+import { PasswordForm } from "@/components/password-form";
 import { auth, signOut } from "@/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
@@ -16,7 +17,12 @@ const date = (value: Date | string) =>
     year: "numeric",
     timeZone: "UTC",
   });
-export default async function Dashboard() {
+export default async function Dashboard({
+  searchParams,
+}: {
+  searchParams: Promise<{ setup?: string }>;
+}) {
+  const { setup } = await searchParams;
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
   const team = (
@@ -42,9 +48,10 @@ export default async function Dashboard() {
       ).rows[0]
     : null;
   const user = (
-    await db.query("SELECT email_verified_at FROM users WHERE id=$1", [
-      session.user.id,
-    ])
+    await db.query(
+      "SELECT email_verified_at,password_set_at FROM users WHERE id=$1",
+      [session.user.id],
+    )
   ).rows[0];
   const consents = team
     ? (
@@ -102,6 +109,25 @@ export default async function Dashboard() {
         Your trial starts when you sign up; your workspace is usually ready
         within 5 minutes.
       </p>
+      <section
+        id="password-setup"
+        className={`price-card mt-8 ${setup === "password" ? "ring-2 ring-teal-600" : ""}`}
+      >
+        <h2 className="text-2xl">Sign-in for next time</h2>
+        <p className="mt-3 text-sm text-slate-600">
+          Set a password to return to this dashboard. Magic link and Google
+          sign-in are coming soon.
+        </p>
+        {user?.password_set_at && (
+          <p className="mt-3 text-sm">
+            Password set on {date(user.password_set_at)}
+          </p>
+        )}
+        <PasswordForm
+          key={String(user?.password_set_at)}
+          hasPassword={Boolean(user?.password_set_at)}
+        />
+      </section>
       <div className="mt-10 grid items-start gap-6 lg:grid-cols-[1.6fr_1fr]">
         <div className="price-card">
           <div className="flex items-center justify-between gap-3">

@@ -83,3 +83,9 @@ Before public launch:
 - Keep document/email intake and AI features disabled until their independent implementation and permission checks are complete.
 
 Legal Markdown comes from `content/legal`; raw HTML is not enabled. Relative legal-document links are normalized and GFM tables are supported.
+
+### Tenant off-host backups
+
+Storage Box rsync/SSH replication, 30-day remote retention and authenticated restore
+checks are documented in [tenant operations](ops/provisioner/README.md#off-host-backups-hetzner-storage-box).
+Setup is pending a Storage Box: the initial API order was rejected with HTTP 403.

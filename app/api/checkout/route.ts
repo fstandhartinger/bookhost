@@ -1,0 +1,104 @@
+import { randomBytes } from "node:crypto";
+import { NextResponse } from "next/server";
+import { auth } from "@/auth";
+import { db } from "@/lib/db";
+import { baseUrl } from "@/lib/config";
+import { stripeClient } from "@/lib/stripe";
+import { checkoutParams } from "@/lib/checkout";
+import { digest, rateLimit, sameOrigin } from "@/lib/security";
+export async function POST(request: Request) {
+  if (!sameOrigin(request))
+    return Response.json({ error: "Invalid origin" }, { status: 403 });
+  try {
+    const session = await auth();
+    const body = await request.json().catch(() => ({}));
+    const email = session?.user?.email || body.email;
+    if (
+      email &&
+      (typeof email !== "string" ||
+        email.length > 254 ||
+        !/^\S+@\S+\.\S+$/.test(email))
+    )
+      return Response.json(
+        { error: "Enter a valid email address." },
+        { status: 400 },
+      );
+    const key = digest(
+      session?.user?.id ||
+        request.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
+        "anonymous",
+    );
+    if (!(await rateLimit("checkout:" + key, 15)))
+      return Response.json(
+        { error: "Too many requests. Please try again in an hour." },
+        { status: 429 },
+      );
+    const team = session?.user?.id
+      ? (
+          await db.query("SELECT * FROM teams WHERE owner_user_id=$1", [
+            session.user.id,
+          ])
+        ).rows[0]
+      : null;
+    if (
+      team &&
+      (
+        await db.query(
+          "SELECT 1 FROM subscriptions WHERE team_id=$1 AND status IN ('trialing','active','past_due','unpaid','incomplete','paused')",
+          [team.id],
+        )
+      ).rowCount
+    )
+      return Response.json(
+        {
+          error:
+            "Your team already has a subscription. Manage it from your dashboard.",
+        },
+        { status: 409 },
+      );
+    if (
+      !session &&
+      email &&
+      (await db.query("SELECT 1 FROM users WHERE email=lower($1)", [email]))
+        .rowCount
+    )
+      return Response.json(
+        { error: "Please sign in before starting another subscription." },
+        { status: 409 },
+      );
+    if (!process.env.STRIPE_PRICE_TEAM)
+      return Response.json(
+        { error: "Billing is being set up. Please try again shortly." },
+        { status: 503 },
+      );
+    const stripe = stripeClient();
+    const checkout = await stripe.checkout.sessions.create(
+      checkoutParams({
+        price: process.env.STRIPE_PRICE_TEAM,
+        url: baseUrl(),
+        email,
+        customer: team?.stripe_customer_id,
+        teamId: team?.id,
+      }),
+    );
+    const nonce = randomBytes(32).toString("hex");
+    await db.query(
+      "INSERT INTO checkout_attempts(session_id,nonce_hash,user_id) VALUES($1,$2,$3)",
+      [checkout.id, digest(nonce), session?.user?.id || null],
+    );
+    const response = NextResponse.json({ url: checkout.url });
+    response.cookies.set("wissen-checkout", nonce, {
+      httpOnly: true,
+      secure: baseUrl().startsWith("https:"),
+      sameSite: "lax",
+      path: "/welcome",
+      maxAge: 86400,
+    });
+    return response;
+  } catch {
+    return Response.json(
+      { error: "We could not open checkout. Please try again shortly." },
+      { status: 503 },
+    );
+  }
+}

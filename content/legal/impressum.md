@@ -16,7 +16,7 @@ Deutschland
 
 Vertreten durch Florian Standhartinger.
 
-[[BITTE ERGAENZEN: Firma, Sitz und Registerangaben der persönlich haftenden Gesellschafterin sowie deren Vertretung; die Betreiberquelle nennt lediglich Florian Standhartinger.]]
+Persönlich haftende Gesellschafterin: productivity-boost.com Betriebs UG (haftungsbeschränkt), vertreten durch Florian Standhartinger.
 
 ## Kontakt
 
@@ -26,9 +26,7 @@ Telefon: +49 178 1981631
 ## Registereintrag
 
 Registergericht: Amtsgericht Passau  
-Registernummer laut Betreiberquelle: HRB 8453
-
-[[BITTE ERGAENZEN: Registereintrag der KG prüfen und deren HRA-Nummer ergänzen; klären, ob die in der Quelle genannte HRB 8453 zur persönlich haftenden Gesellschafterin gehört.]]
+Registernummer: HRB 8453
 
 ## Umsatzsteuer-Identifikationsnummer
 

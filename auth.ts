@@ -18,7 +18,7 @@ export const sessionCookie = () => ({
 });
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter,
-  session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 7 },
+  session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 30 },
   pages: { signIn: "/login", verifyRequest: "/login?sent=1", error: "/login" },
   cookies: { sessionToken: sessionCookie() },
   providers: [

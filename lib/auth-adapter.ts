@@ -60,6 +60,7 @@ export const adapter: Adapter = {
     );
   },
   async createVerificationToken(token) {
+    await db.query("DELETE FROM verification_tokens WHERE expires < now()");
     await db.query(
       "INSERT INTO verification_tokens(identifier,token,expires) VALUES($1,$2,$3)",
       [token.identifier, token.token, token.expires],

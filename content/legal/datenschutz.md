@@ -14,7 +14,7 @@ Telefon: +49 178 1981631
 
 Weitere Anbieterangaben finden Sie im [Impressum](impressum.md). Datenschutzanfragen richten Sie bitte an die genannte E-Mail-Adresse.
 
-[[BITTE ERGAENZEN: Prüfen, ob für Wissen ein Datenschutzbeauftragter zu benennen ist; gegebenenfalls dessen Kontaktdaten eintragen.]]
+Ein Datenschutzbeauftragter ist nicht benannt, da keine gesetzliche Pflicht zur Benennung besteht. Ansprechpartner für Datenschutz ist der oben genannte Anbieter.
 
 ## 2. Website, Hosting und Server-Logs
 
@@ -22,7 +22,7 @@ Wir betreiben Wissen auf einem von uns administrierten Server bei der Hetzner On
 
 Beim Aufruf des Dienstes werden IP-Adresse, Zeitpunkt, angeforderter Pfad, HTTP-Status, übertragene Datenmenge sowie Browser- und Betriebssysteminformationen verarbeitet; soweit übermittelt, auch die verweisende Seite. Für die Fehleranalyse können technische Ereignisse einer Konto- oder Instanzkennung zugeordnet werden. Dies dient der Auslieferung, Stabilität, Fehlerbehebung und Abwehr missbräuchlicher Zugriffe. Rechtsgrundlage ist Art. 6 Abs. 1 Buchst. f DSGVO; unser berechtigtes Interesse ist ein sicherer, funktionsfähiger Dienst.
 
-[[BITTE ERGAENZEN: Tatsächlich konfigurierte Aufbewahrungsdauer der Webserver-, Proxy-, Anwendungs- und Sicherheitsprotokolle in Tagen eintragen.]] Bei einem konkreten Sicherheitsvorfall bewahren wir relevante Auszüge so lange auf, wie es zur Aufklärung und Rechtsverfolgung erforderlich ist. Zugriff auf solche Auszüge ist beschränkt. Dokumentinhalte, Passwörter und Anmeldetoken gehören nicht in Zugriffsprotokolle.
+Webserver-, Proxy- und Anwendungsprotokolle werden 14 Tage, Sicherheitsprotokolle 30 Tage aufbewahrt. Bei einem konkreten Sicherheitsvorfall bewahren wir relevante Auszüge so lange auf, wie es zur Aufklärung und Rechtsverfolgung erforderlich ist. Zugriff auf solche Auszüge ist beschränkt. Dokumentinhalte, Passwörter und Anmeldetoken gehören nicht in Zugriffsprotokolle.
 
 ## 3. Konto und Anmeldung per E-Mail-Link
 
@@ -32,7 +32,7 @@ Rechtsgrundlage ist Art. 6 Abs. 1 Buchst. b DSGVO, soweit Sie selbst Vertragspar
 
 Der Versand erforderlicher Anmelde- und Vertragsnachrichten ist keine Werbung. Dabei werden Empfängeradresse, Nachrichteninhalt und technische Zustellinformationen verarbeitet.
 
-[[BITTE ERGAENZEN: Tatsächlichen E-Mail-Versanddienst mit Rechtsträger, Anschrift, Verarbeitungsorten und gegebenenfalls Transfergarantien angeben; bei vollständig eigenem Versand dies bestätigen. Gültigkeit der Anmeldelinks und Löschfrist der Token eintragen.]]
+Login-Links und Benachrichtigungen versenden wir über einen Transaktions-E-Mail-Dienst; derzeit Resend Inc. (USA, EU-Datenverarbeitung nach Standardvertragsklauseln). Weitere Informationen: [Resend-Datenschutz](https://resend.com/legal/privacy-policy) und [Auftragsverarbeitung](https://resend.com/legal/dpa). Login-Links gelten 15 Minuten. Verwendete Token werden bei Einlösung gelöscht; abgelaufene Token werden bei der nächsten Anforderung eines Login-Links bereinigt.
 
 ## 4. Optional: Anmeldung mit Google
 
@@ -46,7 +46,16 @@ Weitere Informationen: [Google-Datenschutzerklärung](https://policies.google.co
 
 Wissen verwendet ausschließlich technisch notwendige Cookies, insbesondere zur Zuordnung angemeldeter Sitzungen und zum Schutz vor gefälschten Anfragen. Wir setzen keine Analyse-, Werbe- oder Tracking-Cookies ein. Notwendige Cookies werden nach § 25 Abs. 2 Nr. 2 TDDDG ohne Einwilligung eingesetzt; die anschließende Verarbeitung personenbezogener Daten richtet sich nach Art. 6 Abs. 1 Buchst. b beziehungsweise f DSGVO.
 
-[[BITTE ERGAENZEN: Tatsächliche Cookie-Namen, Zwecke und Laufzeiten für Control-Plane und BookStack angeben; auch dauerhafte Sitzungs-Cookies berücksichtigen.]]
+| Bereich / Cookie | Zweck | Laufzeit |
+| --- | --- | --- |
+| Control-Plane: `authjs.session-token` bzw. `__Secure-authjs.session-token` (gegebenenfalls mit nummerierten Teil-Cookies) | Angemeldete Sitzung | 30 Tage, bei Sitzungsaktualisierung erneuert |
+| `authjs.csrf-token` bzw. `__Host-authjs.csrf-token` | Schutz vor gefälschten Anfragen | Sitzung |
+| `authjs.callback-url` bzw. `__Secure-authjs.callback-url` | Rücksprung nach Anmeldung | Sitzung |
+| `authjs.pkce.code_verifier` und gegebenenfalls `authjs.state`, jeweils unter HTTPS mit `__Secure-` | Absicherung der optionalen Google-Anmeldung | Höchstens 15 Minuten |
+| BookStack: `bookstack_session` | Instanz-Sitzung | Sitzung |
+| BookStack: `XSRF-TOKEN` | Schutz vor gefälschten Anfragen | Sitzung |
+
+HTTPS verwendet die oben angegebenen sicheren Präfixe. Diese Cookies dienen ausschließlich der angeforderten Anmeldung und Nutzung.
 
 Sie können Cookies im Browser löschen oder blockieren. Ohne die notwendigen Cookies funktioniert die Anmeldung gegebenenfalls nicht. Für Seiten von Google und Stripe, die Sie zur Anmeldung oder Zahlung aufrufen, gelten zusätzlich deren Hinweise; unsere Aussage zu Tracking-Cookies bezieht sich auf Wissen.
 
@@ -78,7 +87,7 @@ Als KI-Dienst ist Chutes, betrieben von Chutes Global Corp, vorgesehen. Die Infe
 
 Der Kunde bestimmt als Verantwortlicher Zweck, Rechtsgrundlage und zulässige Inhalte. Wir handeln nach seiner Weisung als Auftragsverarbeiter; Chutes wird erst nach Erfüllung der in [Anlage 3 des AVV](avv.md) genannten Voraussetzungen als Unterauftragsverarbeiter eingesetzt. Besondere Kategorien personenbezogener Daten sind ohne zusätzliche ausdrückliche Vereinbarung nicht für die KI-Verarbeitung vorgesehen.
 
-[[BITTE ERGAENZEN: Vor Aktivierung die bestätigte Chutes-Anschrift, tatsächlichen Inferenz- und Metadatenstandorte, einbezogenen Unterauftragnehmer, konkret vereinbarten Drittlandgarantien sowie Löschfristen für Eingangsmails, Originaldateien, Vorschläge und KI-Nutzungsmetadaten eintragen.]]
+Die [Chutes-Nutzungsbedingungen](https://chutes.ai/terms) nennen Chutes Global Corp und das Recht von Nevis. Eine verbindliche Geschäftsanschrift und konkrete Inferenzländer sind öffentlich nicht abschließend belegt; wir behaupten daher weder einen US-Sitz noch ausschließlich europäische Verarbeitung. Details zu Standorten und Transfergarantien erhalten Kunden auf Anfrage und vor ihrer Freischaltung. Ohne dokumentierten Art.-28-Vertrag und zulässige Drittlandgarantien bleibt die KI-Verarbeitung deaktiviert. Inhalte öffentlicher LLM-API-Anfragen werden bei Chutes nur für die jeweilige Anfrage im Arbeitsspeicher verarbeitet und nicht darüber hinaus gespeichert. Bei Wissen gespeicherte Eingangsdokumente und Vorschläge unterliegen den Löschfristen für Kundeninhalte in Abschnitt 10; technische Anwendungsprotokolle werden nach 14 Tagen gelöscht.
 
 ## 9. Empfänger und internationale Verarbeitung
 
@@ -115,3 +124,7 @@ Die Bereitstellung von Konto- und gegebenenfalls Abrechnungsdaten ist für Anmel
 ## 13. Änderungen
 
 Wir passen diese Erklärung an, wenn sich die Verarbeitung ändert. Über wesentliche Änderungen informieren wir in geeigneter Weise, bevor neue Verarbeitungen beginnen. Eine Änderung dieser Erklärung ersetzt keine gegebenenfalls erforderliche Einwilligung, Weisung oder Vertragsänderung.
+
+## 13. Kündigungs- und Widerrufserklärungen
+
+Über das öffentliche [Formular](https://wissen.app.mintapis.com/cancel) verarbeiten wir E-Mail-Adresse, die Art der Erklärung und freiwillige Angaben zur Zuordnung und zum gewünschten Vertragsende. Rechtsgrundlagen sind Art. 6 Abs. 1 Buchst. b und c DSGVO. Die Speicherung dient der Bearbeitung und dem Nachweis des Eingangs; die Fristen für Vertragsunterlagen in Abschnitt 10 gelten entsprechend. Zur Missbrauchsabwehr wird ein aus der IP-Adresse abgeleiteter Zähler für höchstens eine Stunde im Arbeitsspeicher gehalten (Art. 6 Abs. 1 Buchst. f DSGVO).

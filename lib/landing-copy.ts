@@ -13,7 +13,7 @@ export const faqs = [
   ],
   [
     "How do cancellation and deletion work?",
-    "Cancel through the customer portal or email support at any time for the end of your current monthly billing period. You retain normal access until that date, so export any content you want to keep before then. We delete active instance data within 30 days after the contract ends; protected backup copies expire within a further seven days. Earlier deletion can be requested, and statutory retention for invoices does not mean we keep your entire wiki. Consumer cancellation and withdrawal rights remain available as described in the terms.",
+    "Cancel through the customer portal, the public cancellation form at /cancel, or email support at any time for the end of your current monthly billing period. You retain normal access until that date, so export any content you want to keep before then. We delete active instance data within 30 days after the contract ends; protected backup copies expire within a further seven days. Earlier deletion can be requested, and statutory retention for invoices does not mean we keep your entire wiki. Consumer cancellation and withdrawal rights remain available as described in the terms.",
   ],
   [
     "Can you migrate our existing BookStack instance?",
@@ -63,6 +63,6 @@ export const steps = [
   [
     "3",
     "Choose whether to stay",
-    "Add a payment method to continue after the trial, or let it end with no charge. Reviewed intake and AI answers are planned for the coming weeks and are not available today.",
+    "Add a payment method to continue after the trial, or let it end with no charge. Reviewed document and email intake, plus AI answers, are coming in the next weeks — included in your plan. They are not available today; timing is an estimate.",
   ],
 ];

@@ -18,13 +18,15 @@ export default function Home() {
           </p>
           <p className="mt-5 text-sm leading-6 text-moss">
             <strong>
-              Reviewed document intake and AI answers — coming in the next
-              weeks, included in your plan.
+              Reviewed document intake and AI answers — coming in the next weeks
+              — included in your plan.
             </strong>{" "}
-            They are not available today; timing is an estimate.
+            Upload a document or forward an email, review the proposed page,
+            then approve it for BookStack. These features are not available
+            today; timing is an estimate.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <ActionButton />
+            <ActionButton>Start my 14-day free trial</ActionButton>
             <a
               href="https://demo.wissen.app.mintapis.com"
               className="button-secondary"
@@ -33,7 +35,7 @@ export default function Home() {
             </a>
           </div>
           <p className="mt-4 text-xs text-slate-600">
-            14 days free · No credit card · €39/month plus VAT after trial
+            14 days free · No card required · Cancel monthly
           </p>
         </div>
         <div className="relative rounded-2xl bg-[#e8edde] p-5 sm:p-8">

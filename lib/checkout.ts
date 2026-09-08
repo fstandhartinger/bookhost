@@ -22,6 +22,11 @@ export function checkoutParams({
     },
     payment_method_collection: "if_required",
     allow_promotion_codes: true,
+    billing_address_collection: "auto",
+    tax_id_collection: { enabled: true },
+    ...(customer
+      ? { customer_update: { name: "auto" as const, address: "auto" as const } }
+      : {}),
     ...(customer ? { customer } : email ? { customer_email: email } : {}),
     success_url: `${url}/welcome?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${url}/pricing?canceled=1`,

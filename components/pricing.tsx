@@ -29,16 +29,21 @@ export function Pricing() {
           </p>
           <ul className="checklist">
             <li>Your own hosted BookStack workspace</li>
+            <li>BookStack content exports, governed by your permissions</li>
             <li>Hosting, maintenance and security updates</li>
             <li>Daily backups and email support</li>
             <li>Seven-day backup retention and restore help</li>
             <li>
               Reviewed intake{" "}
-              <span className="text-xs text-slate-500">— coming soon</span>
+              <span className="text-xs text-slate-500">
+                — coming in the next weeks — included
+              </span>
             </li>
             <li>
               Permission-aware answers{" "}
-              <span className="text-xs text-slate-500">— coming soon</span>
+              <span className="text-xs text-slate-500">
+                — coming in the next weeks — included
+              </span>
             </li>
           </ul>
           <p className="mt-5 text-xs leading-5 text-slate-600">
@@ -51,8 +56,10 @@ export function Pricing() {
             No credit card · Cancel anytime · Plus applicable VAT
           </p>
           <p className="mt-3 text-xs text-slate-600">
-            Without a payment method, your trial ends automatically. By
-            continuing, you agree to the{" "}
+            Add a payment method in Manage billing to continue after the trial.
+            Without one, your trial ends automatically without a charge. €39 net
+            plus applicable VAT (€46.41 with 19% German VAT). No setup fee for
+            the standard plan. By continuing, you agree to the{" "}
             <Link className="underline" href="/legal/agb">
               Terms
             </Link>{" "}

@@ -6,6 +6,9 @@ describe("Checkout parameters", () => {
       price: "price_team",
       url: "https://wissen.example",
     });
+    expect(p.billing_address_collection).toBe("auto");
+    expect(p.tax_id_collection).toEqual({ enabled: true });
+    expect(p.automatic_tax?.enabled).not.toBe(true);
     expect(p.mode).toBe("subscription");
     expect(p.line_items).toEqual([{ price: "price_team", quantity: 1 }]);
     expect(p.payment_method_collection).toBe("if_required");

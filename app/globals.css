@@ -96,3 +96,42 @@ button:disabled {
     @apply border p-3 text-left;
   }
 }
+
+.intake-preview {
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+.intake-preview h2 {
+  font-size: 1.35rem;
+  margin: 1.5rem 0 0.5rem;
+  font-weight: 650;
+}
+.intake-preview h3 {
+  font-size: 1.1rem;
+  margin: 1rem 0 0.5rem;
+  font-weight: 600;
+}
+.intake-preview p {
+  margin: 0.75rem 0;
+}
+.intake-preview ul,
+.intake-preview ol {
+  padding-left: 1.5rem;
+  list-style: disc;
+}
+.intake-preview ol {
+  list-style: decimal;
+}
+.intake-preview table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.intake-preview td,
+.intake-preview th {
+  border: 1px solid #cbd5e1;
+  padding: 0.5rem;
+  text-align: left;
+}
+.intake-preview pre {
+  white-space: pre-wrap;
+}

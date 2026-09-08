@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 import psycopg
 from tenant import HERE, ROOT, env_read, valid_slug, compose
+from bookstack_api_token import store_token
 
 
 def command(action, slug, email=None):
@@ -78,6 +79,7 @@ def once():
             if not row: continue
             try:
                 command('provision',slug,email)
+                store_token(db, ident, slug)
                 values=env_read(path/'.env')
                 if existing:
                     db.execute("UPDATE tenants SET status='running',bookstack_url=%s,error=NULL,updated_at=now() WHERE id=%s AND status='provisioning'",(values['APP_URL'],ident))

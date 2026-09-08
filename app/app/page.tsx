@@ -102,6 +102,9 @@ export default async function Dashboard() {
                   >
                     Open BookStack ↗
                   </a>
+                  <a className="button-secondary mt-3" href="/app/intake">
+                    Document intake (beta)
+                  </a>
                   <div className="mt-6 border-t pt-5">
                     <h3 className="font-semibold">First sign-in</h3>
                     <p className="mt-2 text-sm text-slate-600">

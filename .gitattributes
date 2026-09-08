@@ -1,0 +1,3 @@
+# Document extraction fixtures use binary formats (PDF xref lines contain spaces).
+*.pdf binary
+*.docx binary

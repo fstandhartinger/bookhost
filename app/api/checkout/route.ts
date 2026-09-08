@@ -51,6 +51,7 @@ export async function POST(request: Request) {
     )
       return Response.json(
         {
+          portal: true,
           error:
             "Your team already has a subscription. Manage it from your dashboard.",
         },

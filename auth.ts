@@ -1,3 +1,4 @@
+import { sessionToken } from "./lib/session";
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Nodemailer from "next-auth/providers/nodemailer";
@@ -26,6 +27,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       ? [
           Google({
             clientId: process.env.AUTH_GOOGLE_ID,
+            allowDangerousEmailAccountLinking: true,
             clientSecret: process.env.AUTH_GOOGLE_SECRET,
           }),
         ]
@@ -69,9 +71,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       : []),
   ],
   callbacks: {
+    async signIn({ account, profile }) {
+      return account?.provider !== "google" || profile?.email_verified === true;
+    },
     async jwt({ token, user }) {
-      if (user) token.sub = user.id;
-      return token;
+      return sessionToken(token, user?.id);
     },
     async session({ session, token }) {
       if (session.user && token.sub) session.user.id = token.sub;

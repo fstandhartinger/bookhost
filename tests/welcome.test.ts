@@ -6,6 +6,10 @@ const state = vi.hoisted(() => ({
   bound: true,
   complete: true,
   existing: false,
+  verified: false,
+  duplicate: false,
+  operations: [] as string[],
+  consents: [] as unknown[][],
 }));
 vi.mock("@/auth", () => ({
   auth: async () => null,
@@ -26,18 +30,30 @@ vi.mock("@/lib/stripe", () => ({
         }),
       },
     },
-    subscriptions: { retrieve: async () => ({ id: "sub_fixture" }) },
+    subscriptions: {
+      retrieve: async () => {
+        state.operations.push("stripe-retrieve");
+        return { id: "sub_fixture" };
+      },
+    },
   }),
 }));
 vi.mock("@/lib/billing", () => ({
-  syncCheckout: async () => ({ owner_user_id: "user_fixture" }),
+  cancelDuplicateCheckout: async () => state.duplicate,
+  syncCheckout: async () => ({
+    id: "team_fixture",
+    owner_user_id: "user_fixture",
+  }),
   syncSubscription: async () => {},
 }));
 vi.mock("@/lib/db", () => ({
   db: {},
   transaction: async (fn: (client: unknown) => Promise<unknown>) =>
     fn({
-      query: async (sql: string) => {
+      query: async (sql: string, values: unknown[]) => {
+        if (sql.includes("pg_advisory_xact_lock"))
+          state.operations.push("lock");
+        if (sql.includes("INSERT INTO consents")) state.consents.push(values);
         if (sql.includes("FROM checkout_attempts"))
           return {
             rows: state.bound
@@ -51,6 +67,8 @@ vi.mock("@/lib/db", () => ({
             rows: [
               {
                 id: "user_fixture",
+                session_version: 1,
+                email_verified_at: state.verified ? new Date() : null,
                 email: "fixture@example.invalid",
                 name: "Fixture",
                 checkout_session_id: state.existing ? "cs_other" : "cs_fixture",
@@ -75,6 +93,10 @@ beforeEach(() => {
     bound: true,
     complete: true,
     existing: false,
+    verified: false,
+    duplicate: false,
+    operations: [],
+    consents: [],
   });
   process.env.AUTH_URL = "http://127.0.0.1:3999";
   process.env.AUTH_SECRET =
@@ -92,6 +114,7 @@ describe("Checkout-first login", () => {
       secret: process.env.AUTH_SECRET!,
       salt: "authjs.session-token",
     });
+    expect(token?.session_version).toBe(1);
     expect(token?.sub).toBe("user_fixture");
     expect(response.headers.get("set-cookie")).toContain("HttpOnly");
     expect((await GET(request())).headers.get("location")).toContain("/login");
@@ -117,4 +140,28 @@ describe("Checkout-first login", () => {
     expect((await GET(request())).headers.get("location")).toContain("/login");
     expect(state.consumed).toBe(false);
   });
+});
+
+it("does not reissue checkout access after the mailbox owner verified", async () => {
+  state.verified = true;
+  expect((await GET(request())).headers.get("location")).toContain("/login");
+  expect(state.consumed).toBe(false);
+});
+it("redirects duplicate checkout to the existing workspace sign-in notice", async () => {
+  state.duplicate = true;
+  expect((await GET(request())).headers.get("location")).toContain(
+    "checkout=existing",
+  );
+  expect(state.consumed).toBe(false);
+});
+
+it("refreshes Stripe under the webhook lock and records both contracts on success", async () => {
+  await GET(request());
+  expect(state.operations).toEqual(["lock", "stripe-retrieve"]);
+  expect(state.consents.map((values) => values.slice(0, 4))).toEqual([
+    ["user_fixture", "team_fixture", "agb", "2026-09-08"],
+    ["user_fixture", "team_fixture", "avv", "2026-09-08"],
+  ]);
+  await GET(request());
+  expect(state.consents).toHaveLength(2);
 });

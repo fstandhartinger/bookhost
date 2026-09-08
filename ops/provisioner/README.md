@@ -1,85 +1,92 @@
 # Wissen tenant operations
 
-Run as `flori` on Sandy with passwordless `sudo docker`, Docker Compose, Python
-3.11, curl, tar and flock. The existing `coolify` network and Traefik must exist.
-No host ports are published. Each tenant has a private internal database network;
-only BookStack also joins coolify. No other Coolify resources are modified.
-
-BookStack is pinned to `v26.05.4-ls283` (LinuxServer release checked 2026-09-08:
-https://github.com/linuxserver/docker-bookstack/releases/tag/v26.05.4-ls283).
-MariaDB 11.4 is pinned by image digest. HTTPS uses the existing `http`/`https`
-entrypoints and `letsencrypt` resolver, plus a per-tenant redirect middleware.
+Run as `flori` on Sandy with passwordless `sudo docker`, Compose, Python 3.11,
+GNU timeout/setsid, tar, flock, OpenSSL and preferably age. The existing coolify
+network and Traefik terminate HTTPS. No host ports are published. Only the selected
+tenant's resources are changed. Runtime checkout: `work/prov-clone`.
 
 ```sh
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-./provision.sh demo demo@wissen.app.mintapis.com
-python3 seed-demo.py
+./provision.sh my-team owner@example.com
 ./backup.sh demo
 ./restore-test.sh demo
-./deprovision.sh demo       # stops stack; preserves data
-./provision.sh demo         # resumes; preserves existing credentials
-./destroy.sh demo --yes     # permanently deletes data AND backups
+./deprovision.sh demo         # down; retain data, credentials, URL
+./provision.sh demo           # up existing Compose; no credentials/seed changes
+./destroy.sh my-team          # mark now, stop; 30-day recovery window
+./purge.sh my-team            # only deletes when mark is >=30 days old
+./destroy.sh my-team --now --yes # irreversible test-only immediate deletion
 ./run-worker.sh --once
+.venv/bin/python -m unittest discover -s . -p 'test_*.py' -v
 ```
 
-All data is outside git at `/home/flori/ventures2/bookstack/tenants/<slug>`:
-`docker-compose.yml`, `.env` (0600), `bookstack/`, `database/`, `backups/`.
-Do not print `.env`, docker environment inspections or resolved Compose config.
-The initial administrator secret is passed to PHP over stdin and stored as
-`BOOKSTACK_ADMIN_PASSWORD`; it is never emitted. Bootstrapping has no public
-route until all migrations complete and default credentials are replaced.
-Rerunning provision does not reset an existing administrator's password.
+All tenant data is outside git at `/home/flori/ventures2/bookstack/tenants/<slug>`.
+Never print `.env`, resolved Compose configs, Docker environment inspection, or
+subprocess diagnostics. Initial credentials go through stdin during bootstrap;
+public routing is enabled only after default credentials have been replaced.
+Pinned images are in `tenant.py`; existing tenants resume their saved Compose.
+An incomplete bootstrap requires operator repair; retries never silently reseed.
 
-The worker reads `DATABASE_URL_LOCAL` from the explicitly configured work
-`.app.env`, accepting shell-quoted assignments and `export` without evaluating
-shell commands. Schema is in `schema.sql` and shared in `work/tenants-schema.md`.
-It claims one row transactionally using `FOR UPDATE SKIP LOCKED`, commits
-`provisioning`, then runs the isolated provisioner and saves `running`, URL and
-initial password, or a fixed secret-free error. The control plane must enforce
-team authorization and atomically clear `initial_password` after showing it once.
-`--once` handles at most one tenant; default polls every 30 seconds; `--cron`
-polls at 0 and 30 seconds then exits. flock prevents overlapping cron workers.
+## Worker contract
 
-Installed user cron entries run `run-worker.sh` every minute and `backup-all.sh`
-at 03:17 UTC. Logs live in `tenants/worker.log` and `tenants/backup.log` (0600).
-The runtime currently points at the dedicated `work/prov-clone` checkout; retain
-that checkout or update both cron paths when relocating it.
+`schema.sql` adds `desired_state` idempotently. The worker reads local DB credentials
+from `work/.app.env`. Billing sets `desired_state` to `running` or `suspended`;
+worker stops suspended targets without clearing URL/data and resumes suspended or
+existing pending tenants with `compose up -d`. Resume does not repopulate a consumed
+initial password. A change during provisioning is reconciled on the next pass.
+New pending slugs use `reserved-slugs.json`, the 3–30 character expression
+`^[a-z0-9](?:[a-z0-9-]{1,28}[a-z0-9])$`, no double hyphens, no `restore` prefix.
+The initialized operator demo is grandfathered only for lifecycle management.
 
-Backups stop only the selected BookStack container briefly to freeze uploads,
-use a transaction-consistent MariaDB dump and archive `/config`, then restart it
-in a finally block. Seven **complete** backups are retained, including the app
-key and Compose config. Incomplete snapshots lack `.complete` and are ignored.
-Stopped tenants are not started by backup. The temporary restore stack has no
-public route, imports SQL and files, compares the snapshot's page count using
-`entities WHERE type='page'`, checks migrations, and is removed in a finally block.
+Claims set `updated_at`. Provisioning older than 20 minutes is stopped and marked
+failed with `timeout`; failed cleanup remains eligible for retry. The worker
+releases transactions during commands. `run-worker.sh` holds flock over the whole
+run; always use that entry point to prevent concurrent reconciliation. Each run
+handles suspensions/validation and at most one start. Direct Python execution is
+only appropriate under the same external lock.
 
-Measured on 2026-09-08 with `sudo docker stats --no-stream`: BookStack 26.45 MiB,
-MariaDB 104.5 MiB idle; each has a hard 512 MiB limit (1 GiB maximum per tenant).
-CPU was 0.01% / 0.00%. Reserve startup/traffic headroom. Disk before image pulls:
-436G total, 327G used, 88G available (79%); after live tests 330G used, 85G free
-(80%). This shared-host delta includes concurrent work.
+A start requires at least 20 GiB available according to df and fewer running
+BookStack tenant containers than `MAX_TENANTS` in `limits.env` (default 15).
+Capacity deferrals retain pending state and emit one notice per hour across cron
+processes. Restores do not count against admission. This is a minimum disk/tenant
+admission check, not a complete RAM/storage quota system.
 
-## Repair and limits
+Provision processes use a separate session/process group and a 1100-second
+GNU timeout with a 20-second hard-kill grace. Individual external commands have
+180-second limits and inherit that process group. Failures/signals run Compose
+down, preserving disk data; the worker also cleans up after failed commands.
+SIGKILL/power loss is recovered by the stale-provisioning pass.
 
-For failure, inspect only the tenant's container state and bounded logs locally
-(logs can contain sensitive values; never publish them). Check disk, DNS, database
-health, migrations and certificate issuance. Rerun `provision.sh <slug>` after
-repair. Set failed rows back to `pending` to retry; for an interrupted worker,
-first ensure no worker is active before resetting a stranded `provisioning` row.
-There is no automatic lease recovery or rollback of failed tenant data. Never
-reset a database merely because migration or network readiness failed.
+## Backups, restore, deletion
 
-To restore production manually: deprovision, preserve/move its current data,
-extract a known complete archive and restore the saved `.env` and Compose file,
-start only db, import `database.sql` with the database credentials through stdin
-or its container environment, then start BookStack and verify HTTPS and content.
-Use the tested restore script first; destroy is irreversible.
+Backups stop only BookStack briefly, dump MariaDB consistently and archive config,
+uploads, .env, saved Compose and content verification metadata. age encrypts the
+combined archive with a generated random passphrase; without age, OpenSSL uses
+AES-256-CBC/PBKDF2/salt. `work/.backup.key` is generated once with mode 0600 and
+must be preserved separately from backups. No passphrase appears in argv or logs.
+Both formats have a keyed SHA-256 authentication sidecar checked before restore.
+A backup consists of `.age`/`.enc` plus `.hmac`; copy both. Protected plaintext
+staging is deleted in finally; crash leftovers are removed after one day.
 
-Single host, local backups only: host loss can lose both production and backups.
-Off-host encrypted backups, SMTP, mail intake and billing-driven suspension are
-not implemented here. The common coolify network is not a strong isolation
-boundary between app containers. No capacity admission controller, automatic
-upgrades or log rotation are included. Backup downtime and the 512 MiB limits
-must be considered for larger tenants. This is provisioning infrastructure,
-not implementation of the planned AI review workflow.
+Restore uses the backed-up Compose/images and a unique temporary project. It
+removes public labels/networks/ports, imports the saved dump and app files, checks
+page count, book count, book titles and latest page title both before/after startup,
+and verifies migrations. Its containers/files are removed afterward. No interactive
+login is automated. Host loss remains unprotected: off-host storage is still needed.
+
+Retention is seven elapsed days by UTC backup filename date, independently of
+backup count. The daily purge pass applies it even to stopped tenants. Destroy
+writes `.destroy_requested_at` without resetting an existing date, plus a durable
+`.destroy-requests/<slug>` tombstone that prevents a stale DB row from recreating
+a purged tenant. Purge removes tenant files/backups after 30 days. The tombstone
+stays; remove it only during an explicit operator-approved recovery/reuse along
+with reconciling the tenant DB row. Immediate `--now --yes` is for test fixtures.
+
+User cron (UTC), preserving all unrelated entries:
+- Every minute: `run-worker.sh` (polls at 0 and 30 seconds).
+- 03:17: `backup-all.sh` (stopped tenants stay stopped).
+- 03:40: `purge-all.sh` (retention and matured deletion marks).
+
+Logs are in `tenants/worker.log`, `backup.log`, and `purge.log`. The shared coolify
+app network remains a weak isolation boundary. SMTP, off-host backup, automatic
+upgrades, log rotation and the planned document-review workflow are separate work.

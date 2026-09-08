@@ -4,6 +4,16 @@ it.each(["my-team", "abc", "a12", "a".repeat(30)])("accepts %s", (slug) =>
   expect(validateSlug(slug)).toBeNull(),
 );
 it.each([
+  "restore",
+  "restore-team",
+  "restoreabc",
+  "a--b",
+  "backup",
+  "e2e-test",
+  "ns1",
+  "bookstack",
+  "assets",
+  "imap",
   "ab",
   "a".repeat(31),
   "-abc",

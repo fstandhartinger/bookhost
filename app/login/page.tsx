@@ -35,9 +35,15 @@ export default async function Login({
       )}
       {params.checkout && (
         <p role="status" className="mt-6 rounded-lg bg-amber-50 p-4 text-sm">
-          This checkout link has already been used, expired, or belongs to
-          another browser. Sign in below to continue. If you used an existing
-          account’s email, sign in to that account.
+          {params.checkout === "existing" ? (
+            "You already have a workspace — sign in"
+          ) : (
+            <>
+              This checkout link has already been used, expired, or belongs to
+              another browser. Sign in below to continue. If you used an
+              existing account’s email, sign in to that account.
+            </>
+          )}
         </p>
       )}
       {emailEnabled ? (

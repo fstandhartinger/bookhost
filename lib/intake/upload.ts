@@ -19,10 +19,10 @@ export async function streamUpload(request: Request) {
       headers: { "content-type": request.headers.get("content-type") || "" },
       limits: {
         files: 1,
-        fields: 3,
-        fieldSize: 256,
+        fields: 12,
+        fieldSize: 512,
         fileSize: MAX_FILE,
-        parts: 4,
+        parts: 16,
       },
     });
     let filename = "";
@@ -43,9 +43,10 @@ export async function streamUpload(request: Request) {
       writing = pipeline(file, createWriteStream(path, { mode: 0o600 }));
       writing.catch(() => parser.destroy(new Error("File write failed")));
     });
+    let malformed = false;
     for (const event of ["filesLimit", "fieldsLimit", "partsLimit"])
       parser.on(event, () => {
-        tooLarge = true;
+        malformed = true;
       });
     const limiter = new Transform({
       transform(chunk, encoding, callback) {
@@ -68,6 +69,8 @@ export async function streamUpload(request: Request) {
     );
     await writing;
     if (tooLarge) throw new IntakeError("Request is too large.", 413);
+    if (malformed)
+      throw new IntakeError("Unexpected form data. Reload the page and try again.", 400);
     if (!filename) throw new IntakeError("Choose a document.");
     return { path, filename, fields, cleanup };
   } catch (error) {

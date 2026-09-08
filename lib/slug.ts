@@ -6,24 +6,31 @@ const reserved = new Set([
   "app",
   "mail",
   "smtp",
+  "imap",
+  "ftp",
+  "ns1",
+  "ns2",
+  "status",
+  "restore",
+  "backup",
+  "test",
+  "e2e-test",
+  "wissen",
+  "bookstack",
+  "login",
+  "billing",
   "support",
   "help",
-  "billing",
-  "login",
-  "welcome",
-  "status",
-  "wissen",
-  "test",
-  "staging",
-  "internal",
-  "root",
-  "ftp",
-  "autodiscover",
+  "docs",
+  "blog",
+  "cdn",
+  "static",
+  "assets",
 ]);
 export function validateSlug(slug: string): string | null {
   if (!/^[a-z0-9](?:[a-z0-9-]{1,28})[a-z0-9]$/.test(slug))
     return "Use 3–30 lowercase letters, numbers or hyphens. Start and end with a letter or number.";
-  if (reserved.has(slug))
+  if (slug.includes("--") || slug.startsWith("restore") || reserved.has(slug))
     return "This address is reserved. Please choose another.";
   return null;
 }

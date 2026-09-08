@@ -1,3 +1,5 @@
+import { freshAuthentication } from "@/lib/security";
+import { PasswordForm } from "@/components/password-form";
 import { auth, signOut } from "@/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
@@ -16,7 +18,12 @@ const date = (value: Date | string) =>
     year: "numeric",
     timeZone: "UTC",
   });
-export default async function Dashboard() {
+export default async function Dashboard({
+  searchParams,
+}: {
+  searchParams: Promise<{ setup?: string }>;
+}) {
+  const { setup } = await searchParams;
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
   const team = (
@@ -36,11 +43,30 @@ export default async function Dashboard() {
   const tenant = team
     ? (
         await db.query(
-          "SELECT id,slug,status,admin_email,(initial_password IS NOT NULL) AS has_password FROM tenants WHERE team_id=$1",
+          "SELECT id,slug,status,desired_state,updated_at,admin_email,(initial_password IS NOT NULL) AS has_password FROM tenants WHERE team_id=$1",
           [team.id],
         )
       ).rows[0]
     : null;
+  const user = (
+    await db.query(
+      "SELECT email_verified_at,password_set_at FROM users WHERE id=$1",
+      [session.user.id],
+    )
+  ).rows[0];
+  const consents = team
+    ? (
+        await db.query(
+          "SELECT document,version,accepted_at FROM consents WHERE team_id=$1 AND user_id=$2 ORDER BY accepted_at,document",
+          [team.id, session.user.id],
+        )
+      ).rows
+    : [];
+  const status =
+    tenant?.desired_state === "suspended" ? "suspended" : tenant?.status;
+  const delayed =
+    status === "provisioning" &&
+    Date.now() - new Date(tenant.updated_at).getTime() > 20 * 60 * 1000;
   const eligible =
     subscription?.status === "active" ||
     (subscription?.status === "trialing" &&
@@ -53,8 +79,7 @@ export default async function Dashboard() {
       "Your workspace is ready. Open BookStack to start organising your team’s knowledge.",
     failed:
       "We couldn’t finish setting up your workspace. Contact support so we can help.",
-    suspended:
-      "Your workspace is suspended. Check your billing status or contact support.",
+    suspended: "suspended — add a payment method to resume",
   };
   return (
     <section className="py-14">
@@ -75,24 +100,69 @@ export default async function Dashboard() {
           <button className="button-secondary">Sign out</button>
         </form>
       </div>
+      {!user?.email_verified_at && (
+        <p className="mt-4 text-sm text-slate-500">
+          Confirm your e-mail by signing in via link once e-mail sign-in is
+          available
+        </p>
+      )}
+      <p className="mt-4 text-sm text-slate-600">
+        Your trial starts when you sign up; your workspace is usually ready
+        within 5 minutes.
+      </p>
+      <section
+        id="password-setup"
+        className={`price-card mt-8 ${setup === "password" ? "ring-2 ring-teal-600" : ""}`}
+      >
+        <h2 className="text-2xl">Sign-in for next time</h2>
+        <p className="mt-3 text-sm text-slate-600">
+          Set a password to return to this dashboard. Magic link and Google
+          sign-in are coming soon.
+        </p>
+        {user?.password_set_at && (
+          <p className="mt-3 text-sm">
+            Password set on {date(user.password_set_at)}
+          </p>
+        )}
+        {!user?.password_set_at &&
+        !user?.email_verified_at &&
+        !freshAuthentication(session.auth_time) ? (
+          <a href="/login">Sign in again to set a password</a>
+        ) : (
+          <PasswordForm
+            key={String(user?.password_set_at)}
+            hasPassword={Boolean(user?.password_set_at)}
+          />
+        )}
+      </section>
       <div className="mt-10 grid items-start gap-6 lg:grid-cols-[1.6fr_1fr]">
         <div className="price-card">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-2xl">Your BookStack</h2>
-            {tenant && <span className="badge">{tenant.status}</span>}
+            {tenant && <span className="badge">{status}</span>}
           </div>
           {tenant ? (
             <>
               <p className="mt-5 leading-7 text-slate-600">
-                {descriptions[tenant.status] || "Checking workspace status."}
+                {delayed
+                  ? "Taking longer than expected — we’re on it"
+                  : descriptions[status] || "Checking workspace status."}
               </p>
+              {status === "suspended" && (
+                <ActionButton
+                  endpoint="/api/portal"
+                  className="button-secondary mt-4"
+                >
+                  Manage billing
+                </ActionButton>
+              )}
               <p className="mt-4 break-all text-sm font-medium">
                 {tenant.slug}.wissen.app.mintapis.com
               </p>
-              {["pending", "provisioning"].includes(tenant.status) && (
+              {!delayed && ["pending", "provisioning"].includes(status) && (
                 <RefreshStatus />
               )}
-              {tenant.status === "running" && (
+              {status === "running" && (
                 <>
                   <a
                     className="button mt-6"
@@ -128,7 +198,7 @@ export default async function Dashboard() {
                   </div>
                 </>
               )}
-              {["failed", "suspended"].includes(tenant.status) && (
+              {["failed", "suspended"].includes(status) && (
                 <a
                   href="mailto:info@productivity-boost.com"
                   className="button-secondary mt-5"
@@ -201,6 +271,27 @@ export default async function Dashboard() {
               Billing becomes available after checkout.
             </p>
           )}
+          <section className="mt-6 border-t pt-5">
+            <h2 className="text-xl">Contract</h2>
+            {consents.length ? (
+              consents.map((consent) => (
+                <p
+                  key={`${consent.document}-${consent.version}`}
+                  className="mt-3 text-sm"
+                >
+                  <a className="underline" href={`/legal/${consent.document}`}>
+                    {consent.document.toUpperCase()}
+                  </a>{" "}
+                  · version {consent.version} · accepted{" "}
+                  {date(consent.accepted_at)} (UTC)
+                </p>
+              ))
+            ) : (
+              <p className="mt-3 text-sm text-slate-500">
+                No contract acceptance recorded yet.
+              </p>
+            )}
+          </section>
           <p className="mt-6 text-xs leading-5 text-slate-500">
             Need a hand?{" "}
             <a className="underline" href="mailto:info@productivity-boost.com">

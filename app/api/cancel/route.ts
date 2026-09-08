@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { sameOrigin } from "@/lib/security";
+import { clientIp, sameOrigin } from "@/lib/security";
 import {
   cancellationInput,
   cancellationRateLimit,
@@ -9,10 +9,9 @@ export async function POST(request: Request) {
   const headers = { "Cache-Control": "no-store" };
   if (!sameOrigin(request))
     return Response.json({ error: "Invalid origin" }, { status: 403, headers });
-  // Deployment proxy must overwrite X-Forwarded-For; use its last (nearest) hop.
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() ||
-    "unknown";
+  const ip = clientIp(request);
+  if (!ip)
+    return Response.json({ error: "Missing client IP" }, { status: 400 });
   if (!cancellationRateLimit(ip))
     return Response.json(
       {

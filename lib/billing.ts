@@ -1,3 +1,4 @@
+import { normalizeEmail } from "./email";
 import type Stripe from "stripe";
 import type { PoolClient } from "pg";
 export type Queryable = Pick<PoolClient, "query">;
@@ -7,9 +8,9 @@ export async function syncCheckout(
 ) {
   if (session.metadata?.venture !== "wissen" || session.status !== "complete")
     return null;
-  const email = (session.customer_details?.email || session.customer_email)
-    ?.trim()
-    .toLowerCase();
+  const email = normalizeEmail(
+    session.customer_details?.email || session.customer_email,
+  );
   const customer =
     typeof session.customer === "string"
       ? session.customer
@@ -22,13 +23,13 @@ export async function syncCheckout(
   );
   if (existing.rows[0]) return existing.rows[0];
   const account = await client.query(
-    `INSERT INTO users(email,name,checkout_session_id) VALUES($1,$2,$3) ON CONFLICT(email) DO NOTHING RETURNING *`,
+    `INSERT INTO users(email,name,checkout_session_id) VALUES($1,$2,$3) ON CONFLICT (lower(email)) DO NOTHING RETURNING *`,
     [email, session.customer_details?.name || null, session.id],
   );
   let u = account.rows[0];
   if (!u) {
     const bound = await client.query(
-      "SELECT u.* FROM users u JOIN checkout_attempts a ON a.user_id=u.id WHERE a.session_id=$1 AND u.email=$2",
+      "SELECT u.* FROM users u JOIN checkout_attempts a ON a.user_id=u.id WHERE a.session_id=$1 AND lower(u.email)=$2",
       [session.id, email],
     );
     u = bound.rows[0];
@@ -47,6 +48,35 @@ export async function syncCheckout(
     [u.id, team.rows[0].id, "owner"],
   );
   return team.rows[0];
+}
+// Run under the shared billing transaction lock, before attaching any checkout.
+export async function cancelDuplicateCheckout(
+  client: Queryable,
+  session: Stripe.Checkout.Session,
+  stripe: Pick<Stripe, "subscriptions">,
+) {
+  const email = normalizeEmail(
+    session.customer_details?.email || session.customer_email,
+  );
+  const id =
+    typeof session.subscription === "string"
+      ? session.subscription
+      : session.subscription?.id;
+  if (!email || !id) return false;
+  const existing = await client.query(
+    `SELECT s.stripe_subscription_id FROM users u JOIN teams t ON t.owner_user_id=u.id
+     JOIN subscriptions s ON s.team_id=t.id WHERE lower(u.email)=$1
+     AND s.status IN ('trialing','active','past_due') AND s.stripe_subscription_id<>$2 LIMIT 1`,
+    [email, id],
+  );
+  if (!existing.rows[0]) return false;
+  const subscription = await stripe.subscriptions.retrieve(id);
+  if (subscription.status !== "canceled")
+    await stripe.subscriptions.cancel(id, {
+      invoice_now: false,
+      prorate: false,
+    });
+  return true;
 }
 export async function syncSubscription(
   client: Queryable,
@@ -74,6 +104,18 @@ export async function syncSubscription(
       sub.cancel_at_period_end,
     ],
   );
+  const desired = ["canceled", "unpaid", "incomplete_expired"].includes(
+    sub.status,
+  )
+    ? "suspended"
+    : ["trialing", "active"].includes(sub.status)
+      ? "running"
+      : null;
+  if (desired)
+    await client.query(
+      "UPDATE tenants SET desired_state=$2,updated_at=now() WHERE team_id=$1 AND desired_state<>$2",
+      [team.rows[0].id, desired],
+    );
 }
 export async function handleStripeEvent(
   client: Queryable,
@@ -90,6 +132,7 @@ export async function handleStripeEvent(
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
     if (session.metadata?.venture !== "wissen") return;
+    if (await cancelDuplicateCheckout(client, session, stripe)) return;
     await syncCheckout(client, session);
     const id =
       typeof session.subscription === "string"

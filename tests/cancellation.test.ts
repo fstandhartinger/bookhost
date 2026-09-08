@@ -9,13 +9,14 @@ function request(data: unknown, extra: Record<string, string> = {}) {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "x-forwarded-for": `test-${++counter}`,
+      "x-forwarded-for": `192.0.2.${++counter}`,
       ...extra,
     },
     body: JSON.stringify(data),
   });
 }
 beforeEach(() => {
+  vi.stubEnv("TRUST_PROXY", "true");
   vi.mocked(db.query).mockReset();
   vi.mocked(db.query).mockResolvedValue({
     rows: [{ id: "receipt-1", created_at: new Date("2026-09-08T12:34:56Z") }],
@@ -55,7 +56,7 @@ describe("Public cancellation", () => {
         method: "POST",
         headers: {
           "content-type": "application/x-www-form-urlencoded",
-          "x-forwarded-for": "native-form",
+          "x-forwarded-for": "198.51.100.1",
         },
         body: "email=test%40example.com&kind=cancel",
       }),
@@ -101,7 +102,7 @@ describe("Public cancellation", () => {
           await POST(
             request(
               { email: "x@example.com", kind: "cancel" },
-              { "x-forwarded-for": "limited-route" },
+              { "x-forwarded-for": "198.51.100.2" },
             ),
           )
         ).status,
@@ -109,7 +110,7 @@ describe("Public cancellation", () => {
     const blocked = await POST(
       request(
         { email: "x@example.com", kind: "cancel" },
-        { "x-forwarded-for": "limited-route" },
+        { "x-forwarded-for": "198.51.100.2" },
       ),
     );
     expect(blocked.status).toBe(429);

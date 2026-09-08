@@ -12,7 +12,7 @@ Individuelle Vereinbarungen haben Vorrang. Abweichende Geschäftsbedingungen ein
 
 ## 2. Vertragsschluss und Testphase
 
-Die Leistungsdarstellung auf der Website ist eine Aufforderung zur Abgabe einer Bestellung. Vor Absenden kann der Kunde seine Eingaben prüfen und korrigieren. Mit der Registrierung beantragt er die kostenlose Testphase. Der Testvertrag kommt durch unsere Bestätigung oder Freischaltung der Instanz zustande. Er dauert 14 Tage ab Freischaltung; das Enddatum wird mitgeteilt. Ein Zahlungsmittel ist hierfür nicht erforderlich.
+Die Leistungsdarstellung auf der Website ist eine Aufforderung zur Abgabe einer Bestellung. Vor Absenden kann der Kunde seine Eingaben prüfen und korrigieren. Mit der Registrierung beantragt er die kostenlose Testphase. Der Testvertrag kommt durch unsere Bestätigung oder Freischaltung der Instanz zustande. Die Testphase beginnt mit der Registrierung und dauert 14 Tage; das Enddatum wird mitgeteilt. Die Instanz ist üblicherweise innerhalb von 5 Minuten bereit. Ein Zahlungsmittel ist hierfür nicht erforderlich.
 
 Die Testphase dauert 14 Tage und erfordert kein Zahlungsmittel. Eine kostenpflichtige Fortsetzung erfolgt nur, wenn der Kunde im Stripe-Kundenportal ein gültiges Zahlungsmittel hinterlegt. Ohne Zahlungsmittel endet der Vertrag automatisch mit dem Testzeitraum; eine Kündigung ist nicht erforderlich.
 

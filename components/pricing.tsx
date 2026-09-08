@@ -14,6 +14,8 @@ export function Pricing() {
           </p>
           <p className="mt-6 text-sm text-slate-600">
             Try your own workspace for {PLAN.trialDays} days. No card needed.
+            Your trial starts when you sign up; your workspace is usually ready
+            within 5 minutes.
           </p>
         </div>
         <div className="price-card">
@@ -63,7 +65,11 @@ export function Pricing() {
             <Link className="underline" href="/legal/agb">
               Terms
             </Link>{" "}
-            and acknowledge our{" "}
+            and{" "}
+            <Link className="underline" href="/legal/avv">
+              Data Processing Agreement
+            </Link>
+            , and acknowledge our{" "}
             <Link className="underline" href="/legal/datenschutz">
               Privacy Policy
             </Link>

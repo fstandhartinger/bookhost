@@ -10,7 +10,7 @@ COPY . .
 RUN npm run build
 FROM node:22-slim AS runner
 WORKDIR /wissen
-ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
+ENV TRUST_PROXY=true NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/* && groupadd --system --gid 1001 nodejs && useradd --system --uid 1001 --gid nodejs nextjs
 COPY --from=builder --chown=nextjs:nodejs /wissen/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /wissen/.next/static ./.next/static

@@ -25,7 +25,7 @@ export const faqs = [
   ],
   [
     "Do I need a card for the trial, and will I be charged automatically?",
-    "No card is required for the 14-day trial. Add a payment method through Manage billing if you want to continue at €39/month plus applicable VAT after the trial. Without a payment method, the subscription ends automatically without a charge. Export anything you want to keep before the trial ends.",
+    "No card is required for the 14-day trial. Your trial starts when you sign up; your workspace is usually ready within 5 minutes. Add a payment method through Manage billing if you want to continue at €39/month plus applicable VAT after the trial. Without a payment method, the subscription ends automatically without a charge. Export anything you want to keep before the trial ends.",
   ],
   [
     "What support is included?",

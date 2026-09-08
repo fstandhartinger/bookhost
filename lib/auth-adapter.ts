@@ -1,4 +1,5 @@
 import type { Adapter, AdapterUser } from "next-auth/adapters";
+import { normalizeEmail } from "./email";
 import { db } from "./db";
 function user(row: Record<string, unknown>): AdapterUser {
   return {
@@ -12,8 +13,8 @@ function user(row: Record<string, unknown>): AdapterUser {
 export const adapter: Adapter = {
   async createUser(data) {
     const r = await db.query(
-      "INSERT INTO users(email,name,email_verified,image) VALUES(lower($1),$2,$3,$4) RETURNING *",
-      [data.email, data.name, data.emailVerified, data.image],
+      "INSERT INTO users(email,name,email_verified,image) VALUES($1,$2,$3,$4) RETURNING *",
+      [normalizeEmail(data.email), data.name, data.emailVerified, data.image],
     );
     return user(r.rows[0]);
   },
@@ -22,8 +23,8 @@ export const adapter: Adapter = {
     return r.rows[0] ? user(r.rows[0]) : null;
   },
   async getUserByEmail(email) {
-    const r = await db.query("SELECT * FROM users WHERE email=lower($1)", [
-      email,
+    const r = await db.query("SELECT * FROM users WHERE lower(email)=$1", [
+      normalizeEmail(email),
     ]);
     return r.rows[0] ? user(r.rows[0]) : null;
   },

@@ -4,6 +4,10 @@ const globalDb = globalThis as unknown as { wissenPool?: Pool };
 export const db =
   globalDb.wissenPool ??
   new Pool({ ...databaseConfig(), max: 8, idleTimeoutMillis: 20000 });
+if (!globalDb.wissenPool)
+  db.on("error", () => {
+    console.error("Database pool connection failed");
+  });
 if (process.env.NODE_ENV !== "production") globalDb.wissenPool = db;
 export async function transaction<T>(
   fn: (client: PoolClient) => Promise<T>,

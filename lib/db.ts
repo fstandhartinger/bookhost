@@ -3,7 +3,12 @@ import { databaseConfig } from "../scripts/db-config.mjs";
 const globalDb = globalThis as unknown as { wissenPool?: Pool };
 export const db =
   globalDb.wissenPool ??
-  new Pool({ ...databaseConfig(), max: 8, idleTimeoutMillis: 20000 });
+  new Pool({
+    ...databaseConfig(),
+    max: 8,
+    connectionTimeoutMillis: 5000,
+    idleTimeoutMillis: 20000,
+  });
 if (!globalDb.wissenPool)
   db.on("error", () => {
     console.error("Database pool connection failed");

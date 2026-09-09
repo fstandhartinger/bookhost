@@ -61,7 +61,11 @@ const request = (
 ) =>
   new Request("http://localhost/api/track", {
     method: "POST",
-    headers: { "x-real-ip": "192.0.2.1", ...headers },
+    headers: {
+      origin: "https://wissen.app.mintapis.com",
+      "x-real-ip": "192.0.2.1",
+      ...headers,
+    },
     body: JSON.stringify(body),
   });
 it("stores only a daily hash, sanitized campaign and host", async () => {

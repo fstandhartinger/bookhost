@@ -101,3 +101,39 @@ it("rejects attachment counts, sizes, encoding, unsafe names and types", () => {
     parse({ ...m, to: [...m.to, "other@intake.wissen.app.mintapis.com"] }),
   ).toThrow();
 });
+
+it("validates canonical pad bits and exact decoded length without re-encoding", () => {
+  const m = message();
+  for (const [encoded, size, valid] of [
+    ["YQ==", 1, true],
+    ["YWI=", 2, true],
+    ["YR==", 1, false],
+    ["YWJ=", 2, false],
+    ["YQ", 1, false],
+    ["YQ==", 2, false],
+    ["Y Q==", 1, false],
+  ] as const) {
+    const input = {
+      ...m,
+      attachments: [{ ...m.attachments[0], content_base64: encoded, size }],
+    };
+    if (valid) expect(parse(input).files[0].content.length).toBe(size);
+    else expect(() => parse(input)).toThrow();
+  }
+});
+it("accepts Punycode sender domains and rejects unsupported RFC addr-spec forms with a contract error", () => {
+  expect(
+    parse({ ...message(), from: { address: "author@xn--bcher-kva.xn--p1ai" } })
+      .from.address,
+  ).toBe("author@xn--bcher-kva.xn--p1ai");
+  for (const address of [
+    '"quoted"@example.com',
+    "person@bücher.de",
+    ".dot@example.com",
+    "two..dots@example.com",
+    "@example.com",
+  ])
+    expect(() => parse({ ...message(), from: { address } })).toThrow(
+      /from.address must be an ASCII RFC 5322/,
+    );
+});

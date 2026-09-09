@@ -62,7 +62,11 @@ import { sessionToken } from "../lib/session";
 const req = (body: unknown, ip = "192.0.2.1") =>
   new Request("https://wissen.app.mintapis.com/api/account/reset", {
     method: "POST",
-    headers: { "x-forwarded-for": ip, "content-type": "application/json" },
+    headers: {
+      origin: "https://wissen.app.mintapis.com",
+      "x-forwarded-for": ip,
+      "content-type": "application/json",
+    },
     body: JSON.stringify(body),
   });
 beforeEach(() => {
@@ -141,7 +145,11 @@ it("trusts the last forwarded IP only when enabled, otherwise socket/x-real-ip, 
   vi.stubEnv("TRUST_PROXY", "false");
   expect(clientIp(req({}))).toBeNull();
   const direct = new Request("http://localhost", {
-    headers: { "x-real-ip": "127.0.0.1", "x-forwarded-for": "198.51.100.1" },
+    headers: {
+      origin: "https://wissen.app.mintapis.com",
+      "x-real-ip": "127.0.0.1",
+      "x-forwarded-for": "198.51.100.1",
+    },
   });
   expect(clientIp(direct)).toBe("127.0.0.1");
   Object.assign(direct, { socket: { remoteAddress: "::1" } });

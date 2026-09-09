@@ -10,15 +10,18 @@ export function enqueue(
   filename: string,
   cleanup: () => Promise<void>,
   release: () => void,
+  alreadyClaimed = false,
 ) {
   setImmediate(() => {
     void (async () => {
       try {
         await workspace(user, tenant);
-        const claimed = await db.query(
-          "UPDATE intake_items SET status='drafting',updated_at=now() WHERE id=$1 AND status='queued' RETURNING id",
-          [id],
-        );
+        const claimed = alreadyClaimed
+          ? { rowCount: 1 }
+          : await db.query(
+              "UPDATE intake_items SET status='drafting',updated_at=now() WHERE id=$1 AND status='queued' RETURNING id",
+              [id],
+            );
         if (!claimed.rowCount) return;
         const source = await extractFile(path, filename);
         await db.query(
@@ -66,6 +69,12 @@ export async function recoverIntake() {
   }
   await db.query(
     "UPDATE intake_items SET status='failed',error='Processing was interrupted. Retry publication for a reviewed draft, or upload the source again.',updated_at=now() WHERE NOT (source='email' AND status='queued') AND status IN ('uploaded','queued','drafting','approved') AND updated_at<now()-interval '10 minutes'",
+  );
+  await db.query(
+    "UPDATE intake_items SET status='failed',error='Queued email source is missing. Ask the sender to submit it again.',updated_at=now() WHERE source='email' AND status='queued' AND updated_at<now()-interval '30 minutes' AND NOT EXISTS(SELECT 1 FROM intake_email_files f WHERE f.item_id=intake_items.id)",
+  );
+  await db.query(
+    "DELETE FROM intake_messages WHERE created_at<now()-interval '90 days'",
   );
   await db.query(
     "DELETE FROM intake_email_files WHERE item_id IN (SELECT id FROM intake_items WHERE status NOT IN ('queued','drafting'))",

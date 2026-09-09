@@ -23,7 +23,7 @@ export function normalizePattern(value: string) {
   const pattern = value.trim().toLowerCase();
   if (
     pattern.length > 254 ||
-    !/^(?:[a-z0-9.!#$%&'*+/=?^_`{|}~-]+)?@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,63}$/.test(
+    !/^(?:[a-z0-9.!#$%&'*+/=?^_`{|}~-]+)?@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+(?:[a-z]{2,63}|xn--[a-z0-9-]{1,59})$/.test(
       pattern,
     )
   )
@@ -75,8 +75,23 @@ export function parseEmail(raw: Buffer) {
     !Array.isArray(body.attachments)
   )
     throw new IntakeError("Invalid email fields.");
-  const address = normalizePattern(body.from.address);
-  if (address.startsWith("@")) throw new IntakeError("Invalid sender.");
+  let address: string;
+  try {
+    address = normalizePattern(body.from.address);
+    const local = address.split("@")[0];
+    if (
+      !local ||
+      local.length > 64 ||
+      local.startsWith(".") ||
+      local.endsWith(".") ||
+      local.includes("..")
+    )
+      throw new Error();
+  } catch {
+    throw new IntakeError(
+      "from.address must be an ASCII RFC 5322 dot-atom addr-spec; use Punycode for IDN domains.",
+    );
+  }
   const recipient = body.to[0].toLowerCase();
   const match =
     /^([a-z0-9]+(?:-[a-z0-9]+)*)@intake\.wissen\.app\.mintapis\.com$/.exec(
@@ -115,9 +130,23 @@ export function parseEmail(raw: Buffer) {
       a.content_base64.length > Math.ceil((10 * 1024 * 1024) / 3) * 4
     )
       throw new IntakeError("Attachment is too large.", 413);
-    const content = Buffer.from(a.content_base64, "base64");
-    if (content.toString("base64") !== a.content_base64)
+    const encoded = a.content_base64;
+    if (encoded.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded))
       throw new IntakeError("Invalid base64.");
+    const padding = encoded.endsWith("==") ? 2 : encoded.endsWith("=") ? 1 : 0;
+    const decodedLength = (encoded.length / 4) * 3 - padding;
+    // Check unused pad bits too, without allocating a re-encoded copy.
+    const alphabet =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    if (
+      padding &&
+      alphabet.indexOf(encoded[encoded.length - padding - 1]) &
+        (padding === 2 ? 15 : 3)
+    )
+      throw new IntakeError("Invalid base64.");
+    if (decodedLength !== a.size)
+      throw new IntakeError("Attachment size mismatch.");
+    const content = Buffer.from(encoded, "base64");
     if (content.length !== a.size)
       throw new IntakeError("Attachment size mismatch.");
     total += content.length;

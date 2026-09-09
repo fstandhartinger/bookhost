@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { EmailSource, type EmailMetadata } from "./intake-email-source";
 import { EmailIntake } from "./email-intake";
 import { cleanHtml } from "@/lib/intake/html";
 import type { Destination } from "@/lib/intake/bookstack";
@@ -12,6 +13,7 @@ type Item = {
   error?: string;
 };
 type Review = Item & {
+  source_metadata?: EmailMetadata;
   target_book_id: number;
   target_chapter_id: number | null;
   target_book_name: string;
@@ -340,6 +342,9 @@ export function Intake({
                 Source: {review.source === "email" ? "E-mail · " : ""}
                 {review.filename}
               </p>
+              {review.source === "email" && (
+                <EmailSource metadata={review.source_metadata} />
+              )}
               <p className="text-sm">
                 Destination:{" "}
                 {review.target_book_name || `Book ${review.target_book_id}`}

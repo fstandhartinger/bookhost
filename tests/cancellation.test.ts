@@ -8,6 +8,7 @@ function request(data: unknown, extra: Record<string, string> = {}) {
   return new Request("https://wissen.app.mintapis.com/api/cancel", {
     method: "POST",
     headers: {
+      origin: "https://wissen.app.mintapis.com",
       "content-type": "application/json",
       "x-forwarded-for": `192.0.2.${++counter}`,
       ...extra,
@@ -55,6 +56,7 @@ describe("Public cancellation", () => {
       new Request("https://wissen.app.mintapis.com/api/cancel", {
         method: "POST",
         headers: {
+          origin: "https://wissen.app.mintapis.com",
           "content-type": "application/x-www-form-urlencoded",
           "x-forwarded-for": "198.51.100.1",
         },

@@ -4,7 +4,7 @@ import { db } from "./db";
 import { baseUrl } from "./config";
 export function sameOrigin(request: Request) {
   const origin = request.headers.get("origin");
-  return !origin || origin === new URL(baseUrl()).origin;
+  return origin === new URL(baseUrl()).origin;
 }
 export const digest = (value: string) =>
   createHash("sha256").update(value).digest("hex");

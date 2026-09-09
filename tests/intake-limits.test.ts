@@ -30,7 +30,11 @@ it("rejects a third upload before reading its body and releases slots once", asy
     const response = await POST(
       new Request(
         `https://wissen.app.mintapis.com/api/intake?tenant=${tenant}`,
-        { method: "POST", body: "unread" },
+        {
+          method: "POST",
+          headers: { origin: "https://wissen.app.mintapis.com" },
+          body: "unread",
+        },
       ),
     );
     expect(response.status).toBe(429);

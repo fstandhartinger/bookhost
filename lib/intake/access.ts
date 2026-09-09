@@ -74,7 +74,7 @@ export function errorResponse(error: unknown) {
     {
       status: error instanceof IntakeError ? error.status : 503,
       headers:
-        error instanceof IntakeError && error.status === 429
+        !(error instanceof IntakeError) || [429, 503].includes(error.status)
           ? { "Retry-After": "30" }
           : {},
     },

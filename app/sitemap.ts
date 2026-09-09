@@ -11,5 +11,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/legal/datenschutz",
     "/legal/agb",
     "/legal/avv",
+    "/privacy",
+    "/terms",
   ].map((path) => ({ url: baseUrl() + path }));
 }

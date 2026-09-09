@@ -39,7 +39,7 @@ function request() {
   form.set("chapter_id", "");
   form.set("file", new Blob(["Team notes"]), "Handbook.md");
   return new Request(
-    "https://wissen.app.mintapis.com/api/intake?tenant=tenant",
+    "https://bookhost.co/api/intake?tenant=tenant",
     { method: "POST", body: form },
   );
 }

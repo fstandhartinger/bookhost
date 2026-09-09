@@ -8,11 +8,11 @@ import { GET as list } from "@/app/api/intake/route";
 const id = "11111111-1111-4111-8111-111111111111";
 const context = { params: Promise.resolve({ id }) };
 const req = (body: unknown) =>
-  new Request(`https://wissen.app.mintapis.com/api/intake/${id}`, {
+  new Request(`https://bookhost.co/api/intake/${id}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      origin: "https://wissen.app.mintapis.com",
+      origin: "https://bookhost.co",
     },
     body: JSON.stringify(body),
   });
@@ -24,7 +24,7 @@ beforeEach(() => {
 });
 it("returns 404 for another team's document on read and publication", async () => {
   expect(
-    (await GET(new Request("https://wissen.app.mintapis.com"), context)).status,
+    (await GET(new Request("https://bookhost.co"), context)).status,
   ).toBe(404);
   expect(
     (
@@ -47,7 +47,7 @@ it("returns 404 for another team's workspace before accessing API credentials", 
   expect(
     (
       await list(
-        new Request(`https://wissen.app.mintapis.com/api/intake?tenant=${id}`),
+        new Request(`https://bookhost.co/api/intake?tenant=${id}`),
       )
     ).status,
   ).toBe(404);
@@ -105,7 +105,7 @@ it("requires authentication and rejects cross-origin mutations before any DB rea
   expect(
     (
       await POST(
-        new Request("https://wissen.app.mintapis.com/api/intake/" + id, {
+        new Request("https://bookhost.co/api/intake/" + id, {
           method: "POST",
           headers: { origin: "https://other.example" },
         }),

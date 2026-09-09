@@ -1,4 +1,4 @@
-# Wissen control plane
+# BookHost control plane
 
 Next.js 15 App Router, TypeScript, Tailwind, locally served Inter, Auth.js v5 (JWT), PostgreSQL and Stripe. Node 22; port 3000. The public website and team dashboard manage a hosted BookStack subscription and submit a tenant to an external provisioner. BookStack provisioning runs in the external worker. The control plane now supports reviewed document intake at `/app/intake` (beta).
 
@@ -10,8 +10,8 @@ Install with `npm ci`. Load environment variables from an external secret store,
 npm run lint
 npm test
 npm run build
-docker build -t wissen-cp:dev .
-docker run --rm -p 127.0.0.1:3999:3000 --env-file /secure/path/runtime.env wissen-cp:dev
+docker build -t bookhost-cp:dev .
+docker run --rm -p 127.0.0.1:3999:3000 --env-file /secure/path/runtime.env bookhost-cp:dev
 ```
 
 `GET /healthz` pings PostgreSQL and returns 200 with `{"ok":true,"db":true}`, or 503 on failure. The runtime is unprivileged and includes curl for health checks.
@@ -24,7 +24,12 @@ docker run --rm -p 127.0.0.1:3999:3000 --env-file /secure/path/runtime.env wisse
 | `DATABASE_SSL_CA_BASE64` | Base64-encoded PEM CA/certificate for a private PostgreSQL CA. Required with Sandy's current PgBouncer certificate. Certificate verification remains enabled. |
 | `DATABASE_SSL_SERVERNAME` | Expected TLS certificate hostname, when different from the connection address. Required with Sandy's current PgBouncer certificate. |
 | `AUTH_SECRET` | High-entropy secret for Auth.js JWT encryption and verification tokens; keep stable across instances. |
-| `AUTH_URL` | Canonical external origin including scheme; production is `https://wissen.app.mintapis.com`. Also used for all billing/auth redirects. |
+| `AUTH_URL` | Canonical external origin including scheme; production is `https://bookhost.co`. Also used for all billing/auth redirects. |
+| `PRODUCT_NAME` | Product display name, default `BookHost`. |
+| `NEXT_PUBLIC_APP_URL` | Public canonical URL, default `https://bookhost.co`; used for canonical links and metadata. |
+| `LEGACY_HOSTS` | Comma-separated legacy control-plane hostnames, default `wissen.app.mintapis.com`. |
+| `REDIRECT_LEGACY_HOSTS` | Set `true` to 301 redirect legacy control-plane page requests; API routes, `/healthz`, and tenant subdomains remain available. |
+| `TENANT_DOMAIN` | Tenant hostname suffix, default `wissen.app.mintapis.com` until the tenant DNS cutover. |
 | `TRUST_PROXY` | Defaults to `true` in Docker behind Traefik; otherwise unset/false. Trusts only the last X-Forwarded-For entry. Proxy must overwrite/append the actual peer IP and container ports must not be publicly reachable. Without it, use socket address or proxy-overwritten x-real-ip; missing/invalid IP returns 400 on limited endpoints. |
 | `AUTH_TRUST_HOST` | Set `true` behind the trusted reverse proxy. The proxy must overwrite forwarded host/protocol/IP headers. |
 | `STRIPE_SECRET_KEY` | Server-side Stripe secret API key. Never exposed to the browser. |
@@ -137,7 +142,7 @@ operator file `/home/flori/ventures2/bookstack/work/.intake.env`. The worker inv
 the same token bootstrap as `ops/provisioner/bookstack-api-token.sh <slug>` after
 successful provision/resume and before marking the tenant running. Run this script
 once for existing tenants such as `demo`. It creates the passwordless system user
-`Wissen Intake` (`system_name=wissen-intake`) and a dedicated role with only
+`BookHost Intake` (`system_name=wissen-intake`) and a dedicated role with only
 `access-api`, `book-view-all`, `chapter-view-all`, `page-view-all`,
 `page-create-all`, and `page-update-all`. Intake is a **team-wide** shared inbox:
 all Control-Plane members can read these destinations and drafts; only owners/admins
@@ -299,7 +304,7 @@ Real DB integration: `INTAKE_DB_TEST=1 npx vitest run tests/inbound-db.integrati
 
 ## Operational watchdog
 
-[The Wissen watchdog](ops/watchdog/README.md) checks control-plane/database health,
+[The BookHost watchdog](ops/watchdog/README.md) checks control-plane/database health,
 demo and running tenants, provisioning queues, encrypted backup freshness, disk,
 worker heartbeat, and stuck intake drafts every ten minutes. Telegram alerts are
 sent only after two consecutive failed checks and once on recovery. Run

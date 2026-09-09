@@ -17,7 +17,7 @@ async function post(body, signed = true) {
   const headers = ["Content-Type: application/json"];
   if (signed)
     headers.push(
-      `X-Wissen-Signature: t=${t},v1=${createHmac(
+      `X-BookHost-Signature: t=${t},v1=${createHmac(
         "sha256",
         process.env.INBOUND_WEBHOOK_SECRET,
       )
@@ -95,7 +95,7 @@ try {
   );
   const mail = {
     message_id: randomUUID(),
-    to: ["demo@intake.wissen.app.mintapis.com"],
+    to: ["demo@intake.bookhost.co"],
     from: { address: email, name: "Acceptance" },
     subject: "E-mail review checklist",
     text: "Please review the attached checklist.",

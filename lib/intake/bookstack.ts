@@ -1,4 +1,5 @@
 import { IntakeError } from "./access";
+import { TENANT_DOMAIN } from "../config";
 export type Destination = { id: number; name: string; book_id?: number };
 export class BookStack {
   readonly base: string;
@@ -9,7 +10,7 @@ export class BookStack {
   ) {
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug))
       throw new Error("Invalid workspace.");
-    this.base = `https://${slug}.wissen.app.mintapis.com`;
+    this.base = `https://${slug}.${TENANT_DOMAIN}`;
   }
   async request<T>(path: string, body?: unknown): Promise<T> {
     const response = await fetch(`${this.base}/api/${path}`, {
@@ -29,7 +30,7 @@ export class BookStack {
       throw new IntakeError(
         [401, 403].includes(response.status)
           ? path === "books" && body
-            ? "BookStack cannot create books. Contact your workspace administrator to enable Create all books for Wissen Intake."
+            ? "BookStack cannot create books. Contact your workspace administrator to enable Create all books for BookHost Intake."
             : "BookStack token rejected. Contact support to restore intake access."
           : response.status === 404
             ? "Book or chapter not found. Choose another destination."

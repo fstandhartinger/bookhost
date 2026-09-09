@@ -20,8 +20,8 @@ export function notifyPasswordChanged(email: string) {
       mailTransport().sendMail({
         from: process.env.SMTP_FROM,
         to: email,
-        subject: "Your Wissen password was set or changed",
-        text: "Your Wissen password was set or changed. If this was not you, reset your password immediately or contact info@productivity-boost.com.",
+        subject: "Your BookHost password was set or changed",
+        text: "Your BookHost password was set or changed. If this was not you, reset your password immediately or contact info@productivity-boost.com.",
       }),
     )
     .catch(() => console.error("Password change notification failed"));

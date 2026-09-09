@@ -3,20 +3,21 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
+import { PRODUCT_NAME, PUBLIC_BASE_URL } from "@/lib/config";
 const inter = Inter({ subsets: ["latin"], display: "swap" });
 export const metadata: Metadata = {
   title: {
-    default: "Wissen — Hosted BookStack & Document Intake (Beta)",
-    template: "%s · Wissen",
+    default: `${PRODUCT_NAME} — Managed BookStack hosting for teams`,
+    template: `%s · ${PRODUCT_NAME}`,
   },
   description:
     "Hosted BookStack with document intake (beta): upload, review and approve. €39/month plus VAT. 14 days free, no card; 20 trial drafts, 300/month on Team.",
-  metadataBase: new URL("https://wissen.app.mintapis.com"),
+  metadataBase: new URL(PUBLIC_BASE_URL),
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://wissen.app.mintapis.com",
-    siteName: "Wissen",
+    url: PUBLIC_BASE_URL,
+    siteName: PRODUCT_NAME,
     title: "Your team’s BookStack. Hosting handled.",
     description:
       "Document intake (beta) available now. Upload, review and approve. 14 days free, no card required; then €39/month plus VAT.",
@@ -25,13 +26,13 @@ export const metadata: Metadata = {
         url: "/og.png",
         width: 1200,
         height: 630,
-        alt: "Wissen document intake beta with a real reviewed document draft",
+        alt: "BookHost document intake beta with a real reviewed document draft",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Wissen — Hosted BookStack & Document Intake (Beta)",
+    title: "BookHost — Hosted BookStack & Document Intake (Beta)",
     description:
       "Upload a document. Review the draft. Approve for BookStack. 14 days free, no card required.",
     images: ["/og.png"],
@@ -68,7 +69,7 @@ export default function RootLayout({
               >
                 w
               </span>
-              wissen<span className="text-moss">.</span>
+              bookhost<span className="text-moss">.</span>
             </Link>
             <div className="flex items-center gap-5 text-sm">
               <Link className="hover:underline" href="/pricing">
@@ -81,7 +82,7 @@ export default function RootLayout({
                 className="hidden rounded-lg border border-ink/20 px-4 py-2 sm:block"
                 href="/pricing"
               >
-                Try Wissen ↗
+                Try BookHost ↗
               </Link>
             </div>
           </nav>
@@ -94,7 +95,7 @@ export default function RootLayout({
             <div className="flex flex-col justify-between gap-6 md:flex-row">
               <div>
                 <Link href="/" className="text-xl font-semibold">
-                  wissen.
+                  bookhost.
                 </Link>
                 <p className="mt-2 text-sm text-slate-600">
                   A little less admin. A lot more shared knowledge.
@@ -115,7 +116,7 @@ export default function RootLayout({
               © {new Date().getFullYear()} productivity-boost.com Betriebs UG
               (haftungsbeschränkt) &amp; Co. KG · Passau, Germany
               <br />
-              Wissen is an independent hosting service. BookStack is an
+              BookHost is an independent hosting service. BookStack is an
               open-source project; we are not affiliated with its maintainers.
             </p>
           </div>

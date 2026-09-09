@@ -4,11 +4,11 @@ Stand: 08.09.2026
 
 ## 1. Vertragsparteien und Einbeziehung
 
-Dieser Vertrag wird zwischen dem im Wissen-Hauptvertrag und in der Bestellbestätigung bezeichneten Kunden als **Verantwortlichem und Auftraggeber** und der **productivity-boost.com Betriebs UG (haftungsbeschränkt) & Co. KG**, Reichenbergerstr. 2, 94036 Passau, Deutschland, vertreten durch Florian Standhartinger, als **Auftragsverarbeiter und Auftragnehmer** geschlossen. Kontakt: info@productivity-boost.com, Telefon: +49 178 1981631. Die weiteren Vertretungs- und Registerangaben ergeben sich aus dem [Impressum](impressum.md).
+Dieser Vertrag wird zwischen dem im BookHost-Hauptvertrag und in der Bestellbestätigung bezeichneten Kunden als **Verantwortlichem und Auftraggeber** und der **productivity-boost.com Betriebs UG (haftungsbeschränkt) & Co. KG**, Reichenbergerstr. 2, 94036 Passau, Deutschland, vertreten durch Florian Standhartinger, als **Auftragsverarbeiter und Auftragnehmer** geschlossen. Kontakt: info@productivity-boost.com, Telefon: +49 178 1981631. Die weiteren Vertretungs- und Registerangaben ergeben sich aus dem [Impressum](impressum.md).
 
 Der AVV wird durch ausdrückliche elektronische Einbeziehung in den Hauptvertrag oder gesonderte Vereinbarung wirksam. Er muss vor der Verarbeitung personenbezogener Kundeninhalte geschlossen sein. Die Parteien dokumentieren Annahme, Datum, vereinbarte Fassung und Identität des Kunden. Kunde und weisungsberechtigte Kontoverwalter sind anhand der Bestellbestätigung und der vom Kunden gepflegten Berechtigungen bestimmbar; eine öffentliche Nennung des Kunden ist nicht erforderlich.
 
-Ist der Kunde selbst Auftragsverarbeiter, handelt Wissen als weiterer Auftragsverarbeiter. Der Kunde stellt sicher, dass die Einbeziehung von Wissen durch die Weisungen und Genehmigungen seines Verantwortlichen gedeckt ist. Die nachfolgenden Pflichten gelten entsprechend in der Verarbeitungskette.
+Ist der Kunde selbst Auftragsverarbeiter, handelt BookHost als weiterer Auftragsverarbeiter. Der Kunde stellt sicher, dass die Einbeziehung von BookHost durch die Weisungen und Genehmigungen seines Verantwortlichen gedeckt ist. Die nachfolgenden Pflichten gelten entsprechend in der Verarbeitungskette.
 
 Bei Widersprüchen zu anderen vertraglichen Regelungen hat dieser AVV hinsichtlich der Auftragsverarbeitung Vorrang. Die Anlagen sind Vertragsbestandteil. Die Verarbeitung eigener Vertrags-, Rechnungs- und gesetzlich erforderlicher Unternehmensdaten des Auftragnehmers als Verantwortlicher fällt nicht unter diesen AVV; hierfür gilt die [Datenschutzerklärung](datenschutz.md).
 
@@ -76,13 +76,13 @@ Die Verantwortlichkeit und Haftung gegenüber Betroffenen, insbesondere nach Art
 
 | Merkmal | Vereinbarung |
 | --- | --- |
-| Gegenstand | Betrieb einer kundeneigenen BookStack-Instanz im Dienst Wissen einschließlich Administration, Berechtigungssystem, Sicherung, Wiederherstellung und beauftragtem Support. |
+| Gegenstand | Betrieb einer kundeneigenen BookStack-Instanz im Dienst BookHost einschließlich Administration, Berechtigungssystem, Sicherung, Wiederherstellung und beauftragtem Support. |
 | Dauer | Dauer des Hauptvertrags einschließlich Testphase; anschließend ausschließlich Rückgabe und Löschung nach Abschnitt 8, einschließlich begrenzter Backup-Restaufbewahrung. |
 | Art | Entgegennehmen, Ordnen, Speichern, Bereitstellen, Abrufen, Ändern, Sichern, Wiederherstellen, Exportieren, Sperren und Löschen von Daten; notwendige betriebliche Protokollierung. |
-| Zweck | Wissensverwaltung und Zusammenarbeit des Kunden, Zugang für berechtigte Nutzer, Verfügbarkeit und Sicherheit der Instanz. |
-| Datenkategorien | Namen, dienstliche Kontaktdaten, Nutzerkennungen, Rollen und Berechtigungen, Organisationszugehörigkeit; Wissensseiten, Anhänge, Kommentare und Versionen mit den vom Kunden eingebrachten personenbezogenen Angaben; technische Nutzungs-, Änderungs- und Sicherheitsereignisse. |
+| Zweck | BookStack-Verwaltung und Zusammenarbeit des Kunden, Zugang für berechtigte Nutzer, Verfügbarkeit und Sicherheit der Instanz. |
+| Datenkategorien | Namen, dienstliche Kontaktdaten, Nutzerkennungen, Rollen und Berechtigungen, Organisationszugehörigkeit; BookStack-Seiten, Anhänge, Kommentare und Versionen mit den vom Kunden eingebrachten personenbezogenen Angaben; technische Nutzungs-, Änderungs- und Sicherheitsereignisse. |
 | Betroffene | Beschäftigte und sonstige Nutzer des Kunden, Kunden und Interessenten des Kunden, Lieferanten, Geschäftspartner sowie weitere in zulässigen Dokumenten erwähnte Personen. |
-| Dokument-Eingang per Upload (Beta) | Verfügbar auf Veranlassung des Kunden je Upload: Textextraktion aus PDF, DOCX, Markdown oder TXT, KI-Inferenz über Chutes für Seitenvorschläge mit Zusammenfassung, Tags und Prüfliste, menschliche Prüfung und Veröffentlichung ausschließlich durch Workspace-Owner oder -Admins. Alle Mitglieder des Wissen-Dashboard-Teams können hochladen und Entwürfe prüfen; individuelle BookStack-Seitenrechte gelten nach Veröffentlichung. Voraussetzungen für personenbezogene Inhalte: Anlage 3. |
+| Dokument-Eingang per Upload (Beta) | Verfügbar auf Veranlassung des Kunden je Upload: Textextraktion aus PDF, DOCX, Markdown oder TXT, KI-Inferenz über Chutes für Seitenvorschläge mit Zusammenfassung, Tags und Prüfliste, menschliche Prüfung und Veröffentlichung ausschließlich durch Workspace-Owner oder -Admins. Alle Mitglieder des BookHost-Dashboard-Teams können hochladen und Entwürfe prüfen; individuelle BookStack-Seitenrechte gelten nach Veröffentlichung. Voraussetzungen für personenbezogene Inhalte: Anlage 3. |
 | Geplante Zusatzverarbeitung | E-Mail-Eingang und berechtigungsgeprüfte KI-Antworten sind geplant und nicht verfügbar. Ihre spätere Aktivierung setzt gesonderte Information und Weisung voraus. |
 | Zusätzliche KI-Daten der Upload-Beta | Extrahierter Dokumenttext, Dateiname und Typ, gewähltes Zielbuch/-kapitel, Seitenvorschlag, Zusammenfassung, Tags, Prüfliste sowie technische Verarbeitungsmetadaten. |
 | Ausschlüsse | Eine gezielte Verarbeitung von Daten nach Art. 9 oder 10 DSGVO ist ohne gesonderte Vereinbarung über Zulässigkeit und zusätzliche Schutzmaßnahmen nicht umfasst; insbesondere erfolgt keine solche KI-Verarbeitung allein aufgrund dieses Standard-AVV. |
@@ -130,7 +130,7 @@ Für die Inferenz werden ausschließlich vereinbarte TEE-Modelle genutzt. Die ta
 
 ## Anlage 3 – Dienstleister und Unterauftragsverarbeiter
 
-Die Rollen werden je Verarbeitungsvorgang bestimmt. Stripe und Google sind für ihre eigenen Konto-, Zahlungs-, Sicherheits- und gesetzlichen Aufgaben eigene Verantwortliche; ihre Nennung macht diese Tätigkeiten nicht zu einer Unterauftragsverarbeitung von Wissensseiten.
+Die Rollen werden je Verarbeitungsvorgang bestimmt. Stripe und Google sind für ihre eigenen Konto-, Zahlungs-, Sicherheits- und gesetzlichen Aufgaben eigene Verantwortliche; ihre Nennung macht diese Tätigkeiten nicht zu einer Unterauftragsverarbeitung von BookStack-Seiten.
 
 | Anbieter | Sitz / Aufgabe | Rolle und Datenumfang | Verarbeitungsorte / Einsatzbedingung |
 | --- | --- | --- | --- |
@@ -142,7 +142,7 @@ Die Rollen werden je Verarbeitungsvorgang bestimmt. Stripe und Google sind für 
 
 ### Chutes: Bestätigung und Aktivierungsvoraussetzungen
 
-Die [Chutes-Nutzungsbedingungen](https://chutes.ai/terms) nennen Chutes Global Corp als Betreiber und das Recht von Nevis. Die Zuordnung als in Nevis registrierte Gesellschaft mit Nummer C 61974 stammt ergänzend aus dem [öffentlichen TAO.app-Unternehmensprofil](https://www.tao.app/subnets/64). Die Registerzuordnung ist damit recherchiert, aber nicht durch einen amtlichen Registerauszug bestätigt. Die [öffentliche Chutes-DPA](https://chutes.ai/dpa) beschreibt Auftragsverarbeitung und verweist allgemein auf Standardvertragsklauseln; sie belegt allein weder die für Wissen abgeschlossene Vertragskette noch konkrete Inferenzstandorte.
+Die [Chutes-Nutzungsbedingungen](https://chutes.ai/terms) nennen Chutes Global Corp als Betreiber und das Recht von Nevis. Die Zuordnung als in Nevis registrierte Gesellschaft mit Nummer C 61974 stammt ergänzend aus dem [öffentlichen TAO.app-Unternehmensprofil](https://www.tao.app/subnets/64). Die Registerzuordnung ist damit recherchiert, aber nicht durch einen amtlichen Registerauszug bestätigt. Die [öffentliche Chutes-DPA](https://chutes.ai/dpa) beschreibt Auftragsverarbeitung und verweist allgemein auf Standardvertragsklauseln; sie belegt allein weder die für BookHost abgeschlossene Vertragskette noch konkrete Inferenzstandorte.
 
 Die Upload-Beta ist technisch verfügbar; der Kunde veranlasst die Inferenz über Chutes mit jedem Upload. Dies ersetzt nicht die vor dem ersten Upload personenbezogener Kundeninhalte erforderlichen Vertrags- und Transfernachweise. Verbindliche Geschäftsanschrift, konkrete Inferenz- und Metadatenländer sowie beteiligte GPU-Unterauftragnehmer sind öffentlich nicht abschließend belegt. Wir sagen keine EU-exklusive Verarbeitung zu. Der Kunde erhält diese Angaben und die für seinen Einsatz maßgeblichen Vertrags- und Transferinformationen vor dem ersten Upload personenbezogener Kundeninhalte in Textform über info@productivity-boost.com. Bis dahin darf die technisch verfügbare Beta nur mit nicht personenbezogenen Beispieldokumenten genutzt werden. Inhalte öffentlicher LLM-API-Anfragen werden bei Chutes nur während der Anfrage im Arbeitsspeicher verarbeitet und nicht darüber hinaus gespeichert. Originaldateien werden nur vorübergehend zur Textextraktion verarbeitet. Gespeicherter Quelltext wird bei Veröffentlichung oder Ablehnung entfernt; Intake-Einträge einschließlich Entwürfen werden nach 30 Tagen beim stündlichen Bereinigungslauf gelöscht. Für veröffentlichte BookStack-Seiten und Sicherungen gilt Abschnitt 8; Anwendungsprotokolle nach 14 Tagen, Sicherheitsprotokolle nach 30 Tagen.
 

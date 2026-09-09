@@ -107,7 +107,7 @@ export default async function Login({
         </form>
       )}
       <p className="mt-8 text-center text-xs text-slate-500">
-        Secure access to your Wissen dashboard.
+        Secure access to your BookHost dashboard.
       </p>
     </section>
   );

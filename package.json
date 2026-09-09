@@ -1,5 +1,5 @@
 {
-  "name": "wissen-control-plane",
+  "name": "bookhost-control-plane",
   "version": "1.0.0",
   "private": true,
   "engines": {

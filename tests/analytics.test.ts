@@ -62,7 +62,7 @@ const request = (
   new Request("http://localhost/api/track", {
     method: "POST",
     headers: {
-      origin: "https://wissen.app.mintapis.com",
+      origin: "https://bookhost.co",
       "x-real-ip": "192.0.2.1",
       ...headers,
     },

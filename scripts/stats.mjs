@@ -14,7 +14,7 @@ const pool = new pg.Pool(databaseConfig());
 try {
   const report = await analyticsReport(pool);
   console.log(
-    "Wissen — last 14 UTC days (including today). Visits deduplicated per day/source.",
+    "BookHost — last 14 UTC days (including today). Visits deduplicated per day/source.",
   );
   console.log("By utm_source");
   console.table(report.sources);

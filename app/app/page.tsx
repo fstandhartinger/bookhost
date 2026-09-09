@@ -8,6 +8,7 @@ import { PasswordForm } from "@/components/password-form";
 import { auth, signOut } from "@/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { TENANT_DOMAIN } from "@/lib/config";
 import { ActionButton } from "@/components/action-button";
 import { TenantForm, RevealPassword } from "@/components/tenant-form";
 import { RefreshStatus } from "@/components/refresh-status";
@@ -104,7 +105,7 @@ export default async function Dashboard({
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div>
           <p className="eyebrow">YOUR WORKSPACE</p>
-          <h1 className="text-4xl">{team?.name || "Welcome to Wissen."}</h1>
+          <h1 className="text-4xl">{team?.name || "Welcome to BookHost."}</h1>
           <p className="mt-3 text-sm text-slate-600">
             Signed in as {session.user.email}
           </p>
@@ -234,7 +235,7 @@ export default async function Dashboard({
                 </ActionButton>
               )}
               <p className="mt-4 break-all text-sm font-medium">
-                {tenant.slug}.wissen.app.mintapis.com
+                {tenant.slug}.{TENANT_DOMAIN}
               </p>
               {!delayed &&
                 ["pending", "provisioning", "restoring"].includes(status) && (
@@ -244,7 +245,7 @@ export default async function Dashboard({
                 <>
                   <a
                     className="button mt-6"
-                    href={`https://${tenant.slug}.wissen.app.mintapis.com`}
+                    href={`https://${tenant.slug}.${TENANT_DOMAIN}`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >

@@ -14,7 +14,7 @@ class DemoPublishTests(unittest.TestCase):
         self.assertEqual(len(demo.content_plan(state)), 1)
 
     def test_duplicate_legacy_pages_reused_once_without_touching_unrelated_content(self):
-        state = [dict(id=i, book='Wissen product guide', name='Reviewed document intake: a team checklist', markdown='') for i in range(1,4)]
+        state = [dict(id=i, book='BookHost product guide', name='Reviewed document intake: a team checklist', markdown='') for i in range(1,4)]
         state.append(dict(id=99, book='Team handbook', name='Unrelated page', markdown='Keep me'))
         plan = demo.content_plan(state)
         self.assertEqual([p['id'] for p in plan if p['id']], [1,2,3])

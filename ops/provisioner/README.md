@@ -1,4 +1,4 @@
-# Wissen tenant operations
+# BookHost tenant operations
 
 Run as `flori` on Sandy with passwordless `sudo docker`, Compose, Python 3.11,
 GNU timeout/setsid, tar, flock, OpenSSL and preferably age. The existing coolify
@@ -152,7 +152,7 @@ tenant only. It shares the lifecycle lock with backups, refuses a mismatched URL
 updates two books and ten Markdown pages, and reuses the known legacy seed pages.
 Unrelated pages are not deleted. All non-admin roles become read/export-only and
 per-entity permission overrides are cleared on this dedicated demo. Registration
-is disabled; the books homepage and custom-head banner link to Wissen.
+is disabled; the books homepage and custom-head banner link to BookHost.
 
 Unchanged runs do not update content, revisions, settings or permission tables.
 Permission regeneration runs after the transaction because its table truncation

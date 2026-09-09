@@ -107,7 +107,7 @@ try {
     cipher.final(),
   ]).toString();
   const response = await fetch(
-    "https://demo.wissen.app.mintapis.com/api/books?count=1",
+    "https://demo.bookhost.co/api/books?count=1",
     {
       headers: { Authorization: `Token ${credentials.api_id}:${token}` },
       redirect: "error",
@@ -153,7 +153,7 @@ try {
   );
   const mail = {
     message_id: randomUUID(),
-    to: ["demo@intake.wissen.app.mintapis.com"],
+    to: ["demo@intake.bookhost.co"],
     from: { address: email, name: "Production check" },
     subject: "Review regression",
     text: "Human reviewers verify the source before publication. ".repeat(10),

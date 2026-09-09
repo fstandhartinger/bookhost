@@ -2,7 +2,7 @@
 
 Stand: 08.09.2026
 
-Diese Erklärung gilt für die Website und Kontoverwaltung unter https://wissen.app.mintapis.com sowie für den von uns betriebenen Dienst Wissen. Bei personenbezogenen Inhalten in einer Kundeninstanz unterscheiden wir zwischen unserer eigenen Verantwortung für den Betrieb und der Auftragsverarbeitung für den jeweiligen Kunden.
+Diese Erklärung gilt für die Website und Kontoverwaltung unter https://bookhost.co sowie für den von uns betriebenen Dienst BookHost. Bei personenbezogenen Inhalten in einer Kundeninstanz unterscheiden wir zwischen unserer eigenen Verantwortung für den Betrieb und der Auftragsverarbeitung für den jeweiligen Kunden.
 
 ## 1. Verantwortlicher und Kontakt
 
@@ -18,7 +18,7 @@ Ein Datenschutzbeauftragter ist nicht benannt, da keine gesetzliche Pflicht zur 
 
 ## 2. Website, Hosting und Server-Logs
 
-Wir betreiben Wissen auf einem von uns administrierten Server bei der Hetzner Online GmbH, Industriestr. 25, 91710 Gunzenhausen, Deutschland. Für Hosting und Sicherungskopien nutzen wir Standorte in Deutschland beziehungsweise Finnland, innerhalb der EU. Hetzner unterstützt uns als Auftragsverarbeiter bei der Bereitstellung der Infrastruktur. Dies ist keine Zusage, dass sämtliche weiteren Dienstleister ausschließlich innerhalb der EU verarbeiten; dazu siehe Abschnitt 9.
+Wir betreiben BookHost auf einem von uns administrierten Server bei der Hetzner Online GmbH, Industriestr. 25, 91710 Gunzenhausen, Deutschland. Für Hosting und Sicherungskopien nutzen wir Standorte in Deutschland beziehungsweise Finnland, innerhalb der EU. Hetzner unterstützt uns als Auftragsverarbeiter bei der Bereitstellung der Infrastruktur. Dies ist keine Zusage, dass sämtliche weiteren Dienstleister ausschließlich innerhalb der EU verarbeiten; dazu siehe Abschnitt 9.
 
 Beim Aufruf des Dienstes werden IP-Adresse, Zeitpunkt, angeforderter Pfad, HTTP-Status, übertragene Datenmenge sowie Browser- und Betriebssysteminformationen verarbeitet; soweit übermittelt, auch die verweisende Seite. Für die Fehleranalyse können technische Ereignisse einer Konto- oder Instanzkennung zugeordnet werden. Dies dient der Auslieferung, Stabilität, Fehlerbehebung und Abwehr missbräuchlicher Zugriffe. Rechtsgrundlage ist Art. 6 Abs. 1 Buchst. f DSGVO; unser berechtigtes Interesse ist ein sicherer, funktionsfähiger Dienst.
 
@@ -42,13 +42,13 @@ Passwort-Reset-Nachrichten, gegebenenfalls Login-Links und Benachrichtigungen ve
 
 Wenn Sie die Google-Anmeldung auswählen, wird eine Verbindung zu Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Irland, hergestellt. Google verarbeitet den Anmeldevorgang nach eigenen Datenschutzbestimmungen. Wir erhalten die für die Kontoanmeldung freigegebenen Identitätsdaten, insbesondere Google-Kontokennung und E-Mail-Adresse sowie, soweit übermittelt, Name und Profilbild. Die Anmeldung gewährt uns keinen Zugriff auf Ihr Gmail-Postfach oder Ihre Google-Drive-Dokumente.
 
-Die Verarbeitung der Identitätsdaten dient der von Ihnen gewählten Anmeldung und stützt sich bei Vertragsparteien auf Art. 6 Abs. 1 Buchst. b DSGVO, bei sonstigen autorisierten Nutzern auf Art. 6 Abs. 1 Buchst. f DSGVO. Alternativ können Sie die Passwortanmeldung nutzen; E-Mail-Links nur, soweit auf der Login-Seite angeboten. Die Google-Anmeldung ist für die Nutzung von Wissen nicht erforderlich. Google handelt bei seinem eigenen Kontodienst grundsätzlich als eigener Verantwortlicher.
+Die Verarbeitung der Identitätsdaten dient der von Ihnen gewählten Anmeldung und stützt sich bei Vertragsparteien auf Art. 6 Abs. 1 Buchst. b DSGVO, bei sonstigen autorisierten Nutzern auf Art. 6 Abs. 1 Buchst. f DSGVO. Alternativ können Sie die Passwortanmeldung nutzen; E-Mail-Links nur, soweit auf der Login-Seite angeboten. Die Google-Anmeldung ist für die Nutzung von BookHost nicht erforderlich. Google handelt bei seinem eigenen Kontodienst grundsätzlich als eigener Verantwortlicher.
 
 Weitere Informationen: [Google-Datenschutzerklärung](https://policies.google.com/privacy?hl=de).
 
 ## 5. Technisch notwendige Cookies und Sitzungen
 
-Wissen verwendet ausschließlich technisch notwendige Cookies, insbesondere zur Zuordnung angemeldeter Sitzungen und zum Schutz vor gefälschten Anfragen. Wir setzen keine Analyse-, Werbe- oder Tracking-Cookies ein. Notwendige Cookies werden nach § 25 Abs. 2 Nr. 2 TDDDG ohne Einwilligung eingesetzt; die anschließende Verarbeitung personenbezogener Daten richtet sich nach Art. 6 Abs. 1 Buchst. b beziehungsweise f DSGVO.
+BookHost verwendet ausschließlich technisch notwendige Cookies, insbesondere zur Zuordnung angemeldeter Sitzungen und zum Schutz vor gefälschten Anfragen. Wir setzen keine Analyse-, Werbe- oder Tracking-Cookies ein. Notwendige Cookies werden nach § 25 Abs. 2 Nr. 2 TDDDG ohne Einwilligung eingesetzt; die anschließende Verarbeitung personenbezogener Daten richtet sich nach Art. 6 Abs. 1 Buchst. b beziehungsweise f DSGVO.
 
 | Bereich / Cookie | Zweck | Laufzeit |
 | --- | --- | --- |
@@ -61,7 +61,7 @@ Wissen verwendet ausschließlich technisch notwendige Cookies, insbesondere zur 
 
 HTTPS verwendet die oben angegebenen sicheren Präfixe. Diese Cookies dienen ausschließlich der angeforderten Anmeldung und Nutzung.
 
-Sie können Cookies im Browser löschen oder blockieren. Ohne die notwendigen Cookies funktioniert die Anmeldung gegebenenfalls nicht. Für Seiten von Google und Stripe, die Sie zur Anmeldung oder Zahlung aufrufen, gelten zusätzlich deren Hinweise; unsere Aussage zu Tracking-Cookies bezieht sich auf Wissen.
+Sie können Cookies im Browser löschen oder blockieren. Ohne die notwendigen Cookies funktioniert die Anmeldung gegebenenfalls nicht. Für Seiten von Google und Stripe, die Sie zur Anmeldung oder Zahlung aufrufen, gelten zusätzlich deren Hinweise; unsere Aussage zu Tracking-Cookies bezieht sich auf BookHost.
 
 ## 6. Vertrag, Abrechnung und Stripe
 
@@ -73,7 +73,7 @@ Stripe verarbeitet Daten teilweise in unserem Auftrag und teilweise als eigener 
 
 ## 7. Inhalte in Kundeninstanzen
 
-Der Kunde bestimmt, welche Personen Zugang zu seiner BookStack-Instanz erhalten und welche personenbezogenen Informationen dort gespeichert werden. Solche Informationen können Nutzerprofile, Wissensseiten, Anhänge, Kommentare, Versionshistorien sowie Daten über Beschäftigte, Kunden und Geschäftspartner umfassen.
+Der Kunde bestimmt, welche Personen Zugang zu seiner BookStack-Instanz erhalten und welche personenbezogenen Informationen dort gespeichert werden. Solche Informationen können Nutzerprofile, BookStack-Seiten, Anhänge, Kommentare, Versionshistorien sowie Daten über Beschäftigte, Kunden und Geschäftspartner umfassen.
 
 Für diese Inhalte ist grundsätzlich der Kunde Verantwortlicher. Wir verarbeiten sie ausschließlich zur Bereitstellung, Absicherung, Sicherung, Wiederherstellung und vereinbarten Unterstützung der Instanz nach dokumentierter Weisung. Dazu schließen wir einen [Auftragsverarbeitungsvertrag nach Art. 28 DSGVO](avv.md). Der AVV ist selbst keine Rechtsgrundlage für die Datenerhebung durch den Kunden; dieser muss die einschlägige Rechtsgrundlage festlegen und Betroffene informieren.
 
@@ -91,7 +91,7 @@ Als KI-Dienst ist Chutes, betrieben von Chutes Global Corp, vorgesehen. Die Infe
 
 Der Kunde bestimmt als Verantwortlicher Zweck, Rechtsgrundlage und zulässige Inhalte. Wir handeln nach seiner Weisung als Auftragsverarbeiter; Chutes wird erst nach Erfüllung der in [Anlage 3 des AVV](avv.md) genannten Voraussetzungen als Unterauftragsverarbeiter eingesetzt. Besondere Kategorien personenbezogener Daten sind ohne zusätzliche ausdrückliche Vereinbarung nicht für die KI-Verarbeitung vorgesehen.
 
-Die [Chutes-Nutzungsbedingungen](https://chutes.ai/terms) nennen Chutes Global Corp und das Recht von Nevis. Eine verbindliche Geschäftsanschrift und konkrete Inferenzländer sind öffentlich nicht abschließend belegt; wir behaupten daher weder einen US-Sitz noch ausschließlich europäische Verarbeitung. Details zu Standorten und Transfergarantien erhalten Kunden auf Anfrage und vor ihrer Freischaltung. Ohne dokumentierten Art.-28-Vertrag und zulässige Drittlandgarantien bleibt die KI-Verarbeitung deaktiviert. Inhalte öffentlicher LLM-API-Anfragen werden bei Chutes nur für die jeweilige Anfrage im Arbeitsspeicher verarbeitet und nicht darüber hinaus gespeichert. Bei Wissen gespeicherte Eingangsdokumente und Vorschläge unterliegen den Löschfristen für Kundeninhalte in Abschnitt 10; technische Anwendungsprotokolle werden nach 14 Tagen gelöscht.
+Die [Chutes-Nutzungsbedingungen](https://chutes.ai/terms) nennen Chutes Global Corp und das Recht von Nevis. Eine verbindliche Geschäftsanschrift und konkrete Inferenzländer sind öffentlich nicht abschließend belegt; wir behaupten daher weder einen US-Sitz noch ausschließlich europäische Verarbeitung. Details zu Standorten und Transfergarantien erhalten Kunden auf Anfrage und vor ihrer Freischaltung. Ohne dokumentierten Art.-28-Vertrag und zulässige Drittlandgarantien bleibt die KI-Verarbeitung deaktiviert. Inhalte öffentlicher LLM-API-Anfragen werden bei Chutes nur für die jeweilige Anfrage im Arbeitsspeicher verarbeitet und nicht darüber hinaus gespeichert. Bei BookHost gespeicherte Eingangsdokumente und Vorschläge unterliegen den Löschfristen für Kundeninhalte in Abschnitt 10; technische Anwendungsprotokolle werden nach 14 Tagen gelöscht.
 
 ## 9. Empfänger und internationale Verarbeitung
 
@@ -115,7 +115,7 @@ Für Logs, Cookies, Anmeldetoken und den künftigen KI-Eingang gelten die in den
 
 Unter den gesetzlichen Voraussetzungen haben Sie das Recht auf Auskunft (Art. 15 DSGVO), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung (Art. 18) und Datenübertragbarkeit (Art. 20). Soweit eine Verarbeitung auf einer Einwilligung beruht, können Sie diese jederzeit mit Wirkung für die Zukunft widerrufen; die Rechtmäßigkeit der bisherigen Verarbeitung bleibt unberührt.
 
-**Widerspruch:** Sie können einer auf Art. 6 Abs. 1 Buchst. f DSGVO gestützten Verarbeitung aus Gründen Ihrer besonderen Situation nach Art. 21 DSGVO widersprechen. Wir verarbeiten dann nur weiter, wenn die gesetzlichen Voraussetzungen hierfür vorliegen. Gegen Direktwerbung können Sie jederzeit ohne besondere Begründung widersprechen; Wissen betreibt die hier beschriebene Verarbeitung nicht zu Direktwerbezwecken.
+**Widerspruch:** Sie können einer auf Art. 6 Abs. 1 Buchst. f DSGVO gestützten Verarbeitung aus Gründen Ihrer besonderen Situation nach Art. 21 DSGVO widersprechen. Wir verarbeiten dann nur weiter, wenn die gesetzlichen Voraussetzungen hierfür vorliegen. Gegen Direktwerbung können Sie jederzeit ohne besondere Begründung widersprechen; BookHost betreibt die hier beschriebene Verarbeitung nicht zu Direktwerbezwecken.
 
 Schreiben Sie an info@productivity-boost.com. Falls begründete Zweifel an Ihrer Identität bestehen, dürfen wir erforderliche zusätzliche Informationen anfordern. Wir antworten grundsätzlich innerhalb eines Monats; über eine gesetzlich zulässige Verlängerung informieren wir Sie innerhalb dieser Frist.
 
@@ -131,7 +131,7 @@ Wir passen diese Erklärung an, wenn sich die Verarbeitung ändert. Über wesent
 
 ## 13. Kündigungs- und Widerrufserklärungen
 
-Über das öffentliche [Formular](https://wissen.app.mintapis.com/cancel) verarbeiten wir E-Mail-Adresse, die Art der Erklärung und freiwillige Angaben zur Zuordnung und zum gewünschten Vertragsende. Rechtsgrundlagen sind Art. 6 Abs. 1 Buchst. b und c DSGVO. Die Speicherung dient der Bearbeitung und dem Nachweis des Eingangs; die Fristen für Vertragsunterlagen in Abschnitt 10 gelten entsprechend. Zur Missbrauchsabwehr wird ein aus der IP-Adresse abgeleiteter Zähler für höchstens eine Stunde im Arbeitsspeicher gehalten (Art. 6 Abs. 1 Buchst. f DSGVO).
+Über das öffentliche [Formular](https://bookhost.co/cancel) verarbeiten wir E-Mail-Adresse, die Art der Erklärung und freiwillige Angaben zur Zuordnung und zum gewünschten Vertragsende. Rechtsgrundlagen sind Art. 6 Abs. 1 Buchst. b und c DSGVO. Die Speicherung dient der Bearbeitung und dem Nachweis des Eingangs; die Fristen für Vertragsunterlagen in Abschnitt 10 gelten entsprechend. Zur Missbrauchsabwehr wird ein aus der IP-Adresse abgeleiteter Zähler für höchstens eine Stunde im Arbeitsspeicher gehalten (Art. 6 Abs. 1 Buchst. f DSGVO).
 
 
 ## Reichweitenmessung

@@ -1,13 +1,13 @@
-# Wissen inbound email contract (Slice 2)
+# BookHost inbound email contract (Slice 2)
 
-POST `https://wissen.app.mintapis.com/api/intake/inbound` with `Content-Type: application/json`.
-The receiver must durably spool mail until Wissen returns 202. This endpoint is available independently of the UI rollout flag for adapter acceptance tests. It never publishes a page.
+POST `https://bookhost.co/api/intake/inbound` with `Content-Type: application/json`.
+The receiver must durably spool mail until BookHost returns 202. This endpoint is available independently of the UI rollout flag for adapter acceptance tests. It never publishes a page.
 
 ## Authentication
 
 `X-Wissen-Signature: t=<unix-seconds>,v1=<lowercase-hex>`
 
-Compute HMAC-SHA256 with the UTF-8 value of `INBOUND_WEBHOOK_SECRET` as key and the bytes of `t + "." + rawBody` as input. Sign the exact UTF-8 JSON bytes sent, without reserialization. Requests more than 300 seconds in the past or future fail. Send exactly one timestamp and signature. Refresh the timestamp/signature on retries, preserving `message_id` and payload. The operator generates a 32-byte random hex secret in the external, mode-0600 `work/.inbound.env`; never put it in this public repository. Install the same secret in Wissen and the trusted receiver over the existing private operator channel.
+Compute HMAC-SHA256 with the UTF-8 value of `INBOUND_WEBHOOK_SECRET` as key and the bytes of `t + "." + rawBody` as input. Sign the exact UTF-8 JSON bytes sent, without reserialization. Requests more than 300 seconds in the past or future fail. Send exactly one timestamp and signature. Refresh the timestamp/signature on retries, preserving `message_id` and payload. The operator generates a 32-byte random hex secret in the external, mode-0600 `work/.inbound.env`; never put it in this public repository. Install the same secret in BookHost and the trusted receiver over the existing private operator channel.
 
 The shared secret authenticates the receiver, **not an email author**. Before signing, MailMint must validate the claimed From identity using its SMTP authentication/SPF/DKIM/DMARC policy and reject spoofed or unverifiable author identities. A forged From matching the allowlist must never reach this webhook as authenticated mail. Header `Authentication-Results` supplied by a sender is not trusted. Forwarding exceptions require an explicit receiver policy; HMAC alone is not that policy. No login automation or remote attachment URL fetching is involved.
 
@@ -16,7 +16,7 @@ The shared secret authenticates the receiver, **not an email author**. Before si
 ```json
 {
   "message_id": "stable-receiver-delivery-id",
-  "to": ["example@intake.wissen.app.mintapis.com"],
+  "to": ["example@intake.bookhost.co"],
   "from": {"address": "author@example.org", "name": "Author"},
   "subject": "Our review checklist",
   "text": "Plain-text body",
@@ -33,7 +33,7 @@ The shared secret authenticates the receiver, **not an email author**. Before si
 
 `from.address` must be an ASCII RFC 5322 addr-spec using an unquoted dot-atom local part (at most 64 characters; no leading/trailing or consecutive dots). Quoted local parts and SMTPUTF8 local parts are unsupported and return 400. Convert IDN domains to ASCII Punycode before sending; keep display names in `from.name` (UTF-8 is accepted there).
 
-`from.name` and `html` are optional; all other fields are required. `message_id` is a nonempty string, at most 998 characters. Use a durable, receiver-generated ID, rather than trusting sender-supplied Message-ID uniqueness. It is globally unique within this integration. For mail to multiple Wissen workspaces send a separate request per recipient and derive a distinct stable message_id for each. Exactly one recipient per request prevents accidental cross-team disclosure. Addresses/domains are case normalized; only the exact intake domain and slug are routed.
+`from.name` and `html` are optional; all other fields are required. `message_id` is a nonempty string, at most 998 characters. Use a durable, receiver-generated ID, rather than trusting sender-supplied Message-ID uniqueness. It is globally unique within this integration. For mail to multiple BookHost workspaces send a separate request per recipient and derive a distinct stable message_id for each. Exactly one recipient per request prevents accidental cross-team disclosure. Addresses/domains are case normalized; only the exact intake domain and slug are routed.
 
 Send a numeric `Content-Length` matching the raw byte count; missing length is rejected. A bounded stream reader cancels bodies exceeding the limit even if the declared length is false. Unauthenticated traffic is limited globally and per IP to 30 requests/minute before reading the body.
 

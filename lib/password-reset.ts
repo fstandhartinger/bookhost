@@ -22,7 +22,7 @@ export async function sendPasswordReset(email: string) {
   await transport.sendMail({
     from: process.env.SMTP_FROM,
     to: email,
-    subject: "Reset your Wissen password",
+    subject: "Reset your BookHost password",
     text: `Reset your password: ${baseUrl()}/login/reset?token=${token}\nThis link expires in 30 minutes and can only be used once. If you did not request it, ignore this email.`,
   });
 }

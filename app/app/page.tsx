@@ -254,8 +254,8 @@ export default async function Dashboard({
       )}
       {!user?.email_verified_at && (
         <p className="mt-4 text-sm text-slate-500">
-          Confirm your e-mail by signing in via link once e-mail sign-in is
-          available
+          Confirm your e-mail once by signing in with Google or an e-mailed
+          sign-in link
         </p>
       )}
       <p className="mt-4 text-sm text-slate-600">

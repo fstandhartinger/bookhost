@@ -3,7 +3,7 @@ import Image from "next/image";
 import { ActionButton } from "@/components/action-button";
 import { Pricing } from "@/components/pricing";
 import { faqs, benefits, steps } from "@/lib/landing-copy";
-import { TENANT_DOMAIN } from "@/lib/config";
+import { DEMO_URL } from "@/lib/config";
 import Link from "next/link";
 export default function Home() {
   return (
@@ -30,10 +30,7 @@ export default function Home() {
           <div className="mt-8 flex flex-wrap gap-3">
             <ActionButton>Start my 14-day free trial</ActionButton>
             <div>
-              <a
-                href={`https://demo.${TENANT_DOMAIN}`}
-                className="button-secondary"
-              >
+              <a href={DEMO_URL} className="button-secondary">
                 Open live demo <span aria-hidden="true">↗</span>
               </a>
               <p className="mt-2 text-center text-xs text-slate-600">

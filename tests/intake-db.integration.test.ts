@@ -21,7 +21,7 @@ it.skipIf(process.env.INTAKE_DB_TEST !== "1")(
       ).rows[0].id;
       tenant = (
         await db.query(
-          "INSERT INTO tenants(team_id,slug,status,desired_state) VALUES($1,$2,'failed','suspended') RETURNING id",
+          "INSERT INTO tenants(team_id,slug,host,status,desired_state) VALUES($1,$2,$2||'.wissen.app.mintapis.com','failed','suspended') RETURNING id",
           [team, `sql-${crypto.randomUUID()}`],
         )
       ).rows[0].id;

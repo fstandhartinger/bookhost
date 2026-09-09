@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { TENANT_DOMAIN } from "@/lib/config";
+import { DEMO_URL } from "@/lib/config";
 
 export default function BlogCta() {
   return (
@@ -21,7 +21,7 @@ export default function BlogCta() {
         </Link>
         <a
           className="text-sm font-semibold text-moss underline"
-          href={`https://demo.${TENANT_DOMAIN}`}
+          href={DEMO_URL}
         >
           Explore the public demo ↗
         </a>

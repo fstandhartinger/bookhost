@@ -1,9 +1,14 @@
 "use client";
 import React, { useState } from "react";
-import { TENANT_DOMAIN } from "@/lib/config";
 import { useRouter } from "next/navigation";
 import { validateSlug } from "@/lib/slug";
-export function TenantForm({ teamName }: { teamName: string }) {
+export function TenantForm({
+  teamName,
+  domain,
+}: {
+  teamName: string;
+  domain: string;
+}) {
   const [slug, setSlug] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -68,7 +73,7 @@ export function TenantForm({ teamName }: { teamName: string }) {
       />
       <p id="slug-help" className="mt-2 break-all text-sm text-slate-500">
         https://<strong className="text-moss">{slug || "your-team"}</strong>.
-        {TENANT_DOMAIN}
+        {domain}
       </p>
       <p className="mt-2 text-xs text-slate-500">
         3–30 lowercase letters, numbers or hyphens. Your address cannot be

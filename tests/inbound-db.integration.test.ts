@@ -46,7 +46,7 @@ it.skipIf(process.env.INTAKE_DB_TEST !== "1")(
       const slug = `email-${crypto.randomUUID()}`;
       tenant = (
         await db.query(
-          "INSERT INTO tenants(team_id,slug,status,desired_state) VALUES($1,$2,'running','running') RETURNING id",
+          "INSERT INTO tenants(team_id,slug,host,status,desired_state) VALUES($1,$2,$2||'.wissen.app.mintapis.com','running','running') RETURNING id",
           [team, slug],
         )
       ).rows[0].id;

@@ -44,6 +44,7 @@ beforeEach(() => {
     name: null,
     id: team,
     slug: "test-team",
+    host: "test-team.wissen.app.mintapis.com",
     status: "running",
     desired_state: "running",
   };
@@ -177,7 +178,7 @@ it("API failure does not undo joining, stores a safe error, and shows retry", as
     React.createElement(MemberBookStackLogin, {
       teamId: team,
       email: "teammate@example.com",
-      slug: "test-team",
+      host: "test-team.wissen.app.mintapis.com",
       login: {
         bookstack_user_id: null,
         bookstack_role: "Editor",
@@ -267,6 +268,7 @@ it("renders creation for a missing login and reveal only while a password is sto
     teamId: team,
     email: "teammate@example.com",
     slug: "test-team",
+    host: "test-team.wissen.app.mintapis.com",
   };
   expect(
     renderToStaticMarkup(React.createElement(MemberBookStackLogin, props)),

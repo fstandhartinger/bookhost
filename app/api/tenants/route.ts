@@ -1,3 +1,4 @@
+import { NEW_TENANT_DOMAIN } from "@/lib/config";
 import { auth } from "@/auth";
 import { transaction } from "@/lib/db";
 import { validateSlug } from "@/lib/slug";
@@ -52,8 +53,8 @@ export async function POST(request: Request) {
           team.id,
         ]);
       await client.query(
-        "INSERT INTO tenants(team_id,slug,status,admin_email) VALUES($1,$2,'pending',$3)",
-        [team.id, slug, userEmail],
+        "INSERT INTO tenants(team_id,slug,status,admin_email,host) VALUES($1,$2,'pending',$3,$4)",
+        [team.id, slug, userEmail, `${slug}.${NEW_TENANT_DOMAIN}`],
       );
       return { ok: true };
     });

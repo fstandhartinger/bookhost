@@ -56,7 +56,7 @@ it.skipIf(process.env.NOTIFICATIONS_DB_TEST !== "1")(
         )
       ).rows[0].id;
       await client.query(
-        "INSERT INTO tenants(team_id,slug,status,desired_state) VALUES($1,'fixture','running','running')",
+        "INSERT INTO tenants(team_id,slug,host,status,desired_state) VALUES($1,'fixture','fixture.wissen.app.mintapis.com','running','running')",
         [team],
       );
       const now = new Date();

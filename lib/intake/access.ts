@@ -15,7 +15,7 @@ export async function workspace(userId: string, tenantId: string) {
   if (!uuid(tenantId)) throw new IntakeError("Workspace not found.", 404);
   const row = (
     await db.query(
-      `SELECT t.id,t.team_id,t.slug,t.status,t.desired_state,m.role,(SELECT CASE WHEN status='trialing' AND (trial_end IS NULL OR trial_end<=now()) THEN 'expired' ELSE status END FROM effective_subscriptions WHERE team_id=t.team_id) AS subscription_status FROM tenants t JOIN memberships m ON m.team_id=t.team_id WHERE t.id=$1 AND m.user_id=$2`,
+      `SELECT t.id,t.team_id,t.slug,t.host,t.status,t.desired_state,m.role,(SELECT CASE WHEN status='trialing' AND (trial_end IS NULL OR trial_end<=now()) THEN 'expired' ELSE status END FROM effective_subscriptions WHERE team_id=t.team_id) AS subscription_status FROM tenants t JOIN memberships m ON m.team_id=t.team_id WHERE t.id=$1 AND m.user_id=$2`,
       [tenantId, userId],
     )
   ).rows[0];
@@ -32,7 +32,7 @@ export async function itemForUser(userId: string, id: string) {
   if (!uuid(id)) throw new IntakeError("Document not found.", 404);
   const row = (
     await db.query(
-      `SELECT i.*,m.role,t.slug,t.status AS tenant_status,t.desired_state,(SELECT CASE WHEN status='trialing' AND (trial_end IS NULL OR trial_end<=now()) THEN 'expired' ELSE status END FROM effective_subscriptions WHERE team_id=t.team_id) AS subscription_status FROM intake_items i JOIN tenants t ON t.id=i.tenant_id AND t.team_id=i.team_id JOIN memberships m ON m.team_id=i.team_id WHERE i.id=$1 AND m.user_id=$2`,
+      `SELECT i.*,m.role,t.slug,t.host,t.status AS tenant_status,t.desired_state,(SELECT CASE WHEN status='trialing' AND (trial_end IS NULL OR trial_end<=now()) THEN 'expired' ELSE status END FROM effective_subscriptions WHERE team_id=t.team_id) AS subscription_status FROM intake_items i JOIN tenants t ON t.id=i.tenant_id AND t.team_id=i.team_id JOIN memberships m ON m.team_id=i.team_id WHERE i.id=$1 AND m.user_id=$2`,
       [id, userId],
     )
   ).rows[0];
@@ -46,7 +46,7 @@ export async function itemForUser(userId: string, id: string) {
   return row;
 }
 export async function clientFor(
-  tenant: { id: string; slug: string },
+  tenant: { id: string; slug: string; host: string },
   database: Pick<typeof db, "query"> = db,
 ) {
   const secret = (
@@ -61,7 +61,7 @@ export async function clientFor(
       503,
     );
   return new BookStack(
-    tenant.slug,
+    tenant.host,
     secret.api_id,
     decrypt(secret.api_secret_enc, tenant.slug),
   );

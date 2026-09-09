@@ -38,3 +38,10 @@ class TenantHostTests(unittest.TestCase):
                 tenant.provision(path, 'admin@example.org')
             self.assertEqual(tenant.env_read(path / '.env')['APP_URL'], 'https://host-test.wiki.example.org')
             self.assertIn('Host(`host-test.wiki.example.org`)', (path / 'docker-compose.yml').read_text())
+
+    def test_api_token_check_uses_persisted_url_after_domain_change(self):
+        import bookstack_api_token as token
+        with patch.object(token, 'env_read', return_value={'APP_URL': 'https://custom.bookhost.co'}), patch.object(token.urllib.request, 'urlopen') as request:
+            request.return_value.__enter__.return_value.status = 200
+            self.assertTrue(token.api_valid('host-test', 'test-id', 'test-secret'))
+            self.assertEqual(request.call_args.args[0].full_url, 'https://custom.bookhost.co/api/books?count=1')

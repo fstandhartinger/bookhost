@@ -30,7 +30,9 @@ docker run --rm -p 127.0.0.1:3999:3000 --env-file /secure/path/runtime.env bookh
 | `LEGACY_HOSTS` | Comma-separated legacy control-plane hostnames, default `wissen.app.mintapis.com`. |
 | `REDIRECT_LEGACY_HOSTS` | Set `true` to 301 redirect legacy control-plane page requests; API routes, `/healthz`, and tenant subdomains remain available. |
 | `DEFENSIVE_HOSTS` | Comma-separated defensive domains that always 301 redirect page requests to `PUBLIC_BASE_URL`; defaults to BookHost `.cloud`, `.online`, and `.site` domains. |
-| `TENANT_DOMAIN` | Tenant hostname suffix, default `wissen.app.mintapis.com` until the tenant DNS cutover. |
+| `NEW_TENANT_DOMAIN` | New workspace address and initial stored host, default `bookhost.co`. |
+| `TENANT_DOMAINS` | Tenant suffixes exempt from marketing redirects, default `wissen.app.mintapis.com,bookhost.co`; apex and `www` are not tenants. |
+| `DEMO_URL` | Demo link, default `https://demo.wissen.app.mintapis.com`. |
 | `TRUST_PROXY` | Defaults to `true` in Docker behind Traefik; otherwise unset/false. Trusts only the last X-Forwarded-For entry. Proxy must overwrite/append the actual peer IP and container ports must not be publicly reachable. Without it, use socket address or proxy-overwritten x-real-ip; missing/invalid IP returns 400 on limited endpoints. |
 | `AUTH_TRUST_HOST` | Set `true` behind the trusted reverse proxy. The proxy must overwrite forwarded host/protocol/IP headers. |
 | `STRIPE_SECRET_KEY` | Server-side Stripe secret API key. Never exposed to the browser. |
@@ -438,3 +440,16 @@ Apply migration 019 before deploying this code. The opt-in regression can be run
 DB/TLS environment. It creates and deletes uniquely named fictional fixtures; it is a
 write test, not a read-only check. It exercises repeatable migration, concurrent detection,
 analytics opt-out, member removal and intake/event retention.
+
+### Per-tenant host rollout
+
+Migration 021 backfills all existing tenants to `<slug>.wissen.app.mintapis.com`
+and requires a unique `host`. URLs use this stored host; intake email remains
+under `intake.wissen.app.mintapis.com`. Deploy the control plane first (entrypoint
+runs migrations), then update the provisioner checkout and set its `limits.env`
+`TENANT_DOMAIN=bookhost.co`, matching `NEW_TENANT_DOMAIN`. Drain pending provisions
+before this coordinated change so the old worker cannot create old-domain tenants
+after the new control plane accepts new workspaces. No existing workspace is moved.
+The worker records the actual APP_URL host after provision/resume, so resuming an
+old workspace preserves its URL. The demo stays on its existing Wissen address.
+Update the watchdog checkout to check stored hosts (legacy fallback supported).

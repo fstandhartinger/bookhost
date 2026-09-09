@@ -1,16 +1,20 @@
 import { IntakeError } from "./access";
-import { TENANT_DOMAIN } from "../config";
 export type Destination = { id: number; name: string; book_id?: number };
 export class BookStack {
   readonly base: string;
   constructor(
-    slug: string,
+    host: string,
     private id: string,
     private secret: string,
   ) {
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug))
+    if (
+      host.length > 253 ||
+      !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(
+        host,
+      )
+    )
       throw new Error("Invalid workspace.");
-    this.base = `https://${slug}.${TENANT_DOMAIN}`;
+    this.base = `https://${host}`;
   }
   async request<T>(path: string, body?: unknown): Promise<T> {
     const response = await fetch(`${this.base}/api/${path}`, {

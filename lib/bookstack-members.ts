@@ -12,7 +12,7 @@ export async function ensureBookStackLogin(teamId: string, userId: string) {
     // Serialize creation, retries, and membership removal across server processes.
     const member = (
       await c.query(
-        `SELECT m.role,u.email,u.name,t.id,t.slug,t.status,t.desired_state,tm.owner_user_id
+        `SELECT m.role,u.email,u.name,t.id,t.slug,t.host,t.status,t.desired_state,tm.owner_user_id
        FROM memberships m JOIN users u ON u.id=m.user_id
        JOIN teams tm ON tm.id=m.team_id LEFT JOIN tenants t ON t.team_id=m.team_id
        WHERE m.team_id=$1 AND m.user_id=$2 FOR UPDATE OF m`,

@@ -3,7 +3,9 @@ export const PRODUCT_NAME = process.env.PRODUCT_NAME || "BookHost";
 export const PUBLIC_BASE_URL = (
   process.env.NEXT_PUBLIC_APP_URL || "https://bookhost.co"
 ).replace(/\/$/, "");
-export const LEGACY_HOSTS = (process.env.LEGACY_HOSTS || "wissen.app.mintapis.com")
+export const LEGACY_HOSTS = (
+  process.env.LEGACY_HOSTS || "wissen.app.mintapis.com"
+)
   .split(",")
   .map((host) => host.trim().toLowerCase())
   .filter(Boolean);
@@ -14,7 +16,17 @@ export const DEFENSIVE_HOSTS = (
   .split(",")
   .map((host) => host.trim().toLowerCase())
   .filter(Boolean);
-export const TENANT_DOMAIN = process.env.TENANT_DOMAIN || "wissen.app.mintapis.com";
+export const NEW_TENANT_DOMAIN = process.env.NEW_TENANT_DOMAIN || "bookhost.co";
+export const TENANT_DOMAINS = (
+  process.env.TENANT_DOMAINS || "wissen.app.mintapis.com,bookhost.co"
+)
+  .split(",")
+  .map((host) => host.trim().toLowerCase())
+  .filter(Boolean);
+export const DEMO_URL =
+  process.env.DEMO_URL || "https://demo.wissen.app.mintapis.com";
+// Inbound email routing is independent of workspace web hosts.
+export const INTAKE_TENANT_DOMAIN = "wissen.app.mintapis.com";
 export function baseUrl() {
   return (
     process.env.AUTH_URL ||

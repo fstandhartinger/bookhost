@@ -3,7 +3,7 @@ import {
   DEFENSIVE_HOSTS,
   LEGACY_HOSTS,
   PUBLIC_BASE_URL,
-  TENANT_DOMAIN,
+  TENANT_DOMAINS,
 } from "./lib/config";
 
 export function middleware(request: NextRequest) {
@@ -13,16 +13,25 @@ export function middleware(request: NextRequest) {
   }
 
   const host = (request.headers.get("host") || "").split(":")[0].toLowerCase();
-  const tenantSuffix = `.${TENANT_DOMAIN.toLowerCase()}`;
-  if (host.endsWith(tenantSuffix)) {
+  if (
+    TENANT_DOMAINS.some(
+      (domain) => host.endsWith(`.${domain}`) && host !== `www.${domain}`,
+    )
+  ) {
     return NextResponse.next();
   }
 
-  if (DEFENSIVE_HOSTS.includes(host)) {
+  if (
+    host === `www.${new URL(PUBLIC_BASE_URL).hostname}` ||
+    DEFENSIVE_HOSTS.includes(host)
+  ) {
     return NextResponse.redirect(`${PUBLIC_BASE_URL}${pathname}${search}`, 301);
   }
 
-  if (process.env.REDIRECT_LEGACY_HOSTS !== "true" || !LEGACY_HOSTS.includes(host)) {
+  if (
+    process.env.REDIRECT_LEGACY_HOSTS !== "true" ||
+    !LEGACY_HOSTS.includes(host)
+  ) {
     return NextResponse.next();
   }
 

@@ -89,7 +89,7 @@ it.skipIf(process.env.INTAKE_DB_TEST !== "1")(
       ).toBe(true);
       const tenant = (
         await db.query(
-          "INSERT INTO tenants(team_id,slug,status) VALUES($1,$2,'running') RETURNING id",
+          "INSERT INTO tenants(team_id,slug,host,status) VALUES($1,$2,$2||'.wissen.app.mintapis.com','running') RETURNING id",
           [team, `c8-${randomUUID().slice(0, 8)}`],
         )
       ).rows[0].id;

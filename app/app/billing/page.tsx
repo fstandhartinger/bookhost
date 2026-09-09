@@ -7,6 +7,14 @@ import { db } from "@/lib/db";
 export default async function BillingPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login?callbackUrl=%2Fapp%2Fbilling");
+  if (
+    !(
+      await db.query("SELECT 1 FROM teams WHERE owner_user_id=$1", [
+        session.user.id,
+      ])
+    ).rowCount
+  )
+    redirect("/app");
   const subscription = (
     await db.query(
       `SELECT s.*,n.desired_state,n.status AS tenant_status FROM teams t

@@ -305,3 +305,28 @@ worker heartbeat, and stuck intake drafts every ten minutes. Telegram alerts are
 sent only after two consecutive failed checks and once on recovery. Run
 `ops/watchdog/run.sh --dry-run --simulate` to verify checks and safely preview
 transitions without sending. Install using `python3 ops/watchdog/install-cron.py`.
+
+### Team invitation links
+
+Migration `017_team_invites.sql` adds seven-day bearer invitations (32 random
+bytes; SHA-256 hashes only in the database), one or ten uses, revocation and
+membership timestamps. Owners/admins manage invitations and remove other
+non-owner members under **Team** on `/app`; only owners change existing roles.
+Copy each generated link immediately: its token cannot be retrieved later.
+The Team plan allows 25 memberships, including the owner. Joining and team
+management serialize on the team row to enforce capacity and usage atomically.
+Members access workspace status and intake; billing remains owner-only.
+Dashboard membership does not provision a separate BookStack account.
+
+`/join/<token>` supports a new password account, an existing correct password,
+or the currently signed-in account. Password accounts remain unverified. Join
+attempts are limited to ten per IP per 15 minutes, with the same trusted-proxy
+configuration as password login. Links are excluded from indexing and analytics.
+
+Local acceptance: load the external app and database TLS environments, set
+`DATABASE_URL="$DATABASE_URL_LOCAL"`, `AUTH_URL=http://127.0.0.1:3986` and
+`AUTH_TRUST_HOST=true`, run migrations/build, then start the production server
+bound to `127.0.0.1:3986`. Run `node scripts/invite-links-check.mjs` with the same
+environment. It reapplies 017 twice, creates synthetic SQL accounts and signed
+sessions, verifies HTTP joins/roles/revocation/expiry/capacity, and removes its
+test data in `finally`. It sends no email and makes no Stripe purchases.

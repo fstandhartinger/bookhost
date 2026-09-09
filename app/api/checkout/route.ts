@@ -44,6 +44,19 @@ export async function POST(request: Request) {
         ).rows[0]
       : null;
     if (
+      !team &&
+      session?.user?.id &&
+      (
+        await db.query("SELECT 1 FROM memberships WHERE user_id=$1 LIMIT 1", [
+          session.user.id,
+        ])
+      ).rowCount
+    )
+      return Response.json(
+        { error: "Only the team owner can manage billing." },
+        { status: 403 },
+      );
+    if (
       team &&
       (
         await db.query(

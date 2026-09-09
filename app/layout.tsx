@@ -67,7 +67,7 @@ export default function RootLayout({
                 aria-hidden="true"
                 className="grid h-8 w-8 place-items-center rounded-lg bg-ink text-base text-white"
               >
-                w
+                b
               </span>
               bookhost<span className="text-moss">.</span>
             </Link>

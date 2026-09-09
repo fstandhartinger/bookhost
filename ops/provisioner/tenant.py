@@ -246,6 +246,11 @@ def fingerprint(path):
             result[name]={'max_updated_at':values[0] if values else ''}
     return result
 
+def uploads_match(archived, live):
+    """Compare upload hash lists by path, independent of listing order."""
+    key=lambda items: sorted((i['path'],i['bytes'],i['sha256']) for i in (items or []))
+    return key(archived)==key(live)
+
 def archive_upload_hashes(archive):
     """Hash upload files directly from the generated gzip tar stream."""
     files=[]
@@ -328,7 +333,7 @@ def backup(path, hot=False, keep=False):
             after=fingerprint(path) if hot else None
             archive_hashes=archive_upload_hashes(stage/'bookstack.tar.gz') if hot else None
             live_hashes=after['content']['uploads'] if hot else None
-            if hot and (after != before or archive_hashes != live_hashes):
+            if hot and (after != before or not uploads_match(archive_hashes, live_hashes)):
                 if attempt == 0:
                     continue
                 raise RuntimeError('hot-inconsistent')

@@ -1,15 +1,12 @@
-"use client";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-export function RefreshStatus() {
-  const router = useRouter();
-  useEffect(() => {
-    const timer = setInterval(() => router.refresh(), 15000);
-    return () => clearInterval(timer);
-  }, [router]);
+import { OnboardingRefresh } from "./onboarding-refresh";
+export function RefreshStatus({ status }: { status: string }) {
   return (
-    <p className="mt-3 text-xs text-slate-500" role="status">
-      Status updates automatically every 15 seconds.
-    </p>
+    <>
+      <OnboardingRefresh progress={status} />
+      <p className="mt-3 text-xs text-slate-500" role="status">
+        Status updates automatically while this tab is visible, every minute (up
+        to five minutes if unchanged).
+      </p>
+    </>
   );
 }

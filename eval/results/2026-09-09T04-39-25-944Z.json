@@ -1,0 +1,470 @@
+{
+  "timestamp": "2026-09-09T04:39:25.944Z",
+  "label": "baseline",
+  "models": [
+    "google/gemma-4-31B-turbo-TEE",
+    "deepseek-ai/DeepSeek-V3.2-TEE"
+  ],
+  "pipelineHash": "3a547d27a90d11ecfc739acf838972d95d5397c00e4e03b8366cebd899a28ab6",
+  "rows": [
+    {
+      "document": "onboarding",
+      "model": "google/gemma-4-31B-turbo-TEE",
+      "score": 70,
+      "checks": {
+        "title": true,
+        "headings": true,
+        "requiredTerms": true,
+        "faithfulness": false,
+        "table": true,
+        "reviewerChecklist": true,
+        "language": true
+      },
+      "missingTerms": [],
+      "faithfulness": {
+        "unsupportedNumbers": [
+          "12",
+          "2026"
+        ],
+        "unsupportedNames": [
+          "August"
+        ],
+        "forbiddenFacts": [],
+        "passed": false
+      },
+      "headingCount": 6,
+      "reviewerItems": 5,
+      "draft": {
+        "title": "Onboarding Process: Lantern Desk",
+        "html": "<h2>Summary</h2><p>This page outlines the onboarding procedures for the Lantern desk at Mossquay, based on handover notes from August 12, 2026. It covers the preparation steps by the coordinator, the structure of the welcome shift, and the follow-up actions on the third day of employment.</p><h2>Before Arrival</h2><p>The coordinator is responsible for creating a welcome ticket five working days prior to the start date. This ticket must include:</p><ul><li>Preferred display name</li><li>Assigned team</li><li>Requested equipment</li></ul><p>Personal documents must not be attached to the welcome ticket. Regarding equipment, a stock check indicated 7 keyboards and 4 headsets, though current availability is not guaranteed. Missing items must remain visible in the ticket until a replacement is confirmed.</p><h3>Access and Identity</h3><ul><li><strong>Shared Workspace:</strong> Access requires approval from the team lead. The coordinator can request access but cannot approve it.</li><li><strong>Identity Check:</strong> This is a separate process. The result must be recorded as either \"complete\" or \"pending.\" Identity documents must not be copied into the workspace.</li></ul><h2>Welcome Shift</h2><p>The welcome session is scheduled for 09:30 and lasts 45 minutes. The session covers:</p><ul><li>Locating the handbook</li><li>Channels for operational questions</li><li>Reporting equipment issues</li></ul><p>The new starter must open the handbook using their own account to verify access; demonstrations using other accounts are not sufficient.</p><h2>Follow-up</h2><p>On the third day, the coordinator verifies if the starter can locate the rota and submit a practice ticket. Practice tickets must be marked as \"training\" to avoid entering the customer queue.</p><p>Outstanding permissions are assigned to the team lead for review.</p><h2>Things a reviewer should check</h2><ul><li>Who covers the welcome shift during staff leave?</li><li>Is there a separate equipment checklist for remote starters?</li><li>Where should completed welcome tickets be archived?</li><li>Who is the backup approver for permissions if the team lead is unavailable?</li><li>What is the deadline for the identity check?</li></ul>",
+        "tags": [
+          "Onboarding",
+          "Lantern Desk",
+          "Mossquay",
+          "Internal Process",
+          "Equipment"
+        ]
+      },
+      "latencyMs": 10371,
+      "tokens": 1132,
+      "status": 200,
+      "sourceHash": "bbe9067b0db16a551df1c6959e1e13c903d5f9274f8bd35d63a8012ea3f0ee41",
+      "originalAssessment": {
+        "score": 70,
+        "faithfulness": {
+          "unsupportedNumbers": [
+            "12",
+            "2026"
+          ],
+          "unsupportedNames": [
+            "August",
+            "Assigned",
+            "Requested",
+            "Workspace",
+            "Channels",
+            "Reporting"
+          ],
+          "forbiddenFacts": [],
+          "passed": false
+        }
+      }
+    },
+    {
+      "document": "onboarding",
+      "model": "deepseek-ai/DeepSeek-V3.2-TEE",
+      "score": 100,
+      "checks": {
+        "title": true,
+        "headings": true,
+        "requiredTerms": true,
+        "faithfulness": true,
+        "table": true,
+        "reviewerChecklist": true,
+        "language": true
+      },
+      "missingTerms": [],
+      "faithfulness": {
+        "unsupportedNumbers": [],
+        "unsupportedNames": [],
+        "forbiddenFacts": [],
+        "passed": true
+      },
+      "headingCount": 6,
+      "reviewerItems": 5,
+      "draft": {
+        "title": "Onboarding notes for the Lantern desk",
+        "html": "<h2>Summary</h2><p>These notes describe the onboarding arrangement for the fictional Lantern desk at the fictional company Mossquay. They were written on 2026-08-12 as a handover between the coordinator and a colleague covering the welcome shift. They are working notes, not a promise that access will be ready when someone arrives.</p><h2>Before arrival</h2><p>The coordinator creates a welcome ticket 5 working days before the start date. The ticket contains the preferred display name, the team, and the requested equipment. Personal documents must not be attached to this ticket.</p><p>The equipment cupboard currently contains 7 keyboards and 4 headsets. Those numbers describe the last stock check and do not guarantee availability for the next arrival. A missing item should stay visible in the ticket until the coordinator has confirmed a replacement.</p><p>Access to the shared workspace needs approval from the team lead. The coordinator may request access but cannot approve their own request. The identity check happens separately, and its result should be recorded as complete or pending without copying identity documents into the workspace. There is no confirmed deadline for that check in these notes.</p><h2>Welcome shift</h2><p>The welcome session starts at 09:30 and lasts 45 minutes. The colleague explains how to find the handbook, where to ask operational questions, and how to report equipment problems. The new starter then opens the handbook using their own account. A successful demonstration on somebody else's account does not count as access verification.</p><h2>Follow-up</h2><p>On day 3, the coordinator asks whether the starter can find the rota and submit a practice ticket. The practice ticket must be marked as training so that it does not enter the customer queue. Outstanding permissions remain assigned to the team lead for review; the notes do not name a backup approver.</p><h2>Unsettled questions</h2><p>The team still needs to decide:</p><ul><li>Who covers the welcome shift during leave.</li><li>Whether remote starters receive a separate equipment checklist.</li><li>Where completed welcome tickets should be archived.</li></ul><p>None of those questions was settled in the handover.</p><h2>Things a reviewer should check</h2><ul><li>Confirm the unsettled questions (welcome shift coverage, remote starter equipment checklist, archive location for welcome tickets) before turning these notes into a permanent onboarding page.</li><li>Verify the accuracy of the equipment cupboard stock numbers (7 keyboards, 4 headsets), as they are from a last stock check and not guaranteed.</li><li>Confirm there is no deadline specified for the identity check.</li><li>Verify that the notes do not name a backup approver for permissions beyond the team lead.</li><li>Ensure the distinction that these are working notes, not a promise, is clearly communicated by the coordinator.</li></ul>",
+        "tags": [
+          "onboarding",
+          "handover",
+          "welcome",
+          "process",
+          "notes",
+          "Lantern"
+        ]
+      },
+      "latencyMs": 40713,
+      "tokens": 1258,
+      "status": 200,
+      "sourceHash": "bbe9067b0db16a551df1c6959e1e13c903d5f9274f8bd35d63a8012ea3f0ee41",
+      "originalAssessment": {
+        "score": 100,
+        "faithfulness": {
+          "unsupportedNumbers": [],
+          "unsupportedNames": [],
+          "forbiddenFacts": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "document": "meeting",
+      "model": "google/gemma-4-31B-turbo-TEE",
+      "score": 0,
+      "error": "draft generation failed",
+      "latencyMs": 12586,
+      "tokens": 1109,
+      "status": 200,
+      "sourceHash": "b97d0fb0bfa55bf7cc283ad442233b8804e41b86df7acc157f12f8eb8eaad846"
+    },
+    {
+      "document": "meeting",
+      "model": "deepseek-ai/DeepSeek-V3.2-TEE",
+      "score": 100,
+      "checks": {
+        "title": true,
+        "headings": true,
+        "requiredTerms": true,
+        "faithfulness": true,
+        "table": true,
+        "reviewerChecklist": true,
+        "language": true
+      },
+      "missingTerms": [],
+      "faithfulness": {
+        "unsupportedNumbers": [],
+        "unsupportedNames": [],
+        "forbiddenFacts": [],
+        "passed": true
+      },
+      "headingCount": 6,
+      "reviewerItems": 5,
+      "draft": {
+        "title": "Bracken Pilot Meeting Notes",
+        "html": "<h2>Summary</h2><p>The Bracken team held an internal pilot review meeting on 2026-08-18 to assess a small document pilot. The discussion focused on the pilot's current scope, review processes, and necessary evidence before any expansion. Decisions were made to keep the pilot limited, require human review before publication, and retain original source material. Several actions were assigned, and multiple questions were left unresolved.</p><h2>Pilot Boundary</h2><p>The team reviewed 24 sample documents from a training collection. Six of these documents contained incomplete ownership information. The sample was deliberately chosen to highlight gaps and is not representative for estimating error rates across the entire organization. No customer documents were included. Participants agreed the next round should remain within the training collection until ownership questions are resolved.</p><h2>Decisions</h2><p>Three decisions were made for the immediate pilot:</p><ul><li>Keep the pilot limited to the support handbook.</li><li>Require a human reviewer before any generated page is published.</li><li>Retain the original source material beside the proposed page so reviewers can compare wording and figures.</li></ul><p>These decisions apply only to the pilot and do not establish a company-wide policy.</p><p>The proposed expansion to the engineering handbook was postponed. A suggestion was made for a September target, but no date was approved. The proposal to publish drafts automatically was rejected due to ambiguous material still in the review queue. Rejected proposals must not appear as approved actions in the handbook.</p><h2>Actions</h2><ul><li>The facilitator will collect missing ownership information by 2026-08-25.</li><li>The support lead will review the wording of the approval checklist before the next pilot session (no deadline assigned).</li><li>The operations group will test if the source attachment remains accessible after publication and report the result in the pilot ticket.</li></ul><h2>Open Questions</h2><p>The meeting left several items unresolved:</p><ul><li>No permanent owner was assigned for the review queue.</li><li>The location of the pilot archive was left undecided.</li><li>Clarification was requested on how to record reviewer disagreements without overwriting earlier comments.</li><li>No budget, supplier contract, or external audit was approved.</li></ul><h2>Things a reviewer should check</h2><ul><li>Distinguish between the agreed pilot rules and the postponed expansion to the engineering handbook.</li><li>Verify the action deadline for collecting ownership information (2026-08-25) against the relevant ticket.</li><li>Confirm which open questions (review queue owner, archive location, disagreement recording process) still lack an assigned owner or resolution.</li><li>Ensure no rejected proposals (like automatic draft publishing) are presented as approved actions.</li><li>Check the status of the support lead's review of the approval checklist wording, as no deadline was set.</li></ul>",
+        "tags": [
+          "internal pilot",
+          "document review",
+          "process decisions",
+          "action items",
+          "meeting notes",
+          "Bracken team"
+        ]
+      },
+      "latencyMs": 58026,
+      "tokens": 1273,
+      "status": 200,
+      "sourceHash": "b97d0fb0bfa55bf7cc283ad442233b8804e41b86df7acc157f12f8eb8eaad846",
+      "originalAssessment": {
+        "score": 100,
+        "faithfulness": {
+          "unsupportedNumbers": [],
+          "unsupportedNames": [],
+          "forbiddenFacts": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "document": "process",
+      "model": "google/gemma-4-31B-turbo-TEE",
+      "score": 80,
+      "checks": {
+        "title": true,
+        "headings": false,
+        "requiredTerms": true,
+        "faithfulness": true,
+        "table": true,
+        "reviewerChecklist": true,
+        "language": false
+      },
+      "missingTerms": [],
+      "faithfulness": {
+        "unsupportedNumbers": [],
+        "unsupportedNames": [],
+        "forbiddenFacts": [],
+        "passed": true
+      },
+      "headingCount": 9,
+      "reviewerItems": 5,
+      "draft": {
+        "title": "Prozess zur Rückgabe von Leihgeräten (Gerätepool Kieselhafen)",
+        "html": "<h2>Summary</h2><p>Diese Dokumentation beschreibt den internen Ablauf zur Rücknahme von gemeinsam genutzten Geräten im Gerätepool Kieselhafen. Der Prozess umfasst die Vorbereitung des Eingangs, die technische Prüfung sowie die abschließende Dokumentation und Einlagerung.</p><h2>Eingang vorbereiten</h2><p>Die annehmende Person gleicht die Gerätekennung des Rückgabebelegs mit dem Aufkleber am Gerät ab. Dabei gilt:</p><ul><li>Die Kennung muss vollständig übernommen werden.</li><li>Fehlt der Aufkleber, bleibt die Zuordnung offen; Vermutungen sind nicht zulässig.</li><li>Vorhandene Ausgabebelege können zum Vergleich herangezogen werden.</li></ul><h2>Prüfung durchführen</h2><p>Die Prüfung erfolgt in drei Schritten:</p><h3>Schritt 1: Sichtprüfung</h3><p>Das Gerät wird ausgeschaltet und sichtbare Schäden werden dokumentiert. Fotos werden ausschließlich im internen Rückgabebeleg hinterlegt.</p><h3>Schritt 2: Zubehörprüfung</h3><p>Das Zubehör wird mit der Ausgabeliste abgeglichen. (Hinweis: Der Beispielsatz mit 2 Kabeln und 1 Netzteil gilt nur für diesen Satz und nicht für andere Gerätetypen).</p><h3>Schritt 3: Funktionsprüfung</h3><p>Die Prüfung erfolgt am vorgesehenen Prüfplatz und dauert im Normalfall 20 Minuten. Bei Fehlern ist die tatsächliche Dauer zu dokumentieren.</p><h3>Umgang mit beschädigten Geräten</h3><p>Geräte mit beschädigtem Gehäuse dürfen nicht erneut ausgegeben werden. Sie werden im gesperrten Bereich abgelegt und im Beleg als gesperrt markiert. Die Entscheidung über die weitere Verwendung obliegt ausschließlich der Werkstatt.</p><h2>Abschluss dokumentieren</h2><p>Nach der Prüfung folgen die finalen Schritte:</p><ul><li><strong>Schritt 4:</strong> Festhalten des Prüfergebnisses inklusive Datum im Rückgabebeleg.</li><li><strong>Schritt 5:</strong> Bei Erfolg wird der Status auf „verfügbar“ gesetzt und das Gerät im beschrifteten Fach eingelagert.</li></ul><p>Sollte Zubehör fehlen, bleibt der Beleg offen. Eine automatische Bestellung von Ersatzteilen ist im Prozess nicht vorgesehen.</p><h2>Things a reviewer should check</h2><ul><li>Aufbewahrungsfrist für Ausgabebelege (nicht definiert).</li><li>Regelung zur Ablage älterer Fotos (fehlend).</li><li>Zuständigkeit für die Bearbeitung gesperrter Rückgaben bei Abwesenheit der Hauptverantwortlichen (noch festzulegen).</li><li>Eventuelle Kostenpauschalen oder verbindliche Reparaturfristen (nicht genannt).</li><li>Prüfung der Schrittreihenfolge und der Behandlung von fehlendem Zubehör.</li></ul>",
+        "tags": [
+          "Gerätepool",
+          "Rückgabeprozess",
+          "Kieselhafen",
+          "Qualitätssicherung",
+          "Inventar"
+        ]
+      },
+      "latencyMs": 14423,
+      "tokens": 1457,
+      "status": 200,
+      "sourceHash": "b51e6e19fa112795bc87e4388afef474e3a029aa49f66d9e4643d2c18bdaf0d0",
+      "originalAssessment": {
+        "score": 80,
+        "faithfulness": {
+          "unsupportedNumbers": [],
+          "unsupportedNames": [],
+          "forbiddenFacts": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "document": "process",
+      "model": "deepseek-ai/DeepSeek-V3.2-TEE",
+      "score": 0,
+      "error": "draft generation failed",
+      "latencyMs": 90002,
+      "tokens": null,
+      "status": null,
+      "sourceHash": "b51e6e19fa112795bc87e4388afef474e3a029aa49f66d9e4643d2c18bdaf0d0"
+    },
+    {
+      "document": "customer-thread",
+      "model": "google/gemma-4-31B-turbo-TEE",
+      "score": 100,
+      "checks": {
+        "title": true,
+        "headings": true,
+        "requiredTerms": true,
+        "faithfulness": true,
+        "table": true,
+        "reviewerChecklist": true,
+        "language": true
+      },
+      "missingTerms": [],
+      "faithfulness": {
+        "unsupportedNumbers": [],
+        "unsupportedNames": [],
+        "forbiddenFacts": [],
+        "passed": true
+      },
+      "headingCount": 5,
+      "reviewerItems": 4,
+      "draft": {
+        "title": "Customer Enquiry: Fernwharf Workspace Migration",
+        "html": "<h2>Summary</h2>\n<p>This page documents a series of communications between the Fernwharf cooperative and Alderquill support regarding a potential migration of 18 handbook pages into a shared workspace for approximately 9 colleagues. The customer is currently in the inquiry phase and has not placed an order or approved a migration.</p>\n\n<h2>Customer Requirements and Questions</h2>\n<ul>\n  <li><strong>Data Integrity:</strong> The customer needs confirmation that existing page tables, specifically those containing responsibility assignments, will be preserved during migration.</li>\n  <li><strong>Review Process:</strong> The customer requires a mechanism for reviewers to compare uploaded documents with the suggested page before granting approval.</li>\n  <li><strong>Access Management:</strong> Access is needed for 9 colleagues, though publishing permissions have not yet been determined.</li>\n</ul>\n\n<h2>Current Status and Timeline</h2>\n<ul>\n  <li><strong>Migration Status:</strong> No migration has been approved or initiated.</li>\n  <li><strong>Preferred Window:</strong> The customer expressed a preference for a migration window starting 2026-09-07, but this is not a confirmed appointment.</li>\n  <li><strong>Action Items:</strong> The customer is preparing a redacted sample of their tables for Alderquill to inspect.</li>\n</ul>\n\n<h2>Support Response and Constraints</h2>\n<p>Alderquill support has acknowledged the need for a human approval step in the workflow. Support has explicitly stated that the following have not yet been confirmed:</p>\n<ul>\n  <li>Migration date</li>\n  <li>Pricing</li>\n  <li>Service availability targets</li>\n  <li>Contractual data location</li>\n</ul>\n\n<h2>Things a reviewer should check</h2>\n<ul>\n  <li>Whether the redacted table sample from the customer has been received.</li>\n  <li>Whether internal trial approval has been granted by the customer.</li>\n  <li>Whether the preferred window of 2026-09-07 has been converted into a confirmed schedule in later correspondence.</li>\n  <li>The final determination on whether page tables survive the migration process.</li>\n</ul>",
+        "tags": [
+          "Fernwharf",
+          "migration",
+          "customer-enquiry",
+          "workspace",
+          "Alderquill"
+        ]
+      },
+      "latencyMs": 13094,
+      "tokens": 1217,
+      "status": 200,
+      "sourceHash": "d2ee3cc20c7b66fd301b8628f3c96dd1ff97b82bf9a06b643d58126a00ee9975",
+      "originalAssessment": {
+        "score": 70,
+        "faithfulness": {
+          "unsupportedNumbers": [],
+          "unsupportedNames": [
+            "Integrity",
+            "Process",
+            "Management",
+            "Status",
+            "Window",
+            "Items",
+            "Pricing",
+            "Service",
+            "Contractual"
+          ],
+          "forbiddenFacts": [],
+          "passed": false
+        }
+      }
+    },
+    {
+      "document": "customer-thread",
+      "model": "deepseek-ai/DeepSeek-V3.2-TEE",
+      "score": 100,
+      "checks": {
+        "title": true,
+        "headings": true,
+        "requiredTerms": true,
+        "faithfulness": true,
+        "table": true,
+        "reviewerChecklist": true,
+        "language": true
+      },
+      "missingTerms": [],
+      "faithfulness": {
+        "unsupportedNumbers": [],
+        "unsupportedNames": [],
+        "forbiddenFacts": [],
+        "passed": true
+      },
+      "headingCount": 7,
+      "reviewerItems": 6,
+      "draft": {
+        "title": "Fernwharf Workspace Migration Enquiry",
+        "html": "<h2>Summary</h2><p>This page documents a customer enquiry thread regarding a potential migration of handbook pages to a shared workspace. The customer, Fernwharf cooperative, has expressed interest but has not placed an order. The thread clarifies customer requests, support responses, and outstanding items, distinguishing them from confirmed product behaviour or agreements.</p><h2>Customer Enquiry Details</h2><h3>Initial Request (2026-08-21)</h3><p>The customer currently maintains 18 handbook pages and is considering bringing them into a shared workspace. Nine colleagues may need access, with permissions for publishing undecided. Specific questions were raised:</p><ul><li>Confirmation on whether existing page tables will survive migration intact, as some contain responsibility assignments.</li><li>Whether a reviewer can compare an uploaded document with the suggested page before approval, as required by their internal process.</li></ul><p>The customer explicitly stated this was an enquiry about a possible trial, not a request for immediate migration or approval to transfer files.</p><h3>Support Reply (2026-08-22)</h3><p>The support desk acknowledged the review requirement and noted a human approval step is part of the proposed workflow. To confirm how tables will be handled, they requested a fictional or redacted example via an agreed intake channel, warning against sending passwords or confidential records in the thread.</p><p>The reply clarified that the following topics remain unconfirmed and require separate discussion:</p><ul><li>Migration date</li><li>Price</li><li>Service availability target</li><li>Contractual data location</li></ul><p>The support desk stated that the approval workflow statement should not be expanded into claims about undiscussed features.</p><h3>Customer Follow-up (2026-08-24)</h3><p>The customer agreed to prepare a redacted example. They indicated a preferred migration window starting 2026-09-07 but emphasized this was a preference, not an agreed appointment. They also noted the need to identify an internal approver for the trial and requested the enquiry remain open while arranging that approval.</p><h3>Internal Handover Notes</h3><p>An internal note specifies that the next response should address table preservation, explain the review comparison, and separate the preferred window from a confirmed schedule. The response ownership was unassigned at the time of the note.</p><h2>Things a reviewer should check</h2><ul><li>Whether the redacted sample table example from the customer has arrived via the intake channel.</li><li>Whether internal trial approval from the customer's identified approver exists.</li><li>Whether any later message changes the scheduling status, as no such message is included in the provided source.</li><li>The exact nature of the \"agreed intake channel\" for the sample.</li><li>The current status of the unassigned next response.</li><li>Whether the support desk has since provided confirmation on table preservation or the review comparison feature based on a sample.</li></ul>",
+        "tags": [
+          "customer enquiry",
+          "workspace migration",
+          "trial",
+          "approval workflow",
+          "data handling",
+          "support process"
+        ]
+      },
+      "latencyMs": 48337,
+      "tokens": 1346,
+      "status": 200,
+      "sourceHash": "d2ee3cc20c7b66fd301b8628f3c96dd1ff97b82bf9a06b643d58126a00ee9975",
+      "originalAssessment": {
+        "score": 70,
+        "faithfulness": {
+          "unsupportedNumbers": [],
+          "unsupportedNames": [
+            "Price",
+            "Service",
+            "Contractual"
+          ],
+          "forbiddenFacts": [],
+          "passed": false
+        }
+      }
+    },
+    {
+      "document": "runbook",
+      "model": "google/gemma-4-31B-turbo-TEE",
+      "score": 0,
+      "error": "draft generation failed",
+      "latencyMs": 29139,
+      "tokens": 1267,
+      "status": 200,
+      "sourceHash": "d2d5894e2d1b17313daf23eebceb864cdca82981fd9b6eaa014f0f43b1cf1514"
+    },
+    {
+      "document": "runbook",
+      "model": "deepseek-ai/DeepSeek-V3.2-TEE",
+      "score": 100,
+      "checks": {
+        "title": true,
+        "headings": true,
+        "requiredTerms": true,
+        "faithfulness": true,
+        "table": true,
+        "reviewerChecklist": true,
+        "language": true
+      },
+      "missingTerms": [],
+      "faithfulness": {
+        "unsupportedNumbers": [],
+        "unsupportedNames": [],
+        "forbiddenFacts": [],
+        "passed": true
+      },
+      "headingCount": 6,
+      "reviewerItems": 6,
+      "draft": {
+        "title": "Driftglass Queue Recovery Notes (Staging Exercise)",
+        "html": "<h2>Summary</h2><p>These notes describe recovery steps for a fictional staging service called Driftglass, recorded after a training exercise on 2026-08-26. They are not approved for production use. The procedure addresses a paused queue worker that imports handbook source files from a local staging inbox, emphasizing that a delayed queue alone does not prove failure and requires operator inspection.</p><h2>Recognise the Symptom</h2><p>The exercise began with 12 waiting jobs and 0 active jobs. The worker health endpoint returned 503 while the web interface remained reachable. The relevant log marker was QUEUE_PAUSED. These observations are from the exercise; the runbook must not claim that every delayed queue will show the same marker or status code. Compare the queue view and the worker log before continuing.</p><h2>Inspect Safely</h2><p>Open the staging dashboard and record the current queue counts in the incident note. Check whether a planned maintenance window explains the pause. The exercise used the command <code>queuectl status --scope staging</code> to inspect state. This command reads status and does not restart the worker. Do not substitute a production scope when following these training notes.</p><p>If the marker is absent, stop this procedure and ask the service owner to investigate. The notes do not include a general diagnosis for database failures, network failures, or damaged uploads. Repeatedly restarting an unknown fault could make the original evidence harder to interpret.</p><h2>Recover and Verify</h2><p>After the service owner confirms that maintenance has ended, run <code>queuectl resume --scope staging</code>. Wait 30 seconds, then check status again. In the exercise, the waiting count decreased to 8 and the active count became 4. Those figures are evidence from the exercise rather than pass criteria for a future incident. The actual check is whether jobs begin progressing without a new error marker.</p><h2>Escalation and Gaps</h2><p>If progress does not resume, preserve the incident note and ask the service owner for the next step. Do not delete queued jobs or source files. A rollback command, an on-call contact, and a maximum retry count are not documented.</p><h2>Things a reviewer should check</h2><ul><li>Confirm the <code>queuectl</code> command syntax against the actual staging tooling.</li><li>Identify the escalation contact for the service owner.</li><li>Decide how to link the approved production procedure once it exists.</li><li>Verify these notes remain explicitly labelled as a staging exercise until review is complete.</li><li>Ensure the notes do not claim the observed symptoms (e.g., 503 status, QUEUE_PAUSED marker) are universal for all delayed queues.</li><li>Note that procedures for database failures, network failures, or damaged uploads are missing.</li></ul>",
+        "tags": [
+          "staging",
+          "queue-recovery",
+          "training-exercise",
+          "driftglass",
+          "incident-response",
+          "unapproved"
+        ]
+      },
+      "latencyMs": 79705,
+      "tokens": 1332,
+      "status": 200,
+      "sourceHash": "d2d5894e2d1b17313daf23eebceb864cdca82981fd9b6eaa014f0f43b1cf1514",
+      "originalAssessment": {
+        "score": 100,
+        "faithfulness": {
+          "unsupportedNumbers": [],
+          "unsupportedNames": [],
+          "forbiddenFacts": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "document": "policy",
+      "model": "google/gemma-4-31B-turbo-TEE",
+      "score": 0,
+      "error": "draft generation failed",
+      "latencyMs": 17078,
+      "tokens": 1513,
+      "status": 200,
+      "sourceHash": "2c232e8749bc5825fec51b77200b5d0ad3658f95675c7461c2d1cc752ffe1a4d"
+    },
+    {
+      "document": "policy",
+      "model": "deepseek-ai/DeepSeek-V3.2-TEE",
+      "score": 60,
+      "checks": {
+        "title": true,
+        "headings": true,
+        "requiredTerms": true,
+        "faithfulness": false,
+        "table": true,
+        "reviewerChecklist": true,
+        "language": false
+      },
+      "missingTerms": [],
+      "faithfulness": {
+        "unsupportedNumbers": [
+          "27",
+          "2026"
+        ],
+        "unsupportedNames": [],
+        "forbiddenFacts": [],
+        "passed": false
+      },
+      "headingCount": 6,
+      "reviewerItems": 5,
+      "draft": {
+        "title": "Entwurf der Aufbewahrungsrichtlinie für Wolkensteg",
+        "html": "<h2>Summary</h2><p>Dieses Dokument ist ein fiktiver, unverbindlicher Entwurf einer internen Aufbewahrungsrichtlinie für das Team Wolkensteg, Stand 27. August 2026. Es schlägt Fristen und Prozesse für die Ablage von Schulungsunterlagen und Prüfnotizen vor, ist jedoch noch nicht freigegeben und stellt keine Rechtsberatung dar.</p><h2>Geltungsbereich</h2><p>Die Richtlinie betrifft ausschließlich im Team erzeugte Schulungsunterlagen und zugehörige Prüfnotizen. Nicht erfasst sind Personalakten, Rechnungen und Kundenverträge. Dateien mit mehreren Zwecken müssen vor der Ablage eindeutig zugeordnet werden; eine willkürliche Kennzeichnung als Schulungsunterlage ist nicht zulässig.</p><h2>Vorgeschlagene Fristen</h2><p>Die Frist beginnt jeweils nach Abschluss der zugehörigen Schulung. Es handelt sich nicht um eine automatische Löschung, sondern um eine Prüfpflicht am Fristende.</p><table><thead><tr><th>Kategorie</th><th>Frist</th><th>Zuständigkeit</th><th>Abschluss</th></tr></thead><tbody><tr><td>Schulungsentwurf</td><td>30 Tage</td><td>Redaktion</td><td>Löschung prüfen</td></tr><tr><td>Prüfnotiz</td><td>90 Tage</td><td>Qualitätsteam</td><td>Freigabe prüfen</td></tr><tr><td>Freigegebene Anleitung</td><td>365 Tage</td><td>Fachteam</td><td>Aktualität prüfen</td></tr></tbody></table><p>Bei begründetem Bedarf kann eine Verlängerung erfolgen, sobald eine verantwortliche Person diese bestätigt. Eine pauschale Verlängerungsdauer ist nicht vereinbart.</p><h2>Zugriff und Änderungen</h2><p>Der Zugriff soll auf das jeweilige Team beschränkt bleiben. Eine externe Freigabe ist nicht Teil des Entwurfs. Änderungen an einer Kategorie benötigen eine dokumentierte Entscheidung zur Nachvollziehbarkeit. Alte Prüfnotizen dürfen nicht stillschweigend durch neue ersetzt werden.</p><h2>Noch zu klären</h2><ul><li>Festlegung, wer Verlängerungen bestätigen darf.</li><li>Festlegung des Speicherorts für die Ergebnisse der Fristprüfung.</li><li>Klärung, wie bereits vorhandene Dateien in die neue Ablage übernommen werden sollen.</li><li>Es gibt noch keinen Termin für das Inkrafttreten.</li></ul><h2>Things a reviewer should check</h2><ul><li>Ob der Entwurfsstatus und die fehlende Verbindlichkeit klar genug hervorgehoben sind.</li><li>Ob die Tabelle unverändert und korrekt übertragen wurde (Kategorie, Frist, Zuständigkeit, Abschluss).</li><li>Ob alle genannten noch zu klärenden Punkte (Zuständigkeiten für Verlängerung, Speicherort, Übernahme alter Dateien, Inkrafttretens-Termin) vollständig erfasst sind.</li><li>Ob die Warnung, dass aus den Fristen keine gesetzliche Verpflichtung abgeleitet werden darf, erhalten ist.</li><li>Ob die Einschränkung auf Schulungsunterlagen/Prüfnotizen und der Ausschluss anderer Dokumentarten (Personalakten, Rechnungen, Verträge) korrekt dargestellt ist.</li></ul>",
+        "tags": [
+          "Aufbewahrungsrichtlinie",
+          "Entwurf",
+          "Schulungsunterlagen",
+          "Dokumentenmanagement",
+          "Compliance",
+          "Interne Richtlinie"
+        ]
+      },
+      "latencyMs": 76823,
+      "tokens": 1887,
+      "status": 200,
+      "sourceHash": "2c232e8749bc5825fec51b77200b5d0ad3658f95675c7461c2d1cc752ffe1a4d",
+      "originalAssessment": {
+        "score": 60,
+        "faithfulness": {
+          "unsupportedNumbers": [
+            "27",
+            "2026"
+          ],
+          "unsupportedNames": [],
+          "forbiddenFacts": [],
+          "passed": false
+        }
+      }
+    }
+  ],
+  "scorerHash": "6e6630695257825eac031ef3a36069fb36af11d3b0df43af45b9574213fd0ea8",
+  "expectationsHash": "9587d61aa023941825445547ad920e5d1892c282d68e5e4d89e7c3ab9a4562e0",
+  "rescoringNote": "Both runs scored with identical final checker; fixes ignore ordinary capitalization at HTML block boundaries and also check tags. Original assessments preserved. No new inference calls."
+}

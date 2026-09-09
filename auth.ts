@@ -95,6 +95,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async session({ session, token }) {
       if (session.user && token.sub) session.user.id = token.sub;
+      session.session_version =
+        typeof token.session_version === "number"
+          ? token.session_version
+          : undefined;
       session.auth_time =
         typeof token.auth_time === "number" ? token.auth_time : undefined;
       return session;

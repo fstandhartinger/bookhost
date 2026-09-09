@@ -310,3 +310,118 @@ worker heartbeat, and stuck intake drafts every ten minutes. Telegram alerts are
 sent only after two consecutive failed checks and once on recovery. Run
 `ops/watchdog/run.sh --dry-run --simulate` to verify checks and safely preview
 transitions without sending. Install using `python3 ops/watchdog/install-cron.py`.
+
+### Team invitation links
+
+Migration `017_team_invites.sql` adds seven-day bearer invitations (32 random
+bytes; SHA-256 hashes only in the database), one or ten uses, revocation and
+membership timestamps. Owners/admins manage invitations and remove other
+non-owner members under **Team** on `/app`; only owners change existing roles.
+Copy each generated link immediately: its token cannot be retrieved later.
+The Team plan allows 25 memberships, including the owner. Joining and team
+management serialize on the team row to enforce capacity and usage atomically.
+Members access workspace status and intake; billing remains owner-only.
+Dashboard membership does not provision a separate BookStack account.
+
+`/join#<token>` supports a new password account, an existing correct password,
+or the currently signed-in account. The same email/password form is used for
+new and existing addresses, with a generic incorrect-credentials error and dummy
+Argon2 verification for missing password hashes. Both login and anonymous join
+use shared limits: email+IP 10/15 minutes and account 30/15 minutes. Context
+submission has a separate 60/IP/15-minute limit. Use the documented trusted-proxy
+configuration; successful colleagues no longer share a ten-join IP budget.
+There is no email-existence lookup UI. As with any immediate password signup,
+successful creation versus rejected existing credentials is still observable;
+complete account-enumeration resistance would require mailbox verification
+before signup, rather than immediate unverified access.
+
+Authenticated joins lock the user and compare the originally authenticated
+`session_version` with the current database value. They never replace the JWT.
+Password joins read the version under lock without changing it; subsequent
+revocations still invalidate the resulting JWT. An existing membership returns
+the team dashboard without consuming another use. Removing a member or demoting
+an admin atomically revokes that user's invitations for this team and increments
+their account-wide session version. Removal is not a permanent ban: another
+still-valid bearer invitation can allow re-entry after fresh authentication.
+
+Native fallback forms retain `no-referrer`: an `Origin: null` navigation is
+accepted only with browser-controlled `Sec-Fetch-Site: same-origin` and
+`Sec-Fetch-Mode: navigate`. Missing Origin, foreign origins and cross-site
+metadata are rejected. JSON team/join writes require the exact configured Origin.
+
+The login destination is `/join` while a ten-minute HttpOnly, SameSite=Lax
+invitation context cookie exists (Secure on HTTPS); password, Magic Link and
+Google login preserve it. Successful join selects the destination team in an
+HttpOnly cookie. `/app` offers a membership-checked team switcher and defaults
+to the most recently joined team when no valid selection exists.
+
+#### Unverified accounts
+
+Password signup through join does not prove mailbox ownership. On the first
+verified Magic Link/Google login, the account's old `password_hash` and
+`password_set_at` are cleared and `session_version` is incremented atomically.
+All previous sessions become invalid; the old password cannot log in again.
+Existing memberships and consumed invitation uses remain. `/app` asks the
+verified mailbox owner to set a new password. Later verified logins keep passwords
+set after verification, while still revoking previous sessions. Operator stats
+require both a current database-verified email and membership in `ADMIN_EMAILS`;
+unverified allowlisted accounts receive 404. Operators can use `npm run stats`
+on the host without browser access.
+
+#### Invitation tokens and access logs
+
+Only fragment links (`/join#<token>`) are generated; old token-bearing path routes
+are retired. Browsers do not send fragments in HTTP requests. A small client
+bootstrap removes the fragment from browser history, submits the token in the
+body of `POST /api/join/context`, and reloads `/join`. Without JavaScript, the
+page offers a manual code field posting to the same endpoint. The token stays
+in an HttpOnly context cookie and is never embedded in rendered HTML, analytics,
+login callback URLs, or API request paths. `/join` uses `Referrer-Policy:
+no-referrer` and is excluded from indexing/analytics.
+
+Traefik access logs record request URLs: the fragment design keeps newly issued
+tokens out of those URLs without shortening invitation validity. Do not configure
+proxy/APM request-body or Cookie-header capture on these endpoints. Old path
+links that users manually request may remain in historical logs; revoke old
+invitations before a public rollout if such links were distributed. No production
+proxy log configuration is changed by this patch.
+
+Local acceptance: export the external app and database TLS environments, set
+`DATABASE_URL="$DATABASE_URL_LOCAL"`, `AUTH_URL=http://127.0.0.1:3985`,
+`AUTH_TRUST_HOST=true`, and `ADMIN_EMAILS=invite-operator@example.invalid`, then
+build and start the production server bound to `127.0.0.1:3985`. Run
+`node scripts/invite-links-check.mjs` with the same environment and
+`INVITE_PLAYWRIGHT_MODULE` pointing to an installed Playwright/Playwright Core
+module. The script uses a fresh Chromium profile and synthetic SQL sessions,
+checks fragment/no-JS context, Origin denial, incorrect passwords, admin
+verification, revocation then join, login return, team switching and mobile
+layout. It removes test rows and closes the browser in `finally`, sends no email
+and makes no Stripe purchases. `INTAKE_DB_TEST=1 npm test` additionally exercises
+real concurrent joins, the revocation ordering, verification/password replacement,
+shared password limits, removal/demotion, and migration 017 twice in an isolated
+rolled-back schema. Set optional `INVITE_SCREENSHOT` to save a mobile screenshot.
+
+## Draft quality & eval
+
+Run `npm run eval:intake` with `CHUTES_API_KEY` available in the environment. `INTAKE_MODELS` optionally selects up to two Chutes models. The runner calls the production draft function on six fictional English/German documents, with at most twelve requests and no fallback or retries per model. It prints scores, latency and provider token counts and saves drafts plus checks in `eval/results/<timestamp>.json`.
+
+Drafts preserve source order, exact figures, uncertainty and HTML tables, use source-specific English/German review headings with a parser check, and have titles of at most 80 characters. Empty sections are removed after sanitization. Human approval is still required: the automated fact checker is a lexical heuristic, not a guarantee of factual correctness. See [evaluation rules](eval/README.md) and [measured model comparison](eval/REPORT.md).
+
+### Persistent onboarding (migration 019)
+
+`019_team_onboarding.sql` stores first completion in `team_onboarding(team_id, step, done_at)`.
+Database triggers capture user/team, workspace, intake, membership and subscription changes;
+intake cleanup, member removal and analytics retention do not reset completed steps.
+Backfill uses retained step events and current records without emitting new analytics.
+If no historical timestamp exists (membership), `done_at` is the first observation time.
+The operational history is kept even for analytics opt-out; team deletion cascades to it.
+The owner checklist reads these records and skips all progress queries when dismissed.
+Payment is optional for onboarding completion. Provisioning and incomplete onboarding share
+one visible-tab refresh scheduler: 60 seconds, backing off to 5 minutes after 10 unchanged
+minutes. Current workspace availability continues to use the live tenant/billing state.
+
+Apply migration 019 before deploying this code. The opt-in regression can be run with
+`INTAKE_DB_TEST=1 npx vitest run tests/onboarding-db.integration.test.ts` and the external
+DB/TLS environment. It creates and deletes uniquely named fictional fixtures; it is a
+write test, not a read-only check. It exercises repeatable migration, concurrent detection,
+analytics opt-out, member removal and intake/event retention.

@@ -1,0 +1,121 @@
+[
+  {
+    "id": "onboarding",
+    "file": "docs/onboarding.md",
+    "headingCount": {
+      "min": 4,
+      "max": 8
+    },
+    "requiredTerms": ["09:30", "45", "team lead", "practice ticket"],
+    "forbiddenHallucinations": ["guaranteed access", "ISO 27001"],
+    "preserveTable": false,
+    "reviewerShouldCheck": [
+      "Confirm leave cover",
+      "Confirm remote equipment checklist",
+      "Confirm archive location"
+    ],
+    "titleMaxLength": 80,
+    "language": "en",
+    "properNames": ["Lantern", "Mossquay"]
+  },
+  {
+    "id": "meeting",
+    "file": "docs/meeting.md",
+    "headingCount": {
+      "min": 5,
+      "max": 8
+    },
+    "requiredTerms": ["24", "6", "2026-08-25", "postponed", "rejected"],
+    "forbiddenHallucinations": ["approved automatic publication", "€5000"],
+    "preserveTable": false,
+    "reviewerShouldCheck": [
+      "Confirm queue ownership",
+      "Check action deadline",
+      "Distinguish rejected and postponed proposals"
+    ],
+    "titleMaxLength": 80,
+    "language": "en",
+    "properNames": ["Bracken"]
+  },
+  {
+    "id": "process",
+    "file": "docs/process.md",
+    "headingCount": {
+      "min": 5,
+      "max": 8
+    },
+    "requiredTerms": ["20", "2", "1", "gesperrt", "verfügbar"],
+    "forbiddenHallucinations": ["50 Euro", "24 Stunden"],
+    "preserveTable": false,
+    "reviewerShouldCheck": [
+      "Zuständigkeit bei Abwesenheit",
+      "Ablage älterer Fotos",
+      "Umgang mit fehlendem Zubehör"
+    ],
+    "titleMaxLength": 80,
+    "language": "de",
+    "properNames": ["Kieselhafen"]
+  },
+  {
+    "id": "customer-thread",
+    "file": "docs/customer-thread.md",
+    "headingCount": {
+      "min": 5,
+      "max": 8
+    },
+    "requiredTerms": ["18", "9", "2026-09-07", "sample"],
+    "forbiddenHallucinations": ["99.9%", "migration is confirmed"],
+    "preserveTable": false,
+    "reviewerShouldCheck": [
+      "Sample received",
+      "Trial approval",
+      "Preferred versus confirmed date"
+    ],
+    "titleMaxLength": 80,
+    "language": "en",
+    "properNames": ["Fernwharf", "Alderquill"]
+  },
+  {
+    "id": "runbook",
+    "file": "docs/runbook.md",
+    "headingCount": {
+      "min": 5,
+      "max": 8
+    },
+    "requiredTerms": [
+      "503",
+      "QUEUE_PAUSED",
+      "30",
+      "queuectl resume --scope staging"
+    ],
+    "forbiddenHallucinations": ["queuectl delete", "guaranteed recovery"],
+    "preserveTable": false,
+    "reviewerShouldCheck": [
+      "Verify staging command",
+      "Identify escalation contact",
+      "Link approved production procedure"
+    ],
+    "titleMaxLength": 80,
+    "language": "en",
+    "properNames": ["Driftglass", "QUEUE_PAUSED"]
+  },
+  {
+    "id": "policy",
+    "file": "docs/policy.md",
+    "headingCount": {
+      "min": 5,
+      "max": 8
+    },
+    "requiredTerms": ["30", "90", "365", "Entwurf"],
+    "forbiddenHallucinations": ["gesetzlich vorgeschrieben", "2026-09-01"],
+    "preserveTable": true,
+    "reviewerShouldCheck": [
+      "Tabellenzellen richtig zugeordnet",
+      "Entwurfsstatus erhalten",
+      "Verlängerungszuständigkeit offen"
+    ],
+    "titleMaxLength": 80,
+    "language": "de",
+    "properNames": ["Wolkensteg"]
+  }
+]

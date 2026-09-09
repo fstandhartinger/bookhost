@@ -1,0 +1,42 @@
+import { afterEach, expect, it, vi } from "vitest";
+import { createRefreshScheduler } from "@/lib/dashboard-refresh";
+afterEach(() => vi.useRealTimers());
+it("shares one timer, backs off after ten unchanged minutes and stops with no open steps", () => {
+  vi.useFakeTimers();
+  const refresh = vi.fn();
+  const scheduler = createRefreshScheduler(refresh, () => true);
+  const checklist = Symbol(),
+    provisioning = Symbol();
+  scheduler.update(checklist, "upload:false");
+  scheduler.update(provisioning, "pending");
+  vi.advanceTimersByTime(600_000);
+  expect(refresh).toHaveBeenCalledTimes(10);
+  vi.advanceTimersByTime(299_999);
+  expect(refresh).toHaveBeenCalledTimes(10);
+  vi.advanceTimersByTime(1);
+  expect(refresh).toHaveBeenCalledTimes(11);
+  scheduler.update(checklist, "upload:true");
+  vi.advanceTimersByTime(60_000);
+  expect(refresh).toHaveBeenCalledTimes(12);
+  scheduler.remove(checklist);
+  scheduler.remove(provisioning);
+  vi.advanceTimersByTime(600_000);
+  expect(refresh).toHaveBeenCalledTimes(12);
+});
+it("does not poll hidden tabs and resumes when visible", () => {
+  vi.useFakeTimers();
+  let visible = false;
+  const refresh = vi.fn();
+  const scheduler = createRefreshScheduler(refresh, () => visible);
+  scheduler.update(Symbol(), "pending");
+  vi.advanceTimersByTime(60_000);
+  expect(refresh).not.toHaveBeenCalled();
+  visible = true;
+  scheduler.visibilityChanged();
+  vi.advanceTimersByTime(60_000);
+  expect(refresh).toHaveBeenCalledTimes(1);
+  visible = false;
+  scheduler.visibilityChanged();
+  vi.advanceTimersByTime(600_000);
+  expect(refresh).toHaveBeenCalledTimes(1);
+});

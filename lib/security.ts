@@ -6,6 +6,18 @@ export function sameOrigin(request: Request) {
   const origin = request.headers.get("origin");
   return origin === new URL(baseUrl()).origin;
 }
+// Native form navigation under Referrer-Policy: no-referrer uses Origin: null.
+// Fetch Metadata is browser-controlled: cross-origin documents cannot forge
+// Sec-Fetch-Site: same-origin. Missing Origin and foreign origins still fail.
+export function sameOriginForm(request: Request) {
+  return (
+    sameOrigin(request) ||
+    (request.method === "POST" &&
+      request.headers.get("origin") === "null" &&
+      request.headers.get("sec-fetch-site") === "same-origin" &&
+      request.headers.get("sec-fetch-mode") === "navigate")
+  );
+}
 export const digest = (value: string) =>
   createHash("sha256").update(value).digest("hex");
 export async function rateLimit(key: string, limit = 10, windowSeconds = 3600) {

@@ -36,17 +36,20 @@ export function passwordRateKey(email: string, request: Request) {
   if (!ip) throw new Error("Missing client IP");
   return "password:" + digest(email + ":" + ip);
 }
+export async function consumePasswordAttempt(email: string, request: Request) {
+  if (
+    !(await rateLimit(passwordRateKey(email, request), 10, 900)) ||
+    !(await rateLimit("password-user:" + digest(email), 30, 900))
+  )
+    throw new PasswordRateLimit();
+}
 export async function authorizePassword(
   credentials: Partial<Record<"email" | "password", unknown>>,
   request: Request,
 ) {
   const email = normalizeEmail(credentials.email);
   if (email.length > 254 || !/^\S+@\S+\.\S+$/.test(email)) return null;
-  if (
-    !(await rateLimit(passwordRateKey(email, request), 10, 900)) ||
-    !(await rateLimit("password-user:" + digest(email), 30, 900))
-  )
-    throw new PasswordRateLimit();
+  await consumePasswordAttempt(email, request);
   const password =
     typeof credentials.password === "string" ? credentials.password : "";
   if (password.length > 1024) return null;

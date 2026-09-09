@@ -1,3 +1,4 @@
+import { PaymentNote } from "@/components/payment-note";
 import Link from "next/link";
 import { ActionButton } from "./action-button";
 import { PLAN } from "@/lib/config";
@@ -31,6 +32,10 @@ export function Pricing() {
           </p>
           <ul className="checklist">
             <li>Your own hosted BookStack workspace</li>
+            <li>Up to 25 users per workspace and 5 GB of uploads</li>
+            <li>
+              Fair use for CPU and database resources; contact us for more
+            </li>
             <li>BookStack content exports, governed by your permissions</li>
             <li>Hosting, maintenance and security updates</li>
             <li>Daily backups and email support</li>
@@ -41,18 +46,25 @@ export function Pricing() {
             <li>Owner/admin approval before publication to BookStack</li>
           </ul>
           <p className="mt-5 text-xs leading-5 text-slate-600">
+            Only workspace owners/admins can publish; members can upload and
+            review. Drafts are shared with your Wissen dashboard team; BookStack
+            page permissions apply after publication.
+          </p>
+          <p className="mt-5 text-xs leading-5 text-slate-600">
             Planned: email intake and permission-aware AI answers. These are not
             available today; there is no committed release date.
           </p>
           <ActionButton className="button w-full mt-8" />
+          <PaymentNote />
           <p className="mt-4 text-xs text-slate-600 text-center">
             No credit card · Cancel anytime · Plus applicable VAT
           </p>
           <p className="mt-3 text-xs text-slate-600">
             Add a payment method in Manage billing to continue after the trial.
-            Without one, your trial ends automatically without a charge. €39 net
-            plus applicable VAT (€46.41 with 19% German VAT). No setup fee for
-            the standard plan. By continuing, you agree to the{" "}
+            Without one, your trial ends automatically without a charge.
+            €39/month + 19 % VAT (€46.41). EU businesses with a valid VAT ID
+            outside Germany: contact us and we apply reverse charge manually. No
+            setup fee for the standard plan. By continuing, you agree to the{" "}
             <Link className="underline" href="/legal/agb">
               Terms
             </Link>{" "}

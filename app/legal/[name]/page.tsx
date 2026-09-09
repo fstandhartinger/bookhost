@@ -35,6 +35,16 @@ export default async function Legal({
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
+          table: ({ children }) => (
+            <div
+              className="legal-table"
+              tabIndex={0}
+              role="region"
+              aria-label="Tabelle"
+            >
+              <table>{children}</table>
+            </div>
+          ),
           a: ({ href, children }) => (
             <a
               href={href?.replace(

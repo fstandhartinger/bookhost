@@ -20,6 +20,9 @@ export function checkoutParams({
     mode: "subscription",
     line_items: [{ price, quantity: 1 }],
     subscription_data: {
+      ...(process.env.STRIPE_TAX_RATE_DE
+        ? { default_tax_rates: [process.env.STRIPE_TAX_RATE_DE] }
+        : {}),
       trial_period_days: 14,
       trial_settings: { end_behavior: { missing_payment_method: "cancel" } },
       metadata: {
@@ -31,7 +34,7 @@ export function checkoutParams({
     },
     payment_method_collection: "if_required",
     allow_promotion_codes: true,
-    billing_address_collection: "auto",
+    billing_address_collection: "required",
     tax_id_collection: { enabled: true },
     ...(customer
       ? { customer_update: { name: "auto" as const, address: "auto" as const } }

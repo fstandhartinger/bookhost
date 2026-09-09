@@ -28,6 +28,7 @@ docker run --rm -p 127.0.0.1:3999:3000 --env-file /secure/path/runtime.env wisse
 | `TRUST_PROXY` | Defaults to `true` in Docker behind Traefik; otherwise unset/false. Trusts only the last X-Forwarded-For entry. Proxy must overwrite/append the actual peer IP and container ports must not be publicly reachable. Without it, use socket address or proxy-overwritten x-real-ip; missing/invalid IP returns 400 on limited endpoints. |
 | `AUTH_TRUST_HOST` | Set `true` behind the trusted reverse proxy. The proxy must overwrite forwarded host/protocol/IP headers. |
 | `STRIPE_SECRET_KEY` | Server-side Stripe secret API key. Never exposed to the browser. |
+| `STRIPE_TAX_RATE_DE` | Optional manual, exclusive 19% German VAT rate. Configure in the runtime to collect VAT; absent means no tax rate. Billing address is required; EU reverse charge is handled manually by support. Does not enable Stripe Tax. |
 | `STRIPE_PRICE_TEAM` | Existing monthly Team price ID. The displayed price is the static €39 constant. |
 | `STRIPE_WEBHOOK_SECRET` | Signing secret for `/api/stripe/webhook`. |
 | `STRIPE_PORTAL_CONFIG` | Optional dedicated billing portal configuration ID; otherwise Stripe's default is used. |
@@ -78,7 +79,7 @@ Before public launch:
 
 - Complete legal/operator fields and review the supplied terms. Persist customer-specific AVV acceptance and provide durable contract confirmations. Consumer public cancellation/withdrawal forms described in the draft terms are not implemented by this task; the app has an authenticated Stripe portal and support links only.
 - Align the terms' separate paid-order wording with the requested Stripe subscription trial behavior, which starts billing if a payment method is added.
-- Confirm tax collection. The existing price is exclusive of tax; this requested Checkout does not enable automatic tax or attach tax rates. The price label alone does not collect VAT.
+- Set `STRIPE_TAX_RATE_DE` from the external operator Stripe env in production. Checkout attaches it as the subscription default tax rate, requires the billing address and retains VAT-ID collection. No automatic tax is enabled. Without this env no tax rate is attached; EU reverse charge requires manual operator handling.
 - Configure SMTP or Google and exercise real email delivery / OAuth. Password return login is available independently; reset delivery is covered with a mocked SMTP transport until SMTP is configured.
 - Deploy through the operator and verify the live webhook, TLS and proxy header handling. This local acceptance test only creates, then expires, an unpaid live Checkout session.
 - Confirm actual provisioning, tenant isolation, backup retention and successful restore independently. The control plane does not verify those external services and does not promise already-tested restores.

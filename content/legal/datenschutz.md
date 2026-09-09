@@ -24,21 +24,25 @@ Beim Aufruf des Dienstes werden IP-Adresse, Zeitpunkt, angeforderter Pfad, HTTP-
 
 Webserver-, Proxy- und Anwendungsprotokolle werden 14 Tage, Sicherheitsprotokolle 30 Tage aufbewahrt. Bei einem konkreten Sicherheitsvorfall bewahren wir relevante Auszüge so lange auf, wie es zur Aufklärung und Rechtsverfolgung erforderlich ist. Zugriff auf solche Auszüge ist beschränkt. Dokumentinhalte, Passwörter und Anmeldetoken gehören nicht in Zugriffsprotokolle.
 
-## 3. Konto und Anmeldung per E-Mail-Link
+## 3. Konto, Passwortanmeldung und optionale E-Mail-Links
 
-Für die Registrierung und Anmeldung verarbeiten wir Ihre E-Mail-Adresse, eine interne Kontokennung, den Status des Kontos sowie die für den Anmeldelink und die Sitzung erforderlichen Sicherheitsdaten. Der Link dient dem Nachweis, dass Sie Zugriff auf die angegebene E-Mail-Adresse haben. Seine Verwendung und Gültigkeit werden technisch geprüft.
+Für die Registrierung und Anmeldung verarbeiten wir Ihre E-Mail-Adresse, eine interne Kontokennung, den Status des Kontos sowie erforderliche Sicherheits- und Sitzungsdaten. Bei der Passwortanmeldung prüfen wir das eingegebene Passwort gegen einen individuell gesalzenen Argon2id-Hash (19 MiB Speicher, zwei Iterationen, eine Lane). Wir speichern kein Klartextpasswort. Zweck ist die Authentisierung und der Schutz vor unberechtigtem Kontozugriff. Der Hash bleibt bis zur Änderung oder Zurücksetzung des Passworts beziehungsweise bis zur Kontolöschung gespeichert; für die Kontolöschung und Sicherungskopien gelten die Fristen in Abschnitt 10.
+
+Sofern der E-Mail-Versand eingerichtet ist, können Sie einen Link zum Zurücksetzen des Passworts anfordern. Wir verarbeiten dafür E-Mail-Adresse und Sicherheitsdaten; das Einmaltoken wird nur als SHA-256-Hash gespeichert und gilt 30 Minuten. Bei Einlösung wird es als verbraucht markiert und kann nicht erneut verwendet werden; abgelaufene Reset-Token werden beim Start und stündlich gelöscht. Nach erfolgreichem Reset werden bestehende Sitzungen ungültig. Ohne eingerichteten Versand verweist die Reset-Seite an den Support.
+
+Anmeldung per E-Mail-Link ist nur verfügbar, wenn sie auf der Login-Seite angeboten wird. Der Link dient dann dem Nachweis des Zugriffs auf die E-Mail-Adresse; Verwendung und Gültigkeit werden technisch geprüft.
 
 Rechtsgrundlage ist Art. 6 Abs. 1 Buchst. b DSGVO, soweit Sie selbst Vertragspartei sind. Bei Beschäftigten oder anderen berechtigten Nutzern eines Geschäftskunden ist Art. 6 Abs. 1 Buchst. f DSGVO einschlägig; unser Interesse und das des Kunden bestehen darin, autorisierten Personen Zugang zu gewähren. Sicherheitsprüfungen dienen ebenfalls diesem berechtigten Interesse.
 
 Der Versand erforderlicher Anmelde- und Vertragsnachrichten ist keine Werbung. Dabei werden Empfängeradresse, Nachrichteninhalt und technische Zustellinformationen verarbeitet.
 
-Login-Links und Benachrichtigungen versenden wir über einen Transaktions-E-Mail-Dienst; derzeit Resend Inc. (USA, EU-Datenverarbeitung nach Standardvertragsklauseln). Weitere Informationen: [Resend-Datenschutz](https://resend.com/legal/privacy-policy) und [Auftragsverarbeitung](https://resend.com/legal/dpa). Login-Links gelten 15 Minuten. Verwendete Token werden bei Einlösung gelöscht; abgelaufene Token werden bei der nächsten Anforderung eines Login-Links bereinigt.
+Passwort-Reset-Nachrichten, gegebenenfalls Login-Links und Benachrichtigungen versenden wir über einen Transaktions-E-Mail-Dienst; derzeit Resend Inc. (USA, EU-Datenverarbeitung nach Standardvertragsklauseln). Weitere Informationen: [Resend-Datenschutz](https://resend.com/legal/privacy-policy) und [Auftragsverarbeitung](https://resend.com/legal/dpa). Login-Links gelten 15 Minuten. Verwendete Token werden bei Einlösung gelöscht; abgelaufene Token werden bei der nächsten Anforderung eines Login-Links bereinigt.
 
 ## 4. Optional: Anmeldung mit Google
 
 Wenn Sie die Google-Anmeldung auswählen, wird eine Verbindung zu Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Irland, hergestellt. Google verarbeitet den Anmeldevorgang nach eigenen Datenschutzbestimmungen. Wir erhalten die für die Kontoanmeldung freigegebenen Identitätsdaten, insbesondere Google-Kontokennung und E-Mail-Adresse sowie, soweit übermittelt, Name und Profilbild. Die Anmeldung gewährt uns keinen Zugriff auf Ihr Gmail-Postfach oder Ihre Google-Drive-Dokumente.
 
-Die Verarbeitung der Identitätsdaten dient der von Ihnen gewählten Anmeldung und stützt sich bei Vertragsparteien auf Art. 6 Abs. 1 Buchst. b DSGVO, bei sonstigen autorisierten Nutzern auf Art. 6 Abs. 1 Buchst. f DSGVO. Alternativ können Sie den E-Mail-Link nutzen. Die Google-Anmeldung ist für die Nutzung von Wissen nicht erforderlich. Google handelt bei seinem eigenen Kontodienst grundsätzlich als eigener Verantwortlicher.
+Die Verarbeitung der Identitätsdaten dient der von Ihnen gewählten Anmeldung und stützt sich bei Vertragsparteien auf Art. 6 Abs. 1 Buchst. b DSGVO, bei sonstigen autorisierten Nutzern auf Art. 6 Abs. 1 Buchst. f DSGVO. Alternativ können Sie die Passwortanmeldung nutzen; E-Mail-Links nur, soweit auf der Login-Seite angeboten. Die Google-Anmeldung ist für die Nutzung von Wissen nicht erforderlich. Google handelt bei seinem eigenen Kontodienst grundsätzlich als eigener Verantwortlicher.
 
 Weitere Informationen: [Google-Datenschutzerklärung](https://policies.google.com/privacy?hl=de).
 

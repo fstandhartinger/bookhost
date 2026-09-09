@@ -22,7 +22,7 @@ Wir übermitteln die Vertragsbestätigung einschließlich Leistungsumfang, Preis
 
 ## 3. Leistungsumfang und angekündigte Funktionen
 
-Wissen stellt dem Kunden eine über das Internet erreichbare BookStack-Instanz zur Verwaltung von Wissensseiten und Anhängen bereit. Zum Team-Tarif gehören deren Betrieb, notwendige Wartung und Sicherheitsaktualisierungen, tägliche Backups mit sieben Tagen Aufbewahrung sowie Support per E-Mail. Die konkrete Instanzadresse und gegebenenfalls vereinbarte Ressourcenlimits ergeben sich aus der Bestellbestätigung. Nicht vereinbarte Speicher- oder Nutzergrenzen werden nicht nachträglich als bereits bestehende Tarifgrenzen behandelt. Ein pauschales Versprechen unbegrenzter Ressourcen wird nicht abgegeben.
+Wissen stellt dem Kunden eine über das Internet erreichbare BookStack-Instanz zur Verwaltung von Wissensseiten und Anhängen bereit. Zum Team-Tarif gehören deren Betrieb, notwendige Wartung und Sicherheitsaktualisierungen, tägliche Backups mit sieben Tagen Aufbewahrung sowie Support per E-Mail. Der Team-Tarif umfasst bis zu 25 Nutzer je Workspace und 5 GB Upload-Speicher. Für CPU- und Datenbankressourcen gilt Fair Use im Rahmen der üblichen Wissensverwaltung eines Teams dieser Größe. Bei höherem Bedarf an Nutzern, Speicher oder Rechen- und Datenbankressourcen kontaktieren Sie uns für eine individuelle Vereinbarung. Die konkrete Instanzadresse ergibt sich aus der Bestellbestätigung.
 
 Die BookStack-Exportfunktionen stehen während der Vertragslaufzeit im Rahmen der vergebenen Berechtigungen jederzeit zur Verfügung. Ein Inhalts-Export ist nicht zwangsläufig eine vollständige Systemsicherung einschließlich Nutzerverwaltung und sämtlicher Einstellungen. Individuelle Migrationen, besondere Integrationen und zusätzliche Dienstleistungen werden nur nach gesonderter Vereinbarung geschuldet; etwaige Kosten müssen vorher vereinbart werden.
 
@@ -32,7 +32,7 @@ Beim Dokument-Eingang entstehen zunächst KI-Vorschläge mit Zusammenfassung, Ta
 
 ## 4. Preis und Zahlung
 
-Der **Team-Tarif kostet 39,00 EUR pro Monat zzgl. gesetzlicher Umsatzsteuer**, soweit diese anfällt. Der Nettopreis richtet sich an Geschäftskunden. Bei 19 % deutscher Umsatzsteuer beträgt der Gesamtpreis 46,41 EUR pro Monat. Für Verbraucher wird vor der Bestellung der tatsächlich zu zahlende Gesamtpreis einschließlich aller anwendbaren Steuern angezeigt. Bei abweichendem Steuersatz oder gesetzlich vorgesehenem Reverse-Charge-Verfahren gelten die gesetzlichen Regeln; Steuerangaben des Kunden müssen zutreffend sein.
+Der **Team-Tarif kostet 39,00 EUR pro Monat zzgl. 19 % Umsatzsteuer (46,41 EUR insgesamt)**. Der Nettopreis richtet sich an Geschäftskunden; der Gesamtpreis einschließlich Umsatzsteuer wird vor Abschluss angezeigt. Unternehmen in anderen EU-Mitgliedstaaten mit gültiger Umsatzsteuer-Identifikationsnummer kontaktieren uns vor der kostenpflichtigen Fortsetzung unter info@productivity-boost.com; wir prüfen die Voraussetzungen und wenden das Reverse-Charge-Verfahren manuell an. Die bloße Eingabe einer Umsatzsteuer-Identifikationsnummer bewirkt keine automatische Umstellung. Steuerangaben des Kunden müssen zutreffend sein.
 
 Die Abrechnung erfolgt monatlich im Voraus über Stripe. Zahlungsarten und Fälligkeit werden bei der Bestellung angezeigt. Die 14-tägige Testphase ist kostenlos. Ohne gesonderte Vereinbarung fallen keine Einrichtungsgebühren an. Preisänderungen für laufende Verträge bedürfen einer wirksamen Vereinbarung; eine einseitige Erhöhung allein durch Änderung der Website erfolgt nicht.
 

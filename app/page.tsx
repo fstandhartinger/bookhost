@@ -1,3 +1,4 @@
+import { PaymentNote } from "@/components/payment-note";
 import Image from "next/image";
 import { ActionButton } from "@/components/action-button";
 import { Pricing } from "@/components/pricing";
@@ -38,6 +39,7 @@ export default function Home() {
               </p>
             </div>
           </div>
+          <PaymentNote />
           <p className="mt-4 text-xs text-slate-600">
             14 days free · No card required · Cancel monthly
           </p>
@@ -45,7 +47,10 @@ export default function Home() {
         <div className="rounded-2xl bg-[#e8edde] p-5 sm:p-8">
           <p className="eyebrow">YOUR DOCUMENT. YOUR REVIEW. YOUR WIKI.</p>
           <a
-            href="#see-it-work"
+            href="/screens/intake-review.webp"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Enlarge review screenshot (opens in a new tab)"
             className="block overflow-hidden rounded-xl border border-ink/10 bg-white shadow-sm"
           >
             <Image
@@ -58,7 +63,7 @@ export default function Home() {
             />
           </a>
           <p className="mt-5 text-center text-xs text-moss">
-            A real beta draft · Human approval required
+            A real beta draft · Human approval required · Click to enlarge
           </p>
         </div>
       </section>
@@ -88,12 +93,20 @@ export default function Home() {
           ))}
         </div>
       </section>
-      <section id="see-it-work" className="section border-t border-ink/10">
+      <section
+        id="see-it-work"
+        className="section mx-auto max-w-[1100px] border-t border-ink/10"
+      >
         <p className="eyebrow">DOCUMENT INTAKE · AVAILABLE NOW IN BETA</p>
         <h2>See it work.</h2>
         <p className="lede max-w-2xl">
           A real upload, AI draft and published page from our demo workspace.
           This vacation policy is fictional sample content.
+        </p>
+        <p className="mt-5 text-sm leading-6 text-slate-600">
+          Only workspace owners/admins can publish; members can upload and
+          review. Drafts are shared with your Wissen dashboard team; BookStack
+          page permissions apply after publication.
         </p>
         <div className="mt-10 space-y-12">
           {[
@@ -116,18 +129,17 @@ export default function Home() {
               "Published Vacation policy demo page in BookStack with its summary and review checklist",
             ],
           ].map(([file, title, description, alt]) => (
-            <figure
-              key={file}
-              className="grid items-center gap-6 lg:grid-cols-[1fr_2fr]"
-            >
-              <figcaption>
+            <figure key={file} className="flex flex-col gap-4">
+              <figcaption className="order-2">
                 <h3 className="text-xl font-semibold">{title}</h3>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
-                  {description}
+                  {description} Click the image to enlarge it in a new tab.
                 </p>
               </figcaption>
               <a
                 href={`/screens/${file}.webp`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="block overflow-hidden rounded-xl border border-ink/10 bg-white shadow-sm"
                 aria-label={`View full screenshot: ${title}`}
               >
@@ -136,7 +148,9 @@ export default function Home() {
                   alt={alt}
                   width={1280}
                   height={800}
-                  sizes="(min-width: 1024px) 740px, 90vw"
+                  loading="lazy"
+                  className="h-auto w-full"
+                  sizes="(min-width: 1152px) 1100px, calc(100vw - 48px)"
                 />
               </a>
             </figure>

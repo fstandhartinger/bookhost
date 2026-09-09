@@ -1,5 +1,9 @@
 export const faqs = [
   [
+    "Does it fit a 15-person team?",
+    "Yes. Team includes up to 25 users per workspace and 5 GB of uploads, with fair use for CPU and database resources. For more users, storage or resources, contact us at info@productivity-boost.com before signing up.",
+  ],
+  [
     "What is BookStack, and who is Wissen for?",
     "BookStack is free, open-source software for organising documentation into books, chapters and pages. Wissen hosts it for teams that want a shared knowledge base without managing the underlying server, including existing self-hosters, small IT departments and agencies. Wissen is an independent hosting service, not an official BookStack product.",
   ],
@@ -25,7 +29,7 @@ export const faqs = [
   ],
   [
     "Who can see drafts, and what is still planned?",
-    "Intake is a shared inbox for your Control-Plane team: all team members can see its drafts and available destinations. It does not mirror each person's BookStack permissions. Owners and admins approve publication; the published page follows its destination book's BookStack permissions. Email intake and permission-aware AI answers are planned and are not available today. There is no committed release date.",
+    "Intake is a shared inbox for your Wissen dashboard team: all team members can see its drafts and available destinations. It does not mirror each person's BookStack permissions. Only workspace owners/admins can publish; members can upload and review. BookStack page permissions apply after publication. Email intake and permission-aware AI answers are planned and are not available today. There is no committed release date.",
   ],
   [
     "Do I need a card for the trial, and will I be charged automatically?",

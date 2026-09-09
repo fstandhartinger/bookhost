@@ -1,12 +1,31 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import { checkoutParams } from "../lib/checkout";
 describe("Checkout parameters", () => {
+  afterEach(() => vi.unstubAllEnvs());
+  it("attaches the configured manual rate without enabling Stripe Tax", () => {
+    vi.stubEnv("STRIPE_TAX_RATE_DE", "manual_rate_fixture");
+    const p = checkoutParams({
+      price: "price_team",
+      url: "https://wissen.example",
+    });
+    expect(p.subscription_data?.default_tax_rates).toEqual([
+      "manual_rate_fixture",
+    ]);
+    expect(p.automatic_tax).toBeUndefined();
+  });
+  it("omits manual tax when no rate is configured", () => {
+    vi.stubEnv("STRIPE_TAX_RATE_DE", "");
+    expect(
+      checkoutParams({ price: "price_team", url: "https://wissen.example" })
+        .subscription_data,
+    ).not.toHaveProperty("default_tax_rates");
+  });
   it("starts a no-card trial with correct return URLs", () => {
     const p = checkoutParams({
       price: "price_team",
       url: "https://wissen.example",
     });
-    expect(p.billing_address_collection).toBe("auto");
+    expect(p.billing_address_collection).toBe("required");
     expect(p.tax_id_collection).toEqual({ enabled: true });
     expect(p.automatic_tax?.enabled).not.toBe(true);
     expect(p.mode).toBe("subscription");

@@ -76,11 +76,11 @@ export default function RootLayout({
               <Link className="hover:underline" href="/pricing">
                 Pricing
               </Link>
-              <Link className="hover:underline" href="/login">
+              <Link className="whitespace-nowrap hover:underline" href="/login">
                 Log in
               </Link>
               <Link
-                className="rounded-lg border border-ink/20 px-3 py-2 sm:px-4"
+                className="whitespace-nowrap rounded-lg border border-ink/20 px-3 py-2 sm:px-4"
                 href="/pricing"
               >
                 <span className="sm:hidden">Try free ↗</span>

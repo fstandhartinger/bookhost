@@ -87,8 +87,7 @@ User cron (UTC), preserving all unrelated entries:
 - 03:17: `backup-all.sh` (stopped tenants stay stopped).
 - 03:40: `purge-all.sh` (retention and matured deletion marks).
 
-Logs are in `tenants/worker.log`, `backup.log`, and `purge.log`. The shared coolify
-app network remains a weak isolation boundary. SMTP, automatic
+Logs are in `tenants/worker.log`, `backup.log`, and `purge.log`. See the Isolation section for the shared proxy-network boundary. SMTP, automatic
 upgrades, log rotation and the planned document-review workflow are separate work.
 
 ## Off-host backups (Hetzner Storage Box)
@@ -165,3 +164,47 @@ BookStack returns a login redirect for disabled registration, but native denied
 edit routes redirect to the readable page or homepage; JSON writes return 403.
 The reviewed-intake wording in the example is explicitly illustrative, not a
 fabricated claim that the provisioner's content passed through actual intake.
+
+## Isolation
+
+Each tenant has a dedicated Docker bridge named `wissen-<slug>-internal` with
+`internal: true`. MariaDB joins only that network, has no published host ports,
+and explicitly disables Traefik discovery. BookStack joins that network and the
+existing external `coolify` network; routing labels explicitly select `coolify`.
+Both services use `no-new-privileges:true`, run without privileged mode or added
+capabilities, and carry tenant/isolation labels for operator inspection.
+
+This isolates tenant databases, not the public application containers: BookStack
+containers can reach each other's HTTP port over `coolify`, as can other members
+of that shared bridge. Application authentication and authorization remain
+necessary. Labels are metadata, not a firewall. We do not change `coolify`, host
+iptables, or its inter-container communication setting. Disabling ICC on a tenant
+bridge would also block that tenant's required BookStack-to-MariaDB connection.
+These containers share a host kernel and are not a VM-grade security boundary.
+
+The pinned LinuxServer image uses a writable root filesystem: a live read-only
+startup fails in s6 at `/run`. With `/run:exec` and `/tmp` tmpfs mounts it starts, but ignores PUID/PGID,
+changes the app user to 911:1001, and makes the persisted cache unwritable to
+the provisioner/intake UID 1000. This was reproduced on a disposable tenant;
+read-only mode therefore requires a separate UID/storage lifecycle migration. `/config` and MariaDB's data directory are
+persistent tenant-specific bind mounts. No `read_only: true` claim is made.
+
+New tenants receive this configuration automatically. Existing tenants resume
+their saved Compose file until explicitly migrated:
+
+```sh
+./ops/provisioner/migrate-network.sh demo
+```
+
+Migration takes the tenant lifecycle lock, validates the candidate Compose before
+stopping services, preserves images/settings/credentials/data, then runs down/up
+without deleting volumes. It verifies application readiness and unchanged content
+metadata; errors trigger rollback to the original Compose and restart. Allow a
+brief maintenance window. Backups retain their saved configuration; isolated
+restore tests always replace its networks with a fresh private network.
+
+Live verification (read-only checks, both tenants must already exist):
+
+```sh
+python3 ops/provisioner/verify-network.py demo e2e-iso
+```

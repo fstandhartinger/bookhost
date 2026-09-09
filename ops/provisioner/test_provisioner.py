@@ -11,6 +11,59 @@ import tenant
 import worker
 
 class LifecycleTests(unittest.TestCase):
+    def test_network_contract_public_and_bootstrap(self):
+        with tempfile.TemporaryDirectory() as d:
+            path=Path(d)/'test-team';path.mkdir()
+            for public in (False,True):
+                tenant.config(path,public)
+                cfg=json.loads((path/'docker-compose.yml').read_text())
+                self.assertEqual(cfg['networks']['private'],{'name':'wissen-test-team-internal','internal':True})
+                self.assertEqual(cfg['services']['db']['networks'],['private'])
+                self.assertEqual(cfg['services']['db']['labels']['traefik.enable'],'false')
+                self.assertEqual(cfg['services']['bookstack']['networks'],['private','coolify'] if public else ['private'])
+                for service in cfg['services'].values():
+                    self.assertNotIn('ports',service)
+                    self.assertNotIn('cap_add',service)
+                    self.assertFalse(service['privileged'])
+                    self.assertIn('no-new-privileges:true',service['security_opt'])
+                if public:
+                    self.assertEqual(cfg['networks']['coolify'],{'external':True,'name':'coolify'})
+                    self.assertEqual(cfg['services']['bookstack']['labels']['traefik.docker.network'],'coolify')
+
+    def test_migration_preserves_config_and_rolls_back_failure(self):
+        for fail in (False,True):
+            with self.subTest(fail=fail), tempfile.TemporaryDirectory() as d:
+                path=Path(d)/'test-team';path.mkdir();tenant.config(path)
+                target=path/'docker-compose.yml';cfg=json.loads(target.read_text())
+                cfg['services']['bookstack']['environment']['CUSTOM_SETTING']='keep-me'
+                cfg['services']['bookstack']['image']='preserved-image'
+                cfg['services']['db']['networks']=['coolify']
+                cfg['services']['db']['ports']=['3306:3306']
+                cfg['services']['bookstack']['cap_add']=['NET_ADMIN']
+                target.write_text(json.dumps(cfg));original=target.read_bytes()
+                (path/'.initialized').touch();(path/'.env').write_text('APP_URL=https://example.invalid\n')
+                with patch.object(tenant,'run'),patch.object(tenant,'compose') as compose,patch.object(tenant,'content',return_value={'pages':'11'}),patch.object(tenant,'ready_internal',side_effect=RuntimeError('unhealthy') if fail else None),patch.object(tenant,'public_ready'):
+                    if fail:
+                        with self.assertRaisesRegex(RuntimeError,'unhealthy'):tenant.migrate_network(path)
+                        self.assertEqual(target.read_bytes(),original)
+                        self.assertEqual(compose.call_args.args,(path,'up','-d'))
+                    else:
+                        tenant.migrate_network(path);new=json.loads(target.read_text())
+                        self.assertEqual(new['services']['bookstack']['image'],'preserved-image')
+                        self.assertEqual(new['services']['bookstack']['environment'],cfg['services']['bookstack']['environment'])
+                        self.assertEqual(new['services']['db']['networks'],['private'])
+                        self.assertNotIn('ports',new['services']['db'])
+                        self.assertNotIn('cap_add',new['services']['bookstack'])
+                self.assertFalse((path/'.network-candidate.json').exists())
+
+    def test_public_readiness_accepts_custom_branded_login(self):
+        with patch.object(tenant.urllib.request,'urlopen') as request:
+            response=request.return_value.__enter__.return_value
+            response.status=200
+            response.read.return_value=b'<form action="https://demo.example/login"><input name="_token"></form>'
+            tenant.public_ready('https://demo.example')
+            request.assert_called_once()
+
     def test_slug_contract(self):
         for slug in json.loads((tenant.HERE/'reserved-slugs.json').read_text())+['restore-x','restoreabc','ab','a--b','a'*31,'../foo','Foo','-foo','foo-']:
             self.assertFalse(tenant.valid_slug(slug),slug)

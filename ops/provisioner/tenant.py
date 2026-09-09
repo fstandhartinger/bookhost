@@ -37,7 +37,7 @@ def config(path, public=True):
     slug = path.name; host = slug+'.wissen.app.mintapis.com'; router='wissen-'+slug
     app = dict(image=IMAGE, restart='unless-stopped', mem_limit='512m', environment={'PUID':'1000','PGID':'1000','TZ':'UTC','APP_URL':'${APP_URL}','APP_KEY':'${APP_KEY}','DB_HOST':'db','DB_PORT':'3306','DB_USERNAME':'bookstack','DB_PASSWORD':'${DB_PASSWORD}','DB_DATABASE':'bookstack'}, volumes=['./bookstack:/config'], depends_on={'db':{'condition':'service_healthy'}}, networks=['private'])
     db = dict(image=DB_IMAGE, restart='unless-stopped',mem_limit='512m', environment={'MARIADB_DATABASE':'bookstack','MARIADB_USER':'bookstack','MARIADB_PASSWORD':'${DB_PASSWORD}','MARIADB_ROOT_PASSWORD':'${DB_ROOT_PASSWORD}'},volumes=['./database:/var/lib/mysql'],networks=['private'],healthcheck={'test':['CMD','healthcheck.sh','--connect','--innodb_initialized'],'interval':'5s','timeout':'5s','retries':60}, command=['--innodb-buffer-pool-size=128M','--max-connections=50'])
-    networks = {'private':{'internal':True}}
+    networks = {'private':{'name':router+'-internal','internal':True}}
     if public:
         app['networks'].append('coolify'); networks['coolify']={'external':True,'name':'coolify'}
         labels={'traefik.enable':'true','traefik.docker.network':'coolify',f'traefik.http.services.{router}.loadbalancer.server.port':'80',f'traefik.http.middlewares.{router}-redirect.redirectscheme.scheme':'https'}
@@ -48,7 +48,65 @@ def config(path, public=True):
             else: labels[prefix+'.middlewares']=router+'-redirect'
         app['labels']=labels
     else: app['labels']={'traefik.enable':'false'}
-    (path/'docker-compose.yml').write_text(json.dumps({'services':{'bookstack':app,'db':db},'networks':networks},indent=2)+'\n')
+    document={'services':{'bookstack':app,'db':db},'networks':networks}
+    harden_network(document, slug, public)
+    (path/'docker-compose.yml').write_text(json.dumps(document,indent=2)+'\n')
+
+def harden_network(document, slug, public=True):
+    """Only the app joins the proxy bridge; never modify the shared bridge."""
+    document['networks']={'private':{'name':'wissen-'+slug+'-internal','internal':True}}
+    if public:
+        document['networks']['coolify']={'external':True,'name':'coolify'}
+    for name in ('bookstack','db'):
+        service=document['services'][name]
+        service['networks']=['private'] + (['coolify'] if name=='bookstack' and public else [])
+        service.pop('network_mode',None)
+        service.pop('ports',None)
+        service.pop('cap_add',None)
+        service['privileged']=False
+        options=[v for v in service.get('security_opt',[]) if not v.startswith('no-new-privileges')]
+        service['security_opt']=options+['no-new-privileges:true']
+        labels=service.setdefault('labels',{})
+        labels['com.wissen.tenant']=slug
+        labels['com.wissen.isolation']='private-database-shared-proxy'
+        if name=='db' or not public: labels['traefik.enable']='false'
+        else: labels['traefik.docker.network']='coolify'
+
+
+def migrate_network(path):
+    """Preserve credentials, data, images and app settings; rollback on failure."""
+    if not (path/'.initialized').exists():
+        raise ValueError('Network migration requires an initialized tenant')
+    target=path/'docker-compose.yml'
+    original=target.read_bytes()
+    document=json.loads(original)
+    harden_network(document,path.name)
+    # Validate without stopping the tenant or exposing resolved secrets.
+    candidate=path/'.network-candidate.json'
+    candidate.write_text(json.dumps(document,indent=2)+'\n')
+    try:
+        run(['sudo','-n','docker','compose','--project-directory',str(path),
+             '-f',str(candidate),'config','--quiet'])
+    finally:
+        candidate.unlink(missing_ok=True)
+    expected=content(path)
+    started=time.monotonic()
+    try:
+        compose(path,'down','--remove-orphans')
+        target.write_text(json.dumps(document,indent=2)+'\n')
+        compose(path,'up','-d')
+        ready_internal(path)
+        public_ready(env_read(path/'.env')['APP_URL'])
+        if content(path)!=expected: raise RuntimeError('Content changed during migration')
+    except BaseException:
+        # Remove the new network before restoring the old Compose definition.
+        try: compose(path,'down','--remove-orphans')
+        finally:
+            target.write_bytes(original)
+            compose(path,'up','-d')
+        raise
+    print('MIGRATED '+path.name+' pages='+expected['pages']+' elapsed_seconds='+str(round(time.monotonic()-started,1)))
+
 
 def php(path, code, payload=None):
     # Payload passes only through stdin, never argv or Docker environment metadata.
@@ -68,7 +126,8 @@ def public_ready(url):
     while time.monotonic() < deadline:
         try:
             with urllib.request.urlopen(url+'/login',timeout=10) as r:
-                if r.status==200 and b'BookStack' in r.read(): return
+                body=r.read()
+                if r.status==200 and (b'BookStack' in body or (b'name="_token"' in body and b'/login"' in body)): return
         except Exception: pass
         time.sleep(5)
     raise RuntimeError('HTTPS login readiness timed out')
@@ -254,6 +313,7 @@ def main():
                 signal.signal(signal.SIGTERM,signal.SIG_IGN)
                 if (path/'docker-compose.yml').exists(): compose(path,'down','--remove-orphans')
                 raise
+        elif action=='migrate-network': migrate_network(path)
         elif action=='deprovision': compose(path,'down')
         elif action=='destroy':
             if sys.argv[3:]==['--now','--yes']: purge(path,True)

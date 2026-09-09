@@ -103,6 +103,16 @@ class StateTests(unittest.TestCase):
             os.utime(path, (now, now))
             self.assertTrue(w.recent_backup_errors(path, now))
 
+    def test_fallbacks_are_counted_but_not_errors(self):
+        now=200000
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp) / 'backup.log'
+            path.write_text(w.stamp(now-100) + ' BACKUP FALLBACK cold team after 3 hot attempts\n')
+            self.assertFalse(w.recent_backup_errors(path, now))
+            self.assertEqual(w.recent_backup_fallbacks(path, now), 1)
+            path.write_text(w.stamp(now-90000) + ' BACKUP FALLBACK cold old after 3 hot attempts\n')
+            self.assertEqual(w.recent_backup_fallbacks(path, now), 0)
+
     def test_db_outage_fails_all_dependent_checks(self):
         with patch.object(w, 'database', side_effect=RuntimeError), patch.object(w, 'http', return_value=True):
             results = w.checks()

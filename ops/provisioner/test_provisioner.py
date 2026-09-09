@@ -296,3 +296,62 @@ class HotUploadOrderTest(unittest.TestCase):
         self.assertTrue(tenant.uploads_match(archived, live))
         self.assertFalse(tenant.uploads_match(archived[:1], live))
         self.assertFalse(tenant.uploads_match([{'path':'files/b.txt','bytes':2,'sha256':'zz'},live[0]], live))
+
+
+class NightlyBackupTests(unittest.TestCase):
+    def fixture(self, root):
+        path=root/'nightly-team'; (path/'backups').mkdir(parents=True)
+        (path/'.env').write_text('x'); (path/'docker-compose.yml').write_text('{}')
+        return path
+
+    def test_nightly_success_retries_hot_without_stop(self):
+        with tempfile.TemporaryDirectory() as d:
+            path=self.fixture(Path(d)); calls=[]
+            def fake_compose(p,*args,**kwargs):
+                calls.append(args)
+                if args[:2]==('ps','--status'): return b'bookstack\n'
+                if args[:2]==('exec','-T'): return b'dump'
+                return b''
+            with patch.object(tenant,'retention') as retention, patch.object(tenant,'compose',side_effect=fake_compose), \
+                 patch.object(tenant,'fingerprint',side_effect=[{'content':{'uploads':[]}},{'content':{'uploads':[]}},{'content':{'uploads':[]}},{'content':{'uploads':[]}}]), \
+                 patch.object(tenant,'archive_upload_hashes',return_value=[]), patch.object(tenant,'run'), \
+                 patch.object(tenant,'crypt',side_effect=lambda src,dst,*a,**k: Path(dst).write_bytes(b'encrypted')), \
+                 patch.object(tenant,'KEY',path/'key'), contextlib.redirect_stdout(io.StringIO()) as out:
+                tenant.backup(path, nightly=True)
+            retention.assert_called_once_with(path)
+            self.assertFalse(any(args[:2] in [('stop','bookstack'),('start','bookstack')] for args in calls))
+            self.assertIn('BACKUP hot ', out.getvalue())
+
+    def test_nightly_three_inconsistent_attempts_fall_back_to_cold(self):
+        with tempfile.TemporaryDirectory() as d:
+            path=self.fixture(Path(d)); calls=[]
+            def fake_compose(p,*args,**kwargs):
+                calls.append(args)
+                if args[:2]==('ps','--status'): return b'bookstack\n'
+                if args[:2]==('exec','-T'): return b'dump'
+                return b''
+            fingerprints=[{'content':{'n':i,'uploads':[]}} for i in range(6)]
+            with patch.object(tenant,'retention'), patch.object(tenant,'compose',side_effect=fake_compose), \
+                 patch.object(tenant,'fingerprint',side_effect=fingerprints), patch.object(tenant,'archive_upload_hashes',return_value=[]), \
+                 patch.object(tenant,'run'), patch.object(tenant,'crypt',side_effect=lambda src,dst,*a,**k: Path(dst).write_bytes(b'encrypted')), \
+                 patch.object(tenant,'content',return_value={}), patch.object(tenant,'KEY',path/'key'), \
+                 contextlib.redirect_stdout(io.StringIO()) as out:
+                tenant.backup(path, nightly=True)
+            self.assertEqual(sum(args[:2]==('stop','bookstack') for args in calls),1)
+            self.assertEqual(sum(args[:2]==('start','bookstack') for args in calls),1)
+            self.assertIn('BACKUP FALLBACK cold nightly-team after 3 hot attempts', out.getvalue())
+            self.assertIn('BACKUP cold ', out.getvalue())
+
+    def test_nightly_hot_dump_error_does_not_fall_back(self):
+        with tempfile.TemporaryDirectory() as d:
+            path=self.fixture(Path(d)); calls=[]
+            def fake_compose(p,*args,**kwargs):
+                calls.append(args)
+                if args[:2]==('ps','--status'): return b'bookstack\n'
+                if args[:2]==('exec','-T'): raise RuntimeError('dump failed')
+                return b''
+            with patch.object(tenant,'retention'), patch.object(tenant,'compose',side_effect=fake_compose), patch.object(tenant,'KEY',path/'key'), \
+                 patch.object(tenant,'run'), patch.object(tenant,'crypt'), contextlib.redirect_stderr(io.StringIO()) as err:
+                with self.assertRaisesRegex(RuntimeError,'dump failed'): tenant.backup(path, nightly=True)
+            self.assertFalse(any(args[:2] in [('stop','bookstack'),('start','bookstack')] for args in calls))
+            self.assertIn('BACKUP ERROR nightly-team',err.getvalue())

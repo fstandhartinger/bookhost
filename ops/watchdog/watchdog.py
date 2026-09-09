@@ -117,6 +117,23 @@ def recent_backup_errors(path, now):
     return False
 
 
+def recent_backup_fallbacks(path, now):
+    """Count cold fallbacks in timestamped or conservatively mtime-stamped logs."""
+    modified = path.stat().st_mtime
+    count = 0
+    with path.open(errors='replace') as stream:
+        for line in stream:
+            if 'BACKUP FALLBACK' not in line:
+                continue
+            try:
+                when = dt.datetime.fromisoformat(line.split()[0].replace('Z', '+00:00')).timestamp()
+            except (ValueError, IndexError):
+                when = modified
+            if now - when < 86400:
+                count += 1
+    return count
+
+
 def checks():
     now = time.time()
     results = {}
@@ -165,10 +182,11 @@ def checks():
             elif now - max(p.stat().st_mtime for p in files) >= 26 * 3600:
                 failed.append(slug)
         errors = recent_backup_errors(ROOT / 'backup.log', now)
+        fallbacks = recent_backup_fallbacks(ROOT / 'backup.log', now)
         detail = f'fehlend/veraltet: {", ".join(failed) or "keine"}'
         if pending:
             detail += '; ausstehend: ' + ', '.join(pending)
-        return db is not None and not failed and not errors, detail + f'; ERROR letzte 24h={errors}'
+        return db is not None and not failed and not errors, detail + f'; ERROR letzte 24h={errors}; fallback cold letzte 24h={fallbacks}'
     check(LABELS[4], backups)
     def host():
         disk = shutil.disk_usage('/')

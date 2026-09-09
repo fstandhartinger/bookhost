@@ -311,15 +311,16 @@ def restore_http_probe(path):
         image_result='200 image/png'
     return {'login':'200 '+title.group(1).strip(),'page':'200 '+page[1],'image':image_result}
 
-def backup(path, hot=False, keep=False):
-    if not hot and not keep:
+def backup(path, hot=False, keep=False, nightly=False):
+    if nightly or (not hot and not keep):
         retention(path)
+    hot = hot or nightly
     if b'bookstack' not in compose(path,'ps','--status','running','--services').splitlines():
         print('BACKUP SKIP suspended '+path.name); return
     ensure_key()
     dest=path/'backups'; dest.mkdir(exist_ok=True)
     name=time.strftime('%Y%m%dT%H%M%SZ',time.gmtime())
-    attempts = 2 if hot else 1
+    attempts = 3 if nightly else (2 if hot else 1)
     for attempt in range(attempts):
         stage=Path(tempfile.mkdtemp(prefix='.tmp-',dir=dest))
         encrypted=stage/('snapshot.age' if shutil.which('age') else 'snapshot.enc')
@@ -334,8 +335,11 @@ def backup(path, hot=False, keep=False):
             archive_hashes=archive_upload_hashes(stage/'bookstack.tar.gz') if hot else None
             live_hashes=after['content']['uploads'] if hot else None
             if hot and (after != before or not uploads_match(archive_hashes, live_hashes)):
-                if attempt == 0:
+                if attempt < attempts - 1:
                     continue
+                if nightly:
+                    print('BACKUP FALLBACK cold '+path.name+' after 3 hot attempts')
+                    return backup(path, keep=True)
                 raise RuntimeError('hot-inconsistent')
             metadata=dict(after['content']) if hot else content(path)
             metadata['mode']='hot' if hot else 'cold'
@@ -350,7 +354,7 @@ def backup(path, hot=False, keep=False):
             final=dest/(name+encrypted.suffix)
             final.with_suffix(final.suffix+'.hmac').write_text(tag)
             encrypted.rename(final)
-            print('BACKUP '+str(final))
+            print('BACKUP '+('hot' if hot else 'cold')+' '+str(final))
             return
         except Exception as exc:
             print('BACKUP ERROR '+('hot-inconsistent ' if str(exc)=='hot-inconsistent' else '')+path.name, file=sys.stderr)
@@ -439,7 +443,7 @@ def main():
         elif action=='purge': purge(path)
         elif action=='retention': retention(path)
         elif action=='backup':
-            backup(path, hot='--hot' in sys.argv[3:], keep='--no-retention' in sys.argv[3:])
+            backup(path, hot='--hot' in sys.argv[3:], keep='--no-retention' in sys.argv[3:], nightly='--nightly' in sys.argv[3:])
         elif action=='restore-test': restore(path)
         else: raise ValueError('Unknown action')
 if __name__=='__main__':

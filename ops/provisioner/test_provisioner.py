@@ -313,9 +313,10 @@ class NightlyBackupTests(unittest.TestCase):
                 if args[:2]==('exec','-T'): return b'dump'
                 return b''
             with patch.object(tenant,'retention') as retention, patch.object(tenant,'compose',side_effect=fake_compose), \
-                 patch.object(tenant,'fingerprint',side_effect=[{'content':{}},{'content':{}},{'content':{}},{'content':{}}]), \
+                 patch.object(tenant,'fingerprint',side_effect=[{'content':{'uploads':[]}},{'content':{'uploads':[]}},{'content':{'uploads':[]}},{'content':{'uploads':[]}}]), \
                  patch.object(tenant,'archive_upload_hashes',return_value=[]), patch.object(tenant,'run'), \
-                 patch.object(tenant,'crypt'), patch.object(tenant,'KEY',path/'key'), contextlib.redirect_stdout(io.StringIO()) as out:
+                 patch.object(tenant,'crypt',side_effect=lambda src,dst,*a,**k: Path(dst).write_bytes(b'encrypted')), \
+                 patch.object(tenant,'KEY',path/'key'), contextlib.redirect_stdout(io.StringIO()) as out:
                 tenant.backup(path, nightly=True)
             retention.assert_called_once_with(path)
             self.assertFalse(any(args[:2] in [('stop','bookstack'),('start','bookstack')] for args in calls))
@@ -329,10 +330,11 @@ class NightlyBackupTests(unittest.TestCase):
                 if args[:2]==('ps','--status'): return b'bookstack\n'
                 if args[:2]==('exec','-T'): return b'dump'
                 return b''
-            fingerprints=[{'content':{'n':i}} for i in range(6)]
+            fingerprints=[{'content':{'n':i,'uploads':[]}} for i in range(6)]
             with patch.object(tenant,'retention'), patch.object(tenant,'compose',side_effect=fake_compose), \
                  patch.object(tenant,'fingerprint',side_effect=fingerprints), patch.object(tenant,'archive_upload_hashes',return_value=[]), \
-                 patch.object(tenant,'run'), patch.object(tenant,'crypt'), patch.object(tenant,'KEY',path/'key'), \
+                 patch.object(tenant,'run'), patch.object(tenant,'crypt',side_effect=lambda src,dst,*a,**k: Path(dst).write_bytes(b'encrypted')), \
+                 patch.object(tenant,'content',return_value={}), patch.object(tenant,'KEY',path/'key'), \
                  contextlib.redirect_stdout(io.StringIO()) as out:
                 tenant.backup(path, nightly=True)
             self.assertEqual(sum(args[:2]==('stop','bookstack') for args in calls),1)

@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     );
     const items = (
       await db.query(
-        "SELECT id,filename,status,draft_title,error,created_at FROM intake_items WHERE team_id=$1 AND tenant_id=$2 ORDER BY created_at DESC LIMIT 50",
+        "SELECT id,filename,source,status,draft_title,error,created_at FROM intake_items WHERE team_id=$1 AND tenant_id=$2 ORDER BY created_at DESC LIMIT 50",
         [tenant.team_id, tenant.id],
       )
     ).rows;

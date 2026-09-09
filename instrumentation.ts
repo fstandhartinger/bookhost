@@ -7,5 +7,7 @@ export async function register() {
     startAuthCleanup();
     const { startIntakeCleanup } = await import("./lib/intake/jobs");
     startIntakeCleanup();
+    const { startEmailQueue } = await import("./lib/intake/email-jobs");
+    startEmailQueue();
   }
 }

@@ -41,6 +41,8 @@ export async function GET(_request: Request, context: Context) {
         target_chapter_id: item.target_chapter_id,
         target_book_name: item.target_book_name,
         target_chapter_name: item.target_chapter_name,
+        source: item.source,
+        source_metadata: item.source_metadata,
         source_preview: (item.extracted_text || "").slice(0, 2000),
         can_publish: canPublish(role),
         url: bookstack_page_id

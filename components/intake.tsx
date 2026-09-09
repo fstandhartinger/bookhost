@@ -1,10 +1,12 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { EmailIntake } from "./email-intake";
 import { cleanHtml } from "@/lib/intake/html";
 import type { Destination } from "@/lib/intake/bookstack";
 type Item = {
   id: string;
   filename: string;
+  source?: string;
   status: string;
   draft_title: string;
   error?: string;
@@ -190,6 +192,7 @@ export function Intake({
             ? "Loading your workspace…"
             : "1. Upload → 2. Review → 3. Publish")}
       </p>
+      <EmailIntake key={tenant} tenant={tenant} />
       <div className="grid items-start gap-6 lg:grid-cols-[1fr_2fr]">
         <div className="space-y-6">
           <form onSubmit={upload} className="price-card space-y-5">
@@ -309,6 +312,7 @@ export function Intake({
                       {i.draft_title || i.filename}
                     </span>
                     <span className="mt-1 block text-xs capitalize text-slate-500">
+                      {i.source === "email" ? "E-mail · " : ""}
                       {i.status}
                     </span>
                   </button>
@@ -333,7 +337,8 @@ export function Intake({
                 <span className="badge">{review.status}</span>
               </div>
               <p className="break-words text-sm text-slate-500">
-                Source: {review.filename}
+                Source: {review.source === "email" ? "E-mail · " : ""}
+                {review.filename}
               </p>
               <p className="text-sm">
                 Destination:{" "}

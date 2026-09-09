@@ -29,7 +29,7 @@ export function enqueue(
         const draft = await generateDraft(source.text);
         await workspace(user, tenant);
         await db.query(
-          "UPDATE intake_items SET status='draft',draft_title=$2,draft_html=$3,draft_tags=$4,updated_at=now() WHERE id=$1 AND status='drafting'",
+          "UPDATE intake_items SET status='draft',draft_title=CASE WHEN source='email' AND length(trim(draft_title))>0 THEN draft_title ELSE $2 END,draft_html=$3,draft_tags=$4,updated_at=now() WHERE id=$1 AND status='drafting'",
           [id, draft.title, draft.html, JSON.stringify(draft.tags)],
         );
       } catch {
@@ -65,7 +65,10 @@ export async function recoverIntake() {
       await rm(path, { recursive: true, force: true });
   }
   await db.query(
-    "UPDATE intake_items SET status='failed',error='Processing was interrupted. Retry publication for a reviewed draft, or upload the source again.',updated_at=now() WHERE status IN ('uploaded','queued','drafting','approved') AND updated_at<now()-interval '10 minutes'",
+    "UPDATE intake_items SET status='failed',error='Processing was interrupted. Retry publication for a reviewed draft, or upload the source again.',updated_at=now() WHERE NOT (source='email' AND status='queued') AND status IN ('uploaded','queued','drafting','approved') AND updated_at<now()-interval '10 minutes'",
+  );
+  await db.query(
+    "DELETE FROM intake_email_files WHERE item_id IN (SELECT id FROM intake_items WHERE status NOT IN ('queued','drafting'))",
   );
   await db.query(
     "DELETE FROM intake_items WHERE created_at<now()-interval '30 days'",

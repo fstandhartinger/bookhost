@@ -53,7 +53,7 @@ def config(path, public=True):
 def php(path, code, payload=None):
     # Payload passes only through stdin, never argv or Docker environment metadata.
     script="require '/app/www/vendor/autoload.php'; $app=require '/app/www/bootstrap/app.php'; $app->make(Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap(); "+code
-    return compose(path,'exec','-T','-w','/app/www','bookstack','php','-r',script,data=json.dumps(payload or {}).encode())
+    return compose(path,'exec','-T','-u','1000:1000','-w','/app/www','bookstack','php','-r',script,data=json.dumps(payload or {}).encode())
 
 def ready_internal(path):
     for _ in range(120):

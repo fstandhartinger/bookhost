@@ -237,3 +237,68 @@ it("rejects excessive DOCX entries and XML entity declarations in the isolated p
     ),
   ).rejects.toThrow();
 });
+
+describe("Upload destinations", () => {
+  it.each([
+    [
+      { book_id: "new", new_book_name: "  Operations  " },
+      "notes.md",
+      "Operations",
+    ],
+    [{ book_id: "new", new_book_name: "" }, "Team.guide.pdf", "Team.guide"],
+  ])("creates a book via the tenant API", async (fields, filename, name) => {
+    const fetcher = vi.fn().mockResolvedValue(Response.json({ id: 17, name }));
+    vi.stubGlobal("fetch", fetcher);
+    await expect(
+      new BookStack("demo", "id", "secret").uploadTarget(fields, filename),
+    ).resolves.toEqual({ book: { id: 17, name }, chapter: null });
+    expect(fetcher).toHaveBeenCalledWith(
+      "https://demo.wissen.app.mintapis.com/api/books",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ name }),
+      }),
+    );
+  });
+  it("explains missing create-book permission without exposing the provider body", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response("private", { status: 403 })),
+    );
+    await expect(
+      new BookStack("demo", "id", "secret").uploadTarget(
+        { book_id: "new" },
+        "guide.md",
+      ),
+    ).rejects.toThrow("enable Create all books");
+  });
+  it("validates existing destinations without creating a book", async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValue(Response.json({ id: 5, name: "Existing" }));
+    vi.stubGlobal("fetch", fetcher);
+    await expect(
+      new BookStack("demo", "id", "secret").uploadTarget(
+        { book_id: "5" },
+        "guide.md",
+      ),
+    ).resolves.toEqual({ book: { id: 5, name: "Existing" }, chapter: null });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(fetcher.mock.calls[0][1].method).toBe("GET");
+  });
+  it.each([
+    { book_id: "new", chapter_id: "2" },
+    { book_id: "NaN" },
+    { book_id: "1", chapter_id: "-1" },
+  ])(
+    "rejects invalid destinations before mutating BookStack",
+    async (fields) => {
+      const fetcher = vi.fn();
+      vi.stubGlobal("fetch", fetcher);
+      await expect(
+        new BookStack("demo", "id", "secret").uploadTarget(fields, "guide.md"),
+      ).rejects.toThrow();
+      expect(fetcher).not.toHaveBeenCalled();
+    },
+  );
+});

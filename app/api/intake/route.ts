@@ -86,20 +86,12 @@ export async function POST(request: Request) {
         402,
       );
     upload = await streamUpload(request);
-    const book = Number(upload.fields.book_id),
-      chapter = upload.fields.chapter_id
-        ? Number(upload.fields.chapter_id)
-        : null;
-    if (
-      !Number.isSafeInteger(book) ||
-      book < 1 ||
-      (chapter !== null && (!Number.isSafeInteger(chapter) || chapter < 1))
-    )
-      throw new IntakeError("Choose a destination book and optional chapter.");
     const client = await clientFor(tenant);
-    const target = await client.validateTarget(book, chapter);
     const current = await workspace(user, tenant.id);
+    const target = await client.uploadTarget(upload.fields, upload.filename);
     await quota(tenant.team_id, current.subscription_status, true);
+    const book = target.book.id;
+    const chapter = target.chapter?.id || null;
     const item = (
       await db.query(
         "INSERT INTO intake_items(team_id,tenant_id,filename,mime,extracted_text,target_book_id,target_chapter_id,created_by,status,target_book_name,target_chapter_name) VALUES($1,$2,$3,'application/octet-stream',NULL,$4,$5,$6,'queued',$7,$8) RETURNING id",

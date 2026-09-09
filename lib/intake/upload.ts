@@ -20,7 +20,7 @@ export async function streamUpload(request: Request) {
       limits: {
         files: 1,
         fields: 12,
-        fieldSize: 512,
+        fieldSize: 1024,
         fileSize: MAX_FILE,
         parts: 16,
       },

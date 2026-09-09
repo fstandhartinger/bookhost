@@ -37,6 +37,7 @@ export function Intake({
   const [books, setBooks] = useState<Destination[]>([]);
   const [chapters, setChapters] = useState<Destination[]>([]);
   const [book, setBook] = useState("");
+  const [newBookName, setNewBookName] = useState("");
   const [review, setReview] = useState<Review | null>(null);
   const [remaining, setRemaining] = useState(0);
   const [targetBook, setTargetBook] = useState("");
@@ -56,9 +57,10 @@ export function Intake({
     setBooks(data.books);
     setChapters(data.chapters);
     setBook((current) =>
+      current === "new" ||
       data.books.some((b: Destination) => String(b.id) === current)
         ? current
-        : String(data.books[0]?.id || ""),
+        : String(data.books[0]?.id || "new"),
     );
   }, [tenant]);
   useEffect(() => {
@@ -162,6 +164,8 @@ export function Intake({
             value={tenant}
             disabled={!!busy || loading}
             onChange={(e) => {
+              setBook("");
+              setNewBookName("");
               setBooks([]);
               setItems([]);
               setTenant(e.target.value);
@@ -205,6 +209,13 @@ export function Intake({
                   type="file"
                   name="file"
                   accept=".pdf,.docx,.md,.txt"
+                  onChange={(e) =>
+                    setNewBookName(
+                      (e.target.files?.[0]?.name || "")
+                        .replace(/\.[^.]+$/, "")
+                        .slice(0, 255),
+                    )
+                  }
                   required
                 />
               </label>
@@ -222,9 +233,7 @@ export function Intake({
                   onChange={(e) => setBook(e.target.value)}
                   required
                 >
-                  {!books.length && (
-                    <option value="">No books available</option>
-                  )}
+                  <option value="new">Create a new book…</option>
                   {books.map((b) => (
                     <option value={b.id} key={b.id}>
                       {b.name}
@@ -232,12 +241,26 @@ export function Intake({
                   ))}
                 </select>
               </label>
+              {book === "new" && (
+                <label className="block text-sm font-medium">
+                  New book name
+                  <input
+                    name="new_book_name"
+                    value={newBookName}
+                    onChange={(e) => setNewBookName(e.target.value)}
+                    maxLength={255}
+                    placeholder="Defaults to the document filename"
+                    className="mt-2 block w-full rounded-lg border p-3"
+                  />
+                </label>
+              )}
               <label className="block text-sm font-medium">
                 Chapter (optional)
                 <select
                   key={book}
                   className="mt-2 block w-full rounded-lg border p-3"
                   name="chapter_id"
+                  disabled={book === "new"}
                 >
                   <option value="">Directly in this book</option>
                   {chapters
@@ -251,7 +274,8 @@ export function Intake({
               </label>
               {!loading && !books.length && (
                 <p className="text-sm">
-                  Create a book in BookStack first, then refresh this page.
+                  Your first upload creates a book. Review the suggested page
+                  before publishing.
                 </p>
               )}
               <button className="button w-full" disabled={!book}>

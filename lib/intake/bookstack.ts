@@ -28,7 +28,9 @@ export class BookStack {
     if (!response.ok)
       throw new IntakeError(
         [401, 403].includes(response.status)
-          ? "BookStack token rejected. Contact support to restore intake access."
+          ? path === "books" && body
+            ? "BookStack cannot create books. Contact your workspace administrator to enable Create all books for Wissen Intake."
+            : "BookStack token rejected. Contact support to restore intake access."
           : response.status === 404
             ? "Book or chapter not found. Choose another destination."
             : response.status === 429
@@ -37,6 +39,27 @@ export class BookStack {
         response.status === 429 ? 429 : 502,
       );
     return response.json();
+  }
+  async uploadTarget(fields: Record<string, string>, filename: string) {
+    if (fields.book_id === "new") {
+      if (fields.chapter_id)
+        throw new IntakeError("A new book cannot use an existing chapter.");
+      const name = (
+        fields.new_book_name?.trim() || filename.replace(/\.[^.]+$/, "").trim()
+      ).slice(0, 255);
+      if (!name) throw new IntakeError("Enter a name for the new book.");
+      const book = await this.request<Destination>("books", { name });
+      return { book, chapter: null };
+    }
+    const book = Number(fields.book_id);
+    const chapter = fields.chapter_id ? Number(fields.chapter_id) : null;
+    if (
+      !Number.isSafeInteger(book) ||
+      book < 1 ||
+      (chapter !== null && (!Number.isSafeInteger(chapter) || chapter < 1))
+    )
+      throw new IntakeError("Choose a destination book and optional chapter.");
+    return this.validateTarget(book, chapter);
   }
   async list(kind: "books" | "chapters") {
     const all: Destination[] = [];

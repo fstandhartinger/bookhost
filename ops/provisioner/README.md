@@ -145,3 +145,23 @@ pricing (EUR 3.808 gross/month, no setup fee), but creation returned HTTP 403
 `forbidden`. No box was created. Scripts and cron are prepared; actual off-host
 protection remains pending. Operator handover and validation are recorded outside
 git in `work/offsite-backup-report.md`.
+
+## Public read-only demo
+
+Run `python3 ops/provisioner/demo-publish.py` to reconcile the initialized `demo`
+tenant only. It shares the lifecycle lock with backups, refuses a mismatched URL,
+updates two books and ten Markdown pages, and reuses the known legacy seed pages.
+Unrelated pages are not deleted. All non-admin roles become read/export-only and
+per-entity permission overrides are cleared on this dedicated demo. Registration
+is disabled; the books homepage and custom-head banner link to Wissen.
+
+Unchanged runs do not update content, revisions, settings or permission tables.
+Permission regeneration runs after the transaction because its table truncation
+implicitly commits in MariaDB; a pending setting allows retry after failure.
+Run tests using `.venv/bin/python -m unittest discover -p 'test_*.py'` from this
+folder. Follow live changes with `backup.sh demo` and `restore-test.sh demo`.
+
+BookStack returns a login redirect for disabled registration, but native denied
+edit routes redirect to the readable page or homepage; JSON writes return 403.
+The reviewed-intake wording in the example is explicitly illustrative, not a
+fabricated claim that the provisioner's content passed through actual intake.

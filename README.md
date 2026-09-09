@@ -29,6 +29,7 @@ docker run --rm -p 127.0.0.1:3999:3000 --env-file /secure/path/runtime.env bookh
 | `NEXT_PUBLIC_APP_URL` | Public canonical URL, default `https://bookhost.co`; used for canonical links and metadata. |
 | `LEGACY_HOSTS` | Comma-separated legacy control-plane hostnames, default `wissen.app.mintapis.com`. |
 | `REDIRECT_LEGACY_HOSTS` | Set `true` to 301 redirect legacy control-plane page requests; API routes, `/healthz`, and tenant subdomains remain available. |
+| `DEFENSIVE_HOSTS` | Comma-separated defensive domains that always 301 redirect page requests to `PUBLIC_BASE_URL`; defaults to BookHost `.cloud`, `.online`, and `.site` domains. |
 | `TENANT_DOMAIN` | Tenant hostname suffix, default `wissen.app.mintapis.com` until the tenant DNS cutover. |
 | `TRUST_PROXY` | Defaults to `true` in Docker behind Traefik; otherwise unset/false. Trusts only the last X-Forwarded-For entry. Proxy must overwrite/append the actual peer IP and container ports must not be publicly reachable. Without it, use socket address or proxy-overwritten x-real-ip; missing/invalid IP returns 400 on limited endpoints. |
 | `AUTH_TRUST_HOST` | Set `true` behind the trusted reverse proxy. The proxy must overwrite forwarded host/protocol/IP headers. |

@@ -7,6 +7,13 @@ export const LEGACY_HOSTS = (process.env.LEGACY_HOSTS || "wissen.app.mintapis.co
   .split(",")
   .map((host) => host.trim().toLowerCase())
   .filter(Boolean);
+export const DEFENSIVE_HOSTS = (
+  process.env.DEFENSIVE_HOSTS ||
+  "bookhost.cloud,www.bookhost.cloud,bookhost.online,www.bookhost.online,bookhost.site,www.bookhost.site"
+)
+  .split(",")
+  .map((host) => host.trim().toLowerCase())
+  .filter(Boolean);
 export const TENANT_DOMAIN = process.env.TENANT_DOMAIN || "wissen.app.mintapis.com";
 export function baseUrl() {
   return (

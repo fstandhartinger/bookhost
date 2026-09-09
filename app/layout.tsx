@@ -13,6 +13,7 @@ export const metadata: Metadata = {
   description:
     "Hosted BookStack with document intake (beta): upload, review and approve. €39/month plus VAT. 14 days free, no card; 20 trial drafts, 300/month on Team.",
   metadataBase: new URL(PUBLIC_BASE_URL),
+  alternates: { canonical: "./" },
   openGraph: {
     type: "website",
     locale: "en_US",

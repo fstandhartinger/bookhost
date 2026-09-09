@@ -101,6 +101,7 @@ export default function RootLayout({
                 </p>
               </div>
               <nav aria-label="Legal" className="flex flex-wrap gap-5 text-sm">
+                <Link href="/blog">Blog</Link>
                 <Link href="/legal/impressum">Impressum</Link>
                 <Link href="/legal/datenschutz">Datenschutz</Link>
                 <Link href="/legal/agb">AGB</Link>

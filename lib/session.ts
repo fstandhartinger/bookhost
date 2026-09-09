@@ -9,7 +9,9 @@ export async function sessionToken(
 ): Promise<JWT | null> {
   if (userId) {
     const result = await db.query(
-      `UPDATE users SET email_verified_at=COALESCE(email_verified_at,now()),
+      `UPDATE users SET password_hash=CASE WHEN email_verified_at IS NULL THEN NULL ELSE password_hash END,
+       password_set_at=CASE WHEN email_verified_at IS NULL THEN NULL ELSE password_set_at END,
+       email_verified_at=COALESCE(email_verified_at,now()),
        session_version=session_version+1 WHERE id=$1 RETURNING session_version`,
       [userId],
     );

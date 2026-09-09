@@ -1,12 +1,6 @@
 "use client";
 import { useState } from "react";
-export function JoinForm({
-  token,
-  email,
-}: {
-  token: string;
-  email?: string | null;
-}) {
+export function JoinForm({ email }: { email?: string | null }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   return (
@@ -18,7 +12,7 @@ export function JoinForm({
         setError("");
         const data = new FormData(e.currentTarget);
         try {
-          const res = await fetch(`/api/join/${token}`, {
+          const res = await fetch("/api/join", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -63,13 +57,10 @@ export function JoinForm({
           <p className="text-sm text-slate-600">
             Use at least 10 characters for a new account, or enter your existing
             Wissen password. If you use another sign-in method,{" "}
-            <a
-              className="underline"
-              href={`/login?callbackUrl=${encodeURIComponent("/join/" + token)}`}
-            >
+            <a className="underline" href="/login">
               sign in first
             </a>{" "}
-            and reopen this link.
+            to return to this invitation.
           </p>
         </>
       )}

@@ -1,3 +1,5 @@
+import { cookies } from "next/headers";
+import { ACTIVE_TEAM_COOKIE } from "@/lib/join-context";
 import { TeamPanel } from "@/components/team-panel";
 import { billingEligible } from "@/lib/trial";
 import { invoicePreview } from "@/lib/invoice-preview";
@@ -34,11 +36,13 @@ export default async function Dashboard({
   if (!session?.user?.id) redirect("/login");
   const teams = (
     await db.query(
-      "SELECT t.*,m.role FROM teams t JOIN memberships m ON m.team_id=t.id WHERE m.user_id=$1 ORDER BY (t.owner_user_id=$1) DESC,t.created_at",
+      "SELECT t.*,m.role FROM teams t JOIN memberships m ON m.team_id=t.id WHERE m.user_id=$1 ORDER BY m.created_at DESC,t.id",
       [session.user.id],
     )
   ).rows;
-  const team = teams.find((t) => t.id === selectedTeam) || teams[0];
+  const activeTeam = (await cookies()).get(ACTIVE_TEAM_COOKIE)?.value;
+  const team =
+    teams.find((t) => t.id === (selectedTeam || activeTeam)) || teams[0];
   const isOwner = !team || team.owner_user_id === session.user.id;
   const canManage = team && ["owner", "admin"].includes(team.role);
   const members = canManage
@@ -145,16 +149,19 @@ export default async function Dashboard({
       </div>
       {teams.length > 1 && (
         <nav aria-label="Teams" className="mt-4 flex flex-wrap gap-4">
-          {teams.map((t) => (
-            <a
-              key={t.id}
-              className="underline"
-              href={`/app?team=${t.id}`}
-              aria-current={team.id === t.id ? "page" : undefined}
-            >
-              {t.name}
-            </a>
-          ))}
+          <form action="/api/team/active" method="post" className="flex gap-3">
+            <label>
+              Active team{" "}
+              <select name="team" defaultValue={team.id}>
+                {teams.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button className="button-secondary">Switch team</button>
+          </form>
         </nav>
       )}
       {canManage && (
@@ -226,6 +233,16 @@ export default async function Dashboard({
           <p className="mt-3 text-sm text-slate-500">You’re all caught up.</p>
         )}
       </section>
+      {user?.email_verified_at && !user?.password_set_at && (
+        <p role="status" className="mt-4 rounded-lg bg-amber-50 p-4">
+          Your email is now verified. Any password set before verification was
+          removed.{" "}
+          <a className="underline" href="#password-setup">
+            Set a new password
+          </a>{" "}
+          to use password sign-in.
+        </p>
+      )}
       {!user?.email_verified_at && (
         <p className="mt-4 text-sm text-slate-500">
           Confirm your e-mail by signing in via link once e-mail sign-in is

@@ -74,7 +74,7 @@ export async function manageTeam(
         "INSERT INTO team_invites(team_id,token_hash,role,created_by,max_uses) VALUES($1,$2,$3,$4,$5)",
         [team.id, digest(token), data.role, userId, Number(data.maxUses)],
       );
-      return { link: `https://wissen.app.mintapis.com/join/${token}` };
+      return { link: `https://wissen.app.mintapis.com/join#${token}` };
     }
     if (data.action === "revoke") {
       if (typeof data.inviteId !== "string" || !uuid(data.inviteId))
@@ -89,6 +89,13 @@ export async function manageTeam(
       throw new IntakeError("Invalid member.");
     if (data.userId === userId || data.userId === team.owner_user_id)
       throw new IntakeError("You cannot change yourself or the owner.", 403);
+    const target = (
+      await c.query(
+        "SELECT role FROM memberships WHERE team_id=$1 AND user_id=$2",
+        [team.id, data.userId],
+      )
+    ).rows[0];
+    if (!target) throw new IntakeError("Member not found.", 404);
     if (data.action === "remove")
       await c.query("DELETE FROM memberships WHERE team_id=$1 AND user_id=$2", [
         team.id,
@@ -104,6 +111,21 @@ export async function manageTeam(
         [team.id, data.userId, data.role],
       );
     } else throw new IntakeError("Invalid action.");
+    if (
+      data.action === "remove" ||
+      (data.action === "role" &&
+        target.role === "admin" &&
+        data.role === "member")
+    ) {
+      await c.query(
+        "UPDATE team_invites SET revoked_at=now() WHERE team_id=$1 AND created_by=$2 AND revoked_at IS NULL",
+        [team.id, data.userId],
+      );
+      await c.query(
+        "UPDATE users SET session_version=session_version+1 WHERE id=$1",
+        [data.userId],
+      );
+    }
     return { ok: true };
   });
 }
@@ -111,6 +133,7 @@ export async function joinTeam(
   token: string,
   userId: string | undefined,
   data: Record<string, unknown>,
+  sessionVersion?: number,
 ) {
   const initial = await getInvite(token);
   const problem = inviteProblem(initial);
@@ -140,14 +163,20 @@ export async function joinTeam(
     const issue = inviteProblem(invite);
     if (issue) throw new IntakeError(issue, 410);
     let user;
-    if (userId)
+    if (userId) {
       user = (
         await c.query(
-          "SELECT id,email,name,session_version FROM users WHERE id=$1",
+          "SELECT id,email,name,session_version FROM users WHERE id=$1 FOR UPDATE",
           [userId],
         )
       ).rows[0];
-    else {
+      if (
+        !user ||
+        sessionVersion === undefined ||
+        user.session_version !== sessionVersion
+      )
+        throw new IntakeError("Please sign in again.", 401);
+    } else {
       // Serialize account creation across different teams too.
       await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [
         email,
@@ -157,11 +186,12 @@ export async function joinTeam(
           email,
         ])
       ).rows[0];
-      if (user && !(await verifyPassword(user.password_hash, password)))
-        throw new IntakeError(
-          "Please sign in first, then reopen this invitation.",
-          401,
-        );
+      const passwordMatches = await verifyPassword(
+        user?.password_hash || null,
+        password,
+      );
+      if (user && !passwordMatches)
+        throw new IntakeError("Could not join with these details", 401);
     }
     if (
       user &&
@@ -172,7 +202,7 @@ export async function joinTeam(
         )
       ).rowCount
     )
-      throw new IntakeError("You are already a member of this team.", 409);
+      return { ...user, team_id: invite.team_id };
     const count = Number(
       (
         await c.query("SELECT count(*) FROM memberships WHERE team_id=$1", [
@@ -200,6 +230,6 @@ export async function joinTeam(
     await c.query("UPDATE team_invites SET uses=uses+1 WHERE id=$1", [
       invite.id,
     ]);
-    return user;
+    return { ...user, team_id: invite.team_id };
   });
 }

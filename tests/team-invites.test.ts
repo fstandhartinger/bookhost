@@ -72,7 +72,7 @@ it("creates 32-byte token and persists only its digest", async () => {
     role: "member",
     maxUses: 1,
   });
-  const token = result.link!.split("/").pop()!;
+  const token = result.link!.split("#")[1];
   expect(token).toMatch(/^[a-f0-9]{64}$/);
   expect(query.mock.calls[3][1]).toEqual([id, digest(token), "member", id, 1]);
 });
@@ -124,10 +124,10 @@ it("rejects capacity 25 for authenticated join without consuming the token", asy
     .mockResolvedValueOnce({ rows: [invite] })
     .mockResolvedValueOnce({ rows: [{ id }] })
     .mockResolvedValueOnce({ rows: [invite] })
-    .mockResolvedValueOnce({ rows: [{ id: other }] })
+    .mockResolvedValueOnce({ rows: [{ id: other, session_version: 3 }] })
     .mockResolvedValueOnce({ rows: [], rowCount: 0 })
     .mockResolvedValueOnce({ rows: [{ count: "25" }] });
-  await expect(joinTeam("a".repeat(64), other, {})).rejects.toMatchObject({
+  await expect(joinTeam("a".repeat(64), other, {}, 3)).rejects.toMatchObject({
     status: 409,
   });
   expect(query).toHaveBeenCalledTimes(6);
@@ -137,7 +137,7 @@ it("rechecks usage after locking to prevent a concurrent second join", async () 
     .mockResolvedValueOnce({ rows: [invite] })
     .mockResolvedValueOnce({ rows: [{ id }] })
     .mockResolvedValueOnce({ rows: [{ ...invite, uses: 1 }] });
-  await expect(joinTeam("a".repeat(64), other, {})).rejects.toMatchObject({
+  await expect(joinTeam("a".repeat(64), other, {}, 3)).rejects.toMatchObject({
     status: 410,
   });
   expect(query).toHaveBeenCalledTimes(3);

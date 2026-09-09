@@ -318,15 +318,80 @@ management serialize on the team row to enforce capacity and usage atomically.
 Members access workspace status and intake; billing remains owner-only.
 Dashboard membership does not provision a separate BookStack account.
 
-`/join/<token>` supports a new password account, an existing correct password,
-or the currently signed-in account. Password accounts remain unverified. Join
-attempts are limited to ten per IP per 15 minutes, with the same trusted-proxy
-configuration as password login. Links are excluded from indexing and analytics.
+`/join#<token>` supports a new password account, an existing correct password,
+or the currently signed-in account. The same email/password form is used for
+new and existing addresses, with a generic incorrect-credentials error and dummy
+Argon2 verification for missing password hashes. Both login and anonymous join
+use shared limits: email+IP 10/15 minutes and account 30/15 minutes. Context
+submission has a separate 60/IP/15-minute limit. Use the documented trusted-proxy
+configuration; successful colleagues no longer share a ten-join IP budget.
+There is no email-existence lookup UI. As with any immediate password signup,
+successful creation versus rejected existing credentials is still observable;
+complete account-enumeration resistance would require mailbox verification
+before signup, rather than immediate unverified access.
 
-Local acceptance: load the external app and database TLS environments, set
-`DATABASE_URL="$DATABASE_URL_LOCAL"`, `AUTH_URL=http://127.0.0.1:3986` and
-`AUTH_TRUST_HOST=true`, run migrations/build, then start the production server
-bound to `127.0.0.1:3986`. Run `node scripts/invite-links-check.mjs` with the same
-environment. It reapplies 017 twice, creates synthetic SQL accounts and signed
-sessions, verifies HTTP joins/roles/revocation/expiry/capacity, and removes its
-test data in `finally`. It sends no email and makes no Stripe purchases.
+Authenticated joins lock the user and compare the originally authenticated
+`session_version` with the current database value. They never replace the JWT.
+Password joins read the version under lock without changing it; subsequent
+revocations still invalidate the resulting JWT. An existing membership returns
+the team dashboard without consuming another use. Removing a member or demoting
+an admin atomically revokes that user's invitations for this team and increments
+their account-wide session version. Removal is not a permanent ban: another
+still-valid bearer invitation can allow re-entry after fresh authentication.
+
+Native fallback forms retain `no-referrer`: an `Origin: null` navigation is
+accepted only with browser-controlled `Sec-Fetch-Site: same-origin` and
+`Sec-Fetch-Mode: navigate`. Missing Origin, foreign origins and cross-site
+metadata are rejected. JSON team/join writes require the exact configured Origin.
+
+The login destination is `/join` while a ten-minute HttpOnly, SameSite=Lax
+invitation context cookie exists (Secure on HTTPS); password, Magic Link and
+Google login preserve it. Successful join selects the destination team in an
+HttpOnly cookie. `/app` offers a membership-checked team switcher and defaults
+to the most recently joined team when no valid selection exists.
+
+#### Unverified accounts
+
+Password signup through join does not prove mailbox ownership. On the first
+verified Magic Link/Google login, the account's old `password_hash` and
+`password_set_at` are cleared and `session_version` is incremented atomically.
+All previous sessions become invalid; the old password cannot log in again.
+Existing memberships and consumed invitation uses remain. `/app` asks the
+verified mailbox owner to set a new password. Later verified logins keep passwords
+set after verification, while still revoking previous sessions. Operator stats
+require both a current database-verified email and membership in `ADMIN_EMAILS`;
+unverified allowlisted accounts receive 404. Operators can use `npm run stats`
+on the host without browser access.
+
+#### Invitation tokens and access logs
+
+Only fragment links (`/join#<token>`) are generated; old token-bearing path routes
+are retired. Browsers do not send fragments in HTTP requests. A small client
+bootstrap removes the fragment from browser history, submits the token in the
+body of `POST /api/join/context`, and reloads `/join`. Without JavaScript, the
+page offers a manual code field posting to the same endpoint. The token stays
+in an HttpOnly context cookie and is never embedded in rendered HTML, analytics,
+login callback URLs, or API request paths. `/join` uses `Referrer-Policy:
+no-referrer` and is excluded from indexing/analytics.
+
+Traefik access logs record request URLs: the fragment design keeps newly issued
+tokens out of those URLs without shortening invitation validity. Do not configure
+proxy/APM request-body or Cookie-header capture on these endpoints. Old path
+links that users manually request may remain in historical logs; revoke old
+invitations before a public rollout if such links were distributed. No production
+proxy log configuration is changed by this patch.
+
+Local acceptance: export the external app and database TLS environments, set
+`DATABASE_URL="$DATABASE_URL_LOCAL"`, `AUTH_URL=http://127.0.0.1:3985`,
+`AUTH_TRUST_HOST=true`, and `ADMIN_EMAILS=invite-operator@example.invalid`, then
+build and start the production server bound to `127.0.0.1:3985`. Run
+`node scripts/invite-links-check.mjs` with the same environment and
+`INVITE_PLAYWRIGHT_MODULE` pointing to an installed Playwright/Playwright Core
+module. The script uses a fresh Chromium profile and synthetic SQL sessions,
+checks fragment/no-JS context, Origin denial, incorrect passwords, admin
+verification, revocation then join, login return, team switching and mobile
+layout. It removes test rows and closes the browser in `finally`, sends no email
+and makes no Stripe purchases. `INTAKE_DB_TEST=1 npm test` additionally exercises
+real concurrent joins, the revocation ordering, verification/password replacement,
+shared password limits, removal/demotion, and migration 017 twice in an isolated
+rolled-back schema. Set optional `INVITE_SCREENSHOT` to save a mobile screenshot.

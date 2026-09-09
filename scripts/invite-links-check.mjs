@@ -1,20 +1,21 @@
-// Explicit local acceptance check: synthetic identities, no provider login or email.
+// Local production acceptance: synthetic SQL identities/sessions only, no provider logins or mail.
 import assert from "node:assert/strict";
 import { randomUUID, createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
 import pg from "pg";
 import { encode } from "next-auth/jwt";
 import { databaseConfig } from "./db-config.mjs";
-const origin = "http://127.0.0.1:3986";
+const origin = "http://127.0.0.1:3985";
 if (process.env.AUTH_URL !== origin)
   throw new Error("Set AUTH_URL to local acceptance origin");
 const pool = new pg.Pool(databaseConfig());
-const tag = randomUUID();
-const email = `invite-${tag}@example.invalid`;
-const ids = [];
-let team;
-const ip = "192.0.2.186";
+const tag = randomUUID(),
+  ids = [],
+  teams = [],
+  emails = [];
+const ip = "192.0.2.186",
+  password = "acceptance-password-123";
 const hash = (s) => createHash("sha256").update(s).digest("hex");
+let browser;
 async function cookie(user) {
   return (
     "authjs.session-token=" +
@@ -31,11 +32,11 @@ async function cookie(user) {
     }))
   );
 }
-async function post(path, data, session = "") {
+async function post(path, data, session = "", requestOrigin = origin) {
   return fetch(origin + path, {
     method: "POST",
     headers: {
-      origin,
+      ...(requestOrigin ? { origin: requestOrigin } : {}),
       "Content-Type": "application/json",
       "x-real-ip": ip,
       cookie: session,
@@ -44,207 +45,276 @@ async function post(path, data, session = "") {
     redirect: "manual",
   });
 }
-try {
-  const sql = await readFile(
-    new URL("../db/migrations/017_team_invites.sql", import.meta.url),
-    "utf8",
-  );
-  await pool.query(sql);
-  await pool.query(sql);
-  const owner = (
-    await pool.query("INSERT INTO users(email) VALUES($1) RETURNING *", [
-      `owner-${tag}@example.invalid`,
-    ])
+async function user(prefix) {
+  const email =
+    prefix === "operator"
+      ? "invite-operator@example.invalid"
+      : `${prefix}-${tag}@example.invalid`;
+  emails.push(email);
+  const u = (
+    await pool.query("INSERT INTO users(email) VALUES($1) RETURNING *", [email])
   ).rows[0];
-  ids.push(owner.id);
-  team = (
+  ids.push(u.id);
+  return u;
+}
+async function team(owner, name) {
+  const t = (
     await pool.query(
       "INSERT INTO teams(name,owner_user_id) VALUES($1,$2) RETURNING id",
-      [`Invite check ${tag}`, owner.id],
+      [name, owner.id],
     )
   ).rows[0].id;
+  teams.push(t);
   await pool.query(
-    "INSERT INTO memberships(user_id,team_id,role) VALUES($1,$2,'owner')",
-    [owner.id, team],
+    "INSERT INTO memberships(team_id,user_id,role) VALUES($1,$2,'owner')",
+    [t, owner.id],
   );
-  const ownerCookie = await cookie(owner);
-  let res = await post(
+  return t;
+}
+async function invitation(teamId, session, role = "member", maxUses = 10) {
+  const r = await post(
     "/api/team",
-    { teamId: team, action: "invite", role: "member", maxUses: 1 },
-    ownerCookie,
+    { action: "invite", teamId, role, maxUses },
+    session,
   );
-  assert.equal(res.status, 200);
-  let link = (await res.json()).link;
-  const token = link.split("/").pop();
-  const saved = (
-    await pool.query("SELECT * FROM team_invites WHERE team_id=$1", [team])
-  ).rows[0];
-  assert.equal(saved.token_hash, hash(token));
-  assert.equal(saved.max_uses, 1);
-  res = await fetch(origin + "/join/" + token);
-  assert.equal(res.status, 200);
-  assert.match(await res.text(), /Join Invite check/);
-  res = await post("/api/join/" + token, {
-    email,
-    password: "acceptance-password-123",
-  });
-  assert.equal(res.status, 200);
-  assert.equal((await res.json()).url, "/app");
-  const memberCookie = res.headers.get("set-cookie").split(";")[0];
+  assert.equal(r.status, 200);
+  const { link } = await r.json();
+  assert.match(link, /\/join#[a-f0-9]{64}$/);
+  return link.split("#")[1];
+}
+async function context(token) {
+  const r = await post("/api/join/context", { token });
+  assert.equal(r.status, 200);
+  assert.match(r.headers.get("set-cookie"), /HttpOnly/i);
+  assert.match(r.headers.get("set-cookie"), /Max-Age=600/i);
+  return r.headers.getSetCookie()[0].split(";")[0];
+}
+try {
+  const owner = await user("owner"),
+    ownerCookie = await cookie(owner),
+    teamId = await team(owner, "Invite production check");
+  const token = await invitation(teamId, ownerCookie);
+  for (const path of [
+    "/api/team",
+    "/api/team/active",
+    "/api/join",
+    "/api/join/context",
+  ]) {
+    for (const foreign of [undefined, "null", "https://foreign.invalid"]) {
+      const r = await post(
+        path,
+        {},
+        ownerCookie,
+        foreign === undefined ? "" : foreign,
+      );
+      assert.equal(r.status, 403, path);
+    }
+  }
+  const joinCookie = await context(token);
+  let r = await fetch(origin + "/join", { headers: { cookie: joinCookie } });
+  assert.equal(r.headers.get("referrer-policy"), "no-referrer");
+  let html = await r.text();
+  assert.match(html, /Invite production check/);
+  assert(!html.includes(token));
+  assert.match(html, /name="email"/);
+  assert.match(html, /name="password"/);
+  const email = `member-${tag}@example.invalid`;
+  emails.push(email);
+  r = await post("/api/join", { email, password }, joinCookie);
+  assert.equal(r.status, 200);
+  assert.equal((await r.json()).url, `/app?team=${teamId}`);
+  const memberCookie = r.headers
+    .getSetCookie()
+    .find((c) => c.startsWith("authjs.session-token="))
+    .split(";")[0];
   const member = (
     await pool.query("SELECT * FROM users WHERE email=$1", [email])
   ).rows[0];
   ids.push(member.id);
   assert.equal(member.email_verified_at, null);
+  r = await post(
+    "/api/join",
+    { email, password: "incorrect-password" },
+    joinCookie,
+  );
+  assert.equal(r.status, 401);
+  assert.equal((await r.json()).error, "Could not join with these details");
+  r = await post("/api/join", {}, memberCookie + "; " + joinCookie);
+  assert.equal(r.status, 200);
+  assert(
+    !r.headers
+      .getSetCookie()
+      .some((c) => c.startsWith("authjs.session-token=")),
+  );
   assert.equal(
     (
-      await pool.query(
-        "SELECT role FROM memberships WHERE team_id=$1 AND user_id=$2",
-        [team, member.id],
-      )
-    ).rows[0].role,
-    "member",
+      await pool.query("SELECT uses FROM team_invites WHERE token_hash=$1", [
+        hash(token),
+      ])
+    ).rows[0].uses,
+    1,
   );
-  res = await fetch(origin + "/app", { headers: { cookie: ownerCookie } });
-  assert.match(await res.text(), new RegExp(email.replaceAll(".", "\\.")));
-  res = await fetch(origin + "/app", { headers: { cookie: memberCookie } });
-  const dashboard = await res.text();
-  assert.match(dashboard, /Invite check/);
-  assert.doesNotMatch(
-    dashboard,
-    /Create invitation link|Manage billing|Start free trial|Admin email:/,
-  );
-  res = await post("/api/checkout", {}, memberCookie);
-  assert.equal(res.status, 403);
-  for (const action of ["invite", "remove"]) {
-    res = await post(
-      "/api/team",
-      { teamId: team, action, role: "admin", maxUses: 1, userId: owner.id },
-      memberCookie,
-    );
-    assert.equal(res.status, 403);
-  }
-  res = await post("/api/join/" + token, {
-    email: `second-${tag}@example.invalid`,
-    password: "acceptance-password-123",
-  });
-  assert.equal(res.status, 410);
-  res = await post(
+  r = await post(
     "/api/team",
-    { teamId: team, action: "invite", role: "admin", maxUses: 10 },
-    ownerCookie,
-  );
-  assert.equal(res.status, 200);
-  link = (await res.json()).link;
-  const token2 = link.split("/").pop();
-  const invite2 = (
-    await pool.query("SELECT id FROM team_invites WHERE token_hash=$1", [
-      hash(token2),
-    ])
-  ).rows[0].id;
-  res = await post("/api/join/" + token2, {
-    email,
-    password: "wrong-password-123",
-  });
-  assert.equal(res.status, 401);
-  res = await post(
-    "/api/team",
-    { teamId: team, action: "remove", userId: member.id },
-    ownerCookie,
-  );
-  assert.equal(res.status, 200);
-  res = await post("/api/join/" + token2, {
-    email,
-    password: "acceptance-password-123",
-  });
-  assert.equal(res.status, 200);
-  assert.equal(
-    (
-      await pool.query(
-        "SELECT role FROM memberships WHERE team_id=$1 AND user_id=$2",
-        [team, member.id],
-      )
-    ).rows[0].role,
-    "admin",
-  );
-  res = await post(
-    "/api/team",
-    { teamId: team, action: "role", userId: member.id, role: "member" },
-    ownerCookie,
-  );
-  assert.equal(res.status, 200);
-  res = await post(
-    "/api/team",
-    { teamId: team, action: "role", userId: owner.id, role: "member" },
+    { action: "invite", teamId, role: "admin", maxUses: 1 },
     memberCookie,
   );
-  assert.equal(res.status, 403);
-  res = await post(
+  assert.equal(r.status, 403);
+  r = await post(
     "/api/team",
-    { teamId: team, action: "remove", userId: member.id },
+    { action: "remove", teamId, userId: member.id },
     ownerCookie,
   );
-  assert.equal(res.status, 200);
-  res = await post("/api/join/" + token2, {}, memberCookie);
-  assert.equal(res.status, 200);
-  res = await post(
-    "/api/team",
-    { teamId: team, action: "revoke", inviteId: invite2 },
-    ownerCookie,
-  );
-  assert.equal(res.status, 200);
-  res = await post("/api/join/" + token2, {}, memberCookie);
-  assert.equal(res.status, 410);
-  await pool.query(
-    "UPDATE team_invites SET revoked_at=NULL,expires_at=now()-interval '1 second' WHERE id=$1",
-    [invite2],
-  );
-  res = await post("/api/join/" + token2, {}, memberCookie);
-  assert.equal(res.status, 410);
-  await pool.query(
-    "UPDATE team_invites SET expires_at=now()+interval '1 day' WHERE id=$1",
-    [invite2],
-  );
-  for (let n = 0; n < 23; n++) {
-    const user = (
-      await pool.query("INSERT INTO users(email) VALUES($1) RETURNING id", [
-        `seat-${n}-${tag}@example.invalid`,
-      ])
-    ).rows[0];
-    ids.push(user.id);
-    await pool.query(
-      "INSERT INTO memberships(team_id,user_id,role) VALUES($1,$2,'member')",
-      [team, user.id],
-    );
-  }
-  res = await post("/api/join/" + token2, {
-    email: `full-${tag}@example.invalid`,
-    password: "acceptance-password-123",
+  assert.equal(r.status, 200);
+  const revokedVersion = (
+    await pool.query("SELECT session_version FROM users WHERE id=$1", [
+      member.id,
+    ])
+  ).rows[0].session_version;
+  r = await post("/api/join", {}, memberCookie + "; " + joinCookie);
+  assert.notEqual(r.status, 200);
+  r = await fetch(origin + "/app", {
+    headers: { cookie: memberCookie },
+    redirect: "manual",
   });
-  assert.equal(res.status, 409);
-  res = await post(
-    "/api/team",
-    { teamId: team, action: "invite", role: "member", maxUses: 1 },
-    ownerCookie,
+  assert.equal(r.status, 307);
+  r = await post("/api/join", { email, password }, joinCookie);
+  assert.equal(r.status, 200);
+  assert.equal(
+    (
+      await pool.query("SELECT session_version FROM users WHERE id=$1", [
+        member.id,
+      ])
+    ).rows[0].session_version,
+    revokedVersion,
   );
-  assert.equal(res.status, 409);
+  const operator = await user("operator");
+  r = await fetch(origin + "/admin/stats", {
+    headers: { cookie: await cookie(operator) },
+  });
+  assert.equal(r.status, 404);
+  await pool.query("UPDATE users SET email_verified_at=now() WHERE id=$1", [
+    operator.id,
+  ]);
+  r = await fetch(origin + "/admin/stats", {
+    headers: { cookie: await cookie(operator) },
+  });
+  assert.equal(r.status, 200);
+  // Real Chromium executes the fragment bootstrap. Synthetic sessions are injected;
+  // no login UI, provider, email or real user's browser profile is touched.
+  if (!process.env.INVITE_PLAYWRIGHT_MODULE)
+    throw new Error(
+      "Set INVITE_PLAYWRIGHT_MODULE to installed playwright module for browser acceptance",
+    );
+  const { chromium } = await import(process.env.INVITE_PLAYWRIGHT_MODULE);
+  browser = await chromium.launch({
+    executablePath: process.env.CHROME_PATH || "/usr/bin/google-chrome",
+    headless: true,
+    args: ["--no-sandbox", "--disable-dev-shm-usage"],
+  });
+  const bc = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    extraHTTPHeaders: { "x-real-ip": ip, DNT: "1" },
+  });
+  const page = await bc.newPage(),
+    paths = [];
+  page.on("request", (req) =>
+    paths.push(new URL(req.url()).pathname + new URL(req.url()).search),
+  );
+  await page.goto(origin + "/join#" + token);
+  await page.getByRole("button", { name: "Join team", exact: true }).waitFor();
+  assert.equal(page.url(), origin + "/join");
+  assert(paths.every((path) => !path.includes(token)));
+  assert(!(await page.evaluate(() => document.cookie)).includes(token));
+  await page.getByRole("link", { name: "sign in first" }).click();
+  await page.waitForURL(origin + "/login");
+  const guest = await user("browser"),
+    encoded = await cookie(guest);
+  await bc.addCookies([
+    {
+      name: "authjs.session-token",
+      value: encoded.slice(encoded.indexOf("=") + 1),
+      url: origin,
+      httpOnly: true,
+      sameSite: "Lax",
+    },
+  ]);
+  await page.goto(origin + "/login");
+  await page.waitForURL(origin + "/join");
+  await page.getByRole("button", { name: `Join as ${guest.email}` }).click();
+  await page.waitForURL(/\/app\?team=/);
+  assert.match(
+    await page.locator("main").innerText(),
+    /Invite production check/,
+  );
+  const owner2 = await user("owner2"),
+    team2 = await team(owner2, "Second invited team"),
+    token2 = await invitation(team2, await cookie(owner2));
+  await page.goto(origin + "/join#" + token2);
+  await page
+    .getByRole("heading", { name: "Join Second invited team" })
+    .waitFor();
+  await page.getByRole("button", { name: `Join as ${guest.email}` }).click();
+  await page.waitForURL(/\/app\?team=/);
+  await page.goto(origin + "/app");
+  assert.equal(await page.locator("select[name=team]").inputValue(), team2);
+  await page.selectOption("select[name=team]", teamId);
+  const switchResponse = page.waitForResponse((r) =>
+    r.url().endsWith("/api/team/active"),
+  );
+  await page.getByRole("button", { name: "Switch team" }).click();
+  const switched = await switchResponse;
+  assert.equal(switched.status(), 303, "team switch status");
+  assert.equal(switched.headers().location, origin + "/app");
+  await page.waitForURL(origin + "/app");
+  await page.waitForLoadState("networkidle");
+  await page.reload();
+  assert.equal(await page.locator("select[name=team]").inputValue(), teamId);
+  assert(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  );
+  if (process.env.INVITE_SCREENSHOT)
+    await page.screenshot({
+      path: process.env.INVITE_SCREENSHOT,
+      fullPage: true,
+    });
+  const nojs = await browser.newContext({
+      javaScriptEnabled: false,
+      extraHTTPHeaders: { "x-real-ip": ip },
+    }),
+    manual = await nojs.newPage();
+  await manual.goto(origin + "/join");
+  await manual.locator("summary").click();
+  await manual.locator("input[name=token]").fill(token);
+  await manual.getByRole("button", { name: "Open invitation" }).click();
+  await manual
+    .getByRole("heading", { name: "Join Invite production check" })
+    .waitFor();
   console.log(
-    "PASS: migration applied twice; HTTP create, fresh join/session, member dashboard, authorization, one-use rejection, existing password, role, revoke, expiry and 25-seat limit.",
+    "PASS: fragment bootstrap and HTTP-only context; no token in HTTP URLs/HTML; no-JS token form; origin checks; generic password error; verified admin gate; revocation -> join; existing membership without consumption; login return; multi-team cookie and mobile layout.",
   );
 } finally {
-  if (team) {
-    await pool.query("DELETE FROM team_invites WHERE team_id=$1", [team]);
-    await pool.query("DELETE FROM memberships WHERE team_id=$1", [team]);
-    await pool.query("DELETE FROM teams WHERE id=$1", [team]);
-  }
-  await pool.query("DELETE FROM users WHERE id=ANY($1::uuid[]) OR email=$2", [
-    ids,
-    email,
+  await browser?.close();
+  await pool.query("DELETE FROM memberships WHERE team_id=ANY($1::uuid[])", [
+    teams,
   ]);
+  await pool.query("DELETE FROM teams WHERE id=ANY($1::uuid[])", [teams]);
   await pool.query(
-    "DELETE FROM rate_limits WHERE key=$1 OR key=ANY($2::text[])",
-    ["join:" + hash(ip), ids.map((id) => "team:" + id)],
+    "DELETE FROM users WHERE id=ANY($1::uuid[]) OR email=ANY($2::text[])",
+    [ids, emails],
   );
+  await pool.query("DELETE FROM rate_limits WHERE key=ANY($1::text[])", [
+    [
+      "join-context:" + hash(ip),
+      ...ids.map((id) => "team:" + id),
+      ...emails.flatMap((e) => [
+        "password-user:" + hash(e),
+        "password:" + hash(e + ":" + ip),
+      ]),
+    ],
+  ]);
   await pool.end();
   console.log("Synthetic test records removed.");
 }

@@ -173,6 +173,10 @@ def provision(path,email):
         php(path,"$v=json_decode(stream_get_contents(STDIN),true); $u=BookStack\\Users\\Models\\User::where('email','admin@admin.com')->first(); if (!$u) {$u=BookStack\\Users\\Models\\User::where('email',$v['email'])->firstOrFail();} $u->email=$v['email']; $u->password=Illuminate\\Support\\Facades\\Hash::make($v['secret']); $u->save();",{'email':values['BOOKSTACK_ADMIN_EMAIL'],'secret':values['BOOKSTACK_ADMIN_PASSWORD']})
         seed_starter_book(path, values['BOOKSTACK_ADMIN_EMAIL'])
         (path/'.initialized').touch()
+        try:
+            backup(path, hot=True)
+        except Exception:
+            print('FIRST-BACKUP ERROR '+path.name, file=sys.stderr)
     config(path); compose(path,'up','-d'); public_ready(values['APP_URL'])
     print('RUNNING '+values['APP_URL'])
 
@@ -258,32 +262,52 @@ def restore_http_probe(path):
         image_result='200 image/png'
     return {'login':'200 '+title.group(1).strip(),'page':'200 '+page[1],'image':image_result}
 
-def backup(path):
-    retention(path)
+def backup(path, hot=False, keep=False):
+    if not hot and not keep:
+        retention(path)
     if b'bookstack' not in compose(path,'ps','--status','running','--services').splitlines():
         print('BACKUP SKIP suspended '+path.name); return
     ensure_key()
     dest=path/'backups'; dest.mkdir(exist_ok=True)
-    stage=Path(tempfile.mkdtemp(prefix='.tmp-',dir=dest))
     name=time.strftime('%Y%m%dT%H%M%SZ',time.gmtime())
-    encrypted=stage/('snapshot.age' if shutil.which('age') else 'snapshot.enc')
-    try:
-        compose(path,'stop','bookstack')
-        (stage/'database.sql').write_bytes(compose(path,'exec','-T','db','sh','-c','MYSQL_PWD="$MARIADB_PASSWORD" exec mariadb-dump -ubookstack --single-transaction --routines --triggers bookstack'))
-        (stage/'content.json').write_text(json.dumps(content(path)))
-        run(['sudo','-n','tar','-czf',str(stage/'bookstack.tar.gz'),'-C',str(path),'bookstack'])
-        shutil.copy2(path/'.env',stage/'.env'); shutil.copy2(path/'docker-compose.yml',stage/'docker-compose.yml')
-        run(['tar','-cf',str(stage/'snapshot.tar'),'-C',str(stage),'database.sql','content.json','bookstack.tar.gz','.env','docker-compose.yml'])
-        crypt(stage/'snapshot.tar',encrypted)
-        # Authenticate both formats before decryption (CBC itself is not authenticated).
-        tag=hmac.new(KEY.read_bytes(),encrypted.read_bytes(),hashlib.sha256).hexdigest()
-        final=dest/(name+encrypted.suffix)
-        final.with_suffix(final.suffix+'.hmac').write_text(tag)
-        encrypted.rename(final)
-        print('BACKUP '+str(final))
-    finally:
-        try: compose(path,'start','bookstack')
-        finally: run(['sudo','-n','rm','-rf','--',str(stage)])
+    attempts = 2 if hot else 1
+    for attempt in range(attempts):
+        stage=Path(tempfile.mkdtemp(prefix='.tmp-',dir=dest))
+        encrypted=stage/('snapshot.age' if shutil.which('age') else 'snapshot.enc')
+        stopped=False
+        try:
+            if not hot:
+                compose(path,'stop','bookstack'); stopped=True
+            before=content(path) if hot else None
+            (stage/'database.sql').write_bytes(compose(path,'exec','-T','db','sh','-c','MYSQL_PWD="$MARIADB_PASSWORD" exec mariadb-dump -ubookstack --single-transaction --routines --triggers bookstack'))
+            run(['sudo','-n','tar','-czf',str(stage/'bookstack.tar.gz'),'-C',str(path),'bookstack'])
+            after=content(path) if hot else None
+            if hot and after != before:
+                if attempt == 0:
+                    continue
+                raise RuntimeError('hot-inconsistent')
+            metadata=after if hot else content(path)
+            metadata['mode']='hot' if hot else 'cold'
+            metadata['consistency']='verified'
+            (stage/'content.json').write_text(json.dumps(metadata))
+            shutil.copy2(path/'.env',stage/'.env'); shutil.copy2(path/'docker-compose.yml',stage/'docker-compose.yml')
+            run(['tar','-cf',str(stage/'snapshot.tar'),'-C',str(stage),'database.sql','content.json','bookstack.tar.gz','.env','docker-compose.yml'])
+            crypt(stage/'snapshot.tar',encrypted)
+            # Authenticate both formats before decryption (CBC itself is not authenticated).
+            tag=hmac.new(KEY.read_bytes(),encrypted.read_bytes(),hashlib.sha256).hexdigest()
+            final=dest/(name+encrypted.suffix)
+            final.with_suffix(final.suffix+'.hmac').write_text(tag)
+            encrypted.rename(final)
+            print('BACKUP '+str(final))
+            return
+        except Exception as exc:
+            print('BACKUP ERROR '+('hot-inconsistent ' if str(exc)=='hot-inconsistent' else '')+path.name, file=sys.stderr)
+            raise
+        finally:
+            if stopped:
+                try: compose(path,'start','bookstack')
+                except Exception: pass
+            run(['sudo','-n','rm','-rf','--',str(stage)])
 
 def restore(path, src=None):
     choices=[Path(src)] if src is not None else sorted(p for p in (path/'backups').iterdir() if p.suffix in {'.age','.enc'} and p.with_suffix(p.suffix+'.hmac').exists())
@@ -305,11 +329,14 @@ def restore(path, src=None):
         run(['sudo','-n','tar','-xzf',str(tmp/'bookstack.tar.gz'),'-C',str(tmp)])
         compose(tmp,'up','-d','--wait','db'); sql(tmp,(tmp/'database.sql').read_text())
         expected=json.loads((tmp/'content.json').read_text()); actual=content(tmp)
-        compare_keys=expected.keys()
-        if {k:actual[k] for k in compare_keys}!=expected: raise RuntimeError('Restored content mismatch')
+        if expected.get('mode') not in {'hot','cold'} or expected.get('consistency') != 'verified':
+            raise RuntimeError('Backup metadata invalid')
+        expected_content={k:v for k,v in expected.items() if k not in {'mode','consistency'}}
+        compare_keys=expected_content.keys()
+        if {k:actual[k] for k in compare_keys}!=expected_content: raise RuntimeError('Restored content mismatch')
         compose(tmp,'up','-d'); ready_internal(tmp)
         after=content(tmp)
-        if {k:after[k] for k in compare_keys}!=expected: raise RuntimeError('Restored content changed after startup')
+        if {k:after[k] for k in compare_keys}!=expected_content: raise RuntimeError('Restored content changed after startup')
         probe=restore_http_probe(tmp)
         print('RESTORE OK '+json.dumps({'content':actual,'http':probe},ensure_ascii=False))
     finally:
@@ -357,7 +384,8 @@ def main():
             else: raise ValueError('Use destroy <slug> or destroy <slug> --now --yes')
         elif action=='purge': purge(path)
         elif action=='retention': retention(path)
-        elif action=='backup': backup(path)
+        elif action=='backup':
+            backup(path, hot='--hot' in sys.argv[3:], keep='--no-retention' in sys.argv[3:])
         elif action=='restore-test': restore(path)
         else: raise ValueError('Unknown action')
 if __name__=='__main__':

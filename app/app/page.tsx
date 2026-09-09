@@ -1,3 +1,4 @@
+import { OnboardingChecklist } from "@/components/onboarding-checklist";
 import { cookies } from "next/headers";
 import { ACTIVE_TEAM_COOKIE } from "@/lib/join-context";
 import { TeamPanel } from "@/components/team-panel";
@@ -147,6 +148,12 @@ export default async function Dashboard({
           <button className="button-secondary">Sign out</button>
         </form>
       </div>
+      {team && isOwner && (
+        <OnboardingChecklist
+          teamId={team.id}
+          dismissed={!!team.onboarding_dismissed_at}
+        />
+      )}
       {teams.length > 1 && (
         <nav aria-label="Teams" className="mt-4 flex flex-wrap gap-4">
           <form action="/api/team/active" method="post" className="flex gap-3">
@@ -165,19 +172,21 @@ export default async function Dashboard({
         </nav>
       )}
       {canManage && (
-        <TeamPanel
-          teamId={team.id}
-          userId={session.user.id}
-          role={team.role}
-          members={members.map((m) => ({
-            ...m,
-            created_at: m.created_at.toISOString(),
-          }))}
-          invites={invites.map((i) => ({
-            ...i,
-            expires_at: i.expires_at.toISOString(),
-          }))}
-        />
+        <div id="team-members">
+          <TeamPanel
+            teamId={team.id}
+            userId={session.user.id}
+            role={team.role}
+            members={members.map((m) => ({
+              ...m,
+              created_at: m.created_at.toISOString(),
+            }))}
+            invites={invites.map((i) => ({
+              ...i,
+              expires_at: i.expires_at.toISOString(),
+            }))}
+          />
+        </div>
       )}
       {isOwner && (subscription || tenant) && (
         <BillingNotice
@@ -279,7 +288,7 @@ export default async function Dashboard({
         )}
       </section>
       <div className="mt-10 grid items-start gap-6 lg:grid-cols-[1.6fr_1fr]">
-        <div className="price-card">
+        <div id="workspace" className="price-card">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-2xl">Your BookStack</h2>
             {tenant && <span className="badge">{status}</span>}
@@ -317,7 +326,7 @@ export default async function Dashboard({
                 <>
                   <a
                     className="button mt-6"
-                    href={`https://${tenant.slug}.wissen.app.mintapis.com`}
+                    href={`/api/bookstack/open?team=${team.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >

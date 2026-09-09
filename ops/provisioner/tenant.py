@@ -329,8 +329,10 @@ def restore(path, src=None):
         run(['sudo','-n','tar','-xzf',str(tmp/'bookstack.tar.gz'),'-C',str(tmp)])
         compose(tmp,'up','-d','--wait','db'); sql(tmp,(tmp/'database.sql').read_text())
         expected=json.loads((tmp/'content.json').read_text()); actual=content(tmp)
-        if expected.get('mode') not in {'hot','cold'} or expected.get('consistency') != 'verified':
-            raise RuntimeError('Backup metadata invalid')
+        # Legacy archives (before hot backups) carry no metadata; newer ones must be marked verified.
+        if 'mode' in expected or 'consistency' in expected:
+            if expected.get('mode') not in {'hot','cold'} or expected.get('consistency') != 'verified':
+                raise RuntimeError('Backup metadata invalid')
         expected_content={k:v for k,v in expected.items() if k not in {'mode','consistency'}}
         compare_keys=expected_content.keys()
         if {k:actual[k] for k in compare_keys}!=expected_content: raise RuntimeError('Restored content mismatch')

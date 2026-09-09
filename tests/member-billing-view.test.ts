@@ -1,4 +1,4 @@
-import { createElement } from "react";
+import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -22,7 +22,7 @@ vi.mock("next/headers", () => ({
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/components/intake", () => ({ Intake: () => createElement("div", null, "Intake") }));
 vi.mock("@/components/action-button", () => ({
-  ActionButton: ({ children }: { children: unknown }) =>
+  ActionButton: ({ children }: { children: ReactNode }) =>
     createElement("button", null, children),
 }));
 vi.mock("@/components/onboarding-checklist", () => ({
@@ -63,7 +63,7 @@ function setup(role: "owner" | "member", currentSubscription: Record<string, unk
   });
   state.query.mockImplementation(async (sql: string) => {
     if (sql.includes("FROM tenants t JOIN memberships"))
-      return { rows: [{ id: "tenant-1", slug: "fixture" }] };
+      return { rows: [{ id: "tenant-1", team_id: "team-1", slug: "fixture", role }] };
     if (sql.includes("FROM teams t JOIN memberships"))
       return {
         rows: [{ id: "team-1", name: "Fixture", owner_user_id: "owner-1", role }],

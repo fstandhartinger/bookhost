@@ -3,12 +3,22 @@ import React from "react";
 import { ActionButton } from "./action-button";
 export function BillingNotice({
   subscription,
+  role = "owner",
   compact = false,
 }: {
   subscription: BillingState | null;
+  role?: "owner" | "admin" | "member";
   compact?: boolean;
 }) {
-  const notice = billingNotice(subscription);
+  const baseNotice = billingNotice(subscription, new Date(), role);
+  const notice =
+    role === "member"
+      ? {
+          ...baseNotice,
+          action: "none" as const,
+          text: "Billing is managed by the team owner.",
+        }
+      : baseNotice;
   if (!notice) return null;
   if (compact && !notice.urgent) return null;
   if (notice.kind === "active")

@@ -26,7 +26,18 @@ export function billingEligible(
       (s.status === "trialing" && s.trial_end && new Date(s.trial_end) > now)),
   );
 }
-export function billingNotice(s: BillingState | null, now = new Date()) {
+export function billingNotice(
+  s: BillingState | null,
+  now = new Date(),
+  role: "owner" | "admin" | "member" = "owner",
+) {
+  if (role === "member" && !s)
+    return {
+      urgent: true,
+      kind: "member",
+      action: "none" as const,
+      text: "Billing is managed by the team owner.",
+    };
   if (!s)
     return {
       urgent: true,

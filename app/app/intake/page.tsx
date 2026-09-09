@@ -15,22 +15,29 @@ export default async function IntakePage() {
   if (!session?.user?.id) redirect("/login");
   const tenants = (
     await db.query(
-      "SELECT t.id,t.slug FROM tenants t JOIN memberships m ON m.team_id=t.team_id WHERE m.user_id=$1 AND t.status='running' AND t.desired_state='running' AND (SELECT CASE WHEN status='trialing' AND (trial_end IS NULL OR trial_end<=now()) THEN 'expired' ELSE status END FROM effective_subscriptions WHERE team_id=t.team_id) IN ('trialing','active') ORDER BY t.slug",
+      "SELECT t.id,t.team_id,t.slug,m.role FROM tenants t JOIN memberships m ON m.team_id=t.team_id WHERE m.user_id=$1 AND t.status='running' AND t.desired_state='running' AND (SELECT CASE WHEN status='trialing' AND (trial_end IS NULL OR trial_end<=now()) THEN 'expired' ELSE status END FROM effective_subscriptions WHERE team_id=t.team_id) IN ('trialing','active') ORDER BY t.slug",
       [session.user.id],
     )
   ).rows;
-  const subscription = (
+  const membership = tenants[0] || (
     await db.query(
-      "SELECT s.*,n.desired_state,n.status AS tenant_status FROM teams t JOIN effective_subscriptions s ON s.team_id=t.id LEFT JOIN tenants n ON n.team_id=t.id WHERE t.owner_user_id=$1",
+      "SELECT team_id,role FROM memberships WHERE user_id=$1 ORDER BY created_at LIMIT 1",
       [session.user.id],
     )
   ).rows[0];
+  const subscription = (
+    await db.query(
+      "SELECT s.*,n.desired_state,n.status AS tenant_status FROM effective_subscriptions s LEFT JOIN tenants n ON n.team_id=s.team_id WHERE s.team_id=$1",
+      [membership?.team_id],
+    )
+  ).rows[0];
+  const role = membership?.role || "member";
   return (
     <section className="py-10">
       <Link href="/app" className="text-sm underline">
         ← Your workspace
       </Link>
-      <BillingNotice subscription={subscription || null} compact />
+      <BillingNotice subscription={subscription || null} role={role} compact />
       <p className="eyebrow mt-8">DOCUMENT INTAKE · BETA</p>
       <h1 className="text-4xl">Turn documents into shared knowledge.</h1>
       <p className="mt-4 max-w-2xl text-slate-600">

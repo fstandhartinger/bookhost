@@ -16,6 +16,17 @@ export async function POST(request: Request) {
         [session.user.id],
       )
     ).rows[0];
+    if (!team) {
+      const membership = await db.query(
+        "SELECT 1 FROM memberships WHERE user_id=$1 LIMIT 1",
+        [session.user.id],
+      );
+      if (membership.rowCount)
+        return Response.json(
+          { error: "Only the team owner can manage billing." },
+          { status: 403 },
+        );
+    }
     if (!team?.stripe_customer_id)
       return Response.json(
         { error: "Start a free trial first." },

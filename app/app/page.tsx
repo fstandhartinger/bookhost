@@ -261,8 +261,9 @@ export default async function Dashboard({
         </p>
       )}
       <p className="mt-4 text-sm text-slate-600">
-        Your trial starts when you sign up; your workspace is usually ready
-        within 5 minutes.
+        {isOwner
+          ? "Your trial starts when you sign up; your workspace is usually ready within 5 minutes."
+          : "You are a member of this workspace. Billing is managed by the owner."}
       </p>
       <section
         id="password-setup"

@@ -302,3 +302,28 @@ describe("Upload destinations", () => {
     },
   );
 });
+
+it("pins evaluation to one model and reports provider token usage", async () => {
+  vi.stubEnv("CHUTES_API_KEY", "unit-test");
+  vi.stubEnv("INTAKE_MODELS", "unused,fallback");
+  const onResponse = vi.fn();
+  const fetcher = vi
+    .fn()
+    .mockResolvedValue(
+      Response.json({
+        usage: { total_tokens: 123 },
+        choices: [{ message: { content: "invalid" } }],
+      }),
+    );
+  vi.stubGlobal("fetch", fetcher);
+  await expect(
+    generateDraft("source", { model: "pinned", onResponse }),
+  ).rejects.toThrow();
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(JSON.parse(fetcher.mock.calls[0][1].body).model).toBe("pinned");
+  expect(onResponse).toHaveBeenCalledWith({
+    model: "pinned",
+    status: 200,
+    tokens: 123,
+  });
+});

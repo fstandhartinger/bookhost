@@ -1,0 +1,874 @@
+{
+  "timestamp": "2026-09-09T04:41:27.420Z",
+  "label": "improved",
+  "models": [
+    "google/gemma-4-31B-turbo-TEE",
+    "deepseek-ai/DeepSeek-V3.2-TEE"
+  ],
+  "pipelineHash": "42573e36a5274f9a26fdaeb660306ac921685233ef8f2d28326e073ec865fc29",
+  "rows": [
+    {
+      "document": "onboarding",
+      "model": "google/gemma-4-31B-turbo-TEE",
+      "score": 100,
+      "checks": {
+        "title": true,
+        "headings": true,
+        "requiredTerms": true,
+        "faithfulness": true,
+        "table": true,
+        "reviewerChecklist": true,
+        "language": true
+      },
+      "missingTerms": [],
+      "faithfulness": {
+        "unsupportedNumbers": [],
+        "unsupportedNames": [],
+        "forbiddenFacts": [],
+        "passed": true
+      },
+      "headingCount": 6,
+      "reviewerItems": 3,
+      "draft": {
+        "title": "Onboarding notes for the Lantern desk",
+        "html": "<h2>Summary</h2>\n<p>These working notes from 2026-08-12 describe the onboarding arrangement for the Lantern desk at Mossquay. They serve as a handover between the coordinator and the colleague covering the welcome shift and do not guarantee that access will be ready upon arrival.</p>\n\n<h2>Before arrival</h2>\n<p>The coordinator creates a welcome ticket 5 working days before the start date. This ticket includes the preferred display name, the team, and the requested equipment. Personal documents must not be attached to this ticket.</p>\n<p>The equipment cupboard contained 7 keyboards and 4 headsets at the last stock check; these numbers do not guarantee availability. Missing items must remain visible in the ticket until the coordinator confirms a replacement.</p>\n<p>Access to the shared workspace requires approval from the team lead. The coordinator may request access but cannot approve their own request. The identity check is conducted separately, and the result is recorded as complete or pending. Identity documents must not be copied into the workspace. No confirmed deadline for the identity check is specified in these notes.</p>\n\n<h2>Welcome shift</h2>\n<p>The welcome session starts at 09:30 and lasts 45 minutes. The colleague provides information on:</p>\n<ul>\n<li>How to find the handbook</li>\n<li>Where to ask operational questions</li>\n<li>How to report equipment problems</li>\n</ul>\n<p>The new starter opens the handbook using their own account. Access verification is not satisfied by a demonstration on another person's account.</p>\n\n<h2>Follow-up</h2>\n<p>On day 3, the coordinator verifies if the starter can find the rota and submit a practice ticket. The practice ticket must be marked as training to avoid entering the customer queue.</p>\n<p>Outstanding permissions are assigned to the team lead for review; no backup approver is named.</p>\n\n<h3>Pending Decisions</h3>\n<ul>\n<li>Who covers the welcome shift during leave</li>\n<li>Whether remote starters receive a separate equipment checklist</li>\n<li>Where completed welcome tickets should be archived</li>\n</ul>\n\n<h2>Things a reviewer should check</h2>\n<ul>\n<li>Who will cover the welcome shift during leave?</li>\n<li>Will remote starters receive a separate equipment checklist?</li>\n<li>Where should completed welcome tickets be archived?</li>\n</ul>",
+        "tags": [
+          "Onboarding",
+          "Lantern desk",
+          "Mossquay",
+          "Handover",
+          "Internal Process"
+        ]
+      },
+      "latencyMs": 9239,
+      "tokens": 1574,
+      "status": 200,
+      "sourceHash": "bbe9067b0db16a551df1c6959e1e13c903d5f9274f8bd35d63a8012ea3f0ee41",
+      "originalAssessment": {
+        "score": 100,
+        "faithfulness": {
+          "unsupportedNumbers": [],
+          "unsupportedNames": [],
+          "forbiddenFacts": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "document": "onboarding",
+      "model": "deepseek-ai/DeepSeek-V3.2-TEE",
+      "score": 0,
+      "error": "draft generation failed",
+      "latencyMs": 90004,
+      "tokens": null,
+      "status": null,
+      "sourceHash": "bbe9067b0db16a551df1c6959e1e13c903d5f9274f8bd35d63a8012ea3f0ee41"
+    },
+    {
+      "document": "meeting",
+      "model": "google/gemma-4-31B-turbo-TEE",
+      "score": 100,
+      "checks": {
+        "title": true,
+        "headings": true,
+        "requiredTerms": true,
+        "faithfulness": true,
+        "table": true,
+        "reviewerChecklist": true,
+        "language": true
+      },
+      "missingTerms": [],
+      "faithfulness": {
+        "unsupportedNumbers": [],
+        "unsupportedNames": [],
+        "forbiddenFacts": [],
+        "passed": true
+      },
+      "headingCount": 7,
+      "reviewerItems": 3,
+      "draft": {
+        "title": "Bracken pilot meeting",
+        "html": "<h2>Summary</h2>\n<p>The Bracken team met on 2026-08-18 to review a small internal document pilot, focusing on the pilot boundary, the review queue, and evidence required before expansion. These notes are for the internal handbook and do not represent a public launch commitment.</p>\n\n<h2>Pilot boundary</h2>\n<p>The team reviewed 24 sample documents from the training collection, of which 6 contained incomplete ownership information. The sample was selected to expose gaps and cannot be used to estimate error rates across the whole organisation. No customer documents were included. Participants agreed that the next round should remain inside the training collection until ownership questions are resolved.</p>\n\n<h2>Decisions</h2>\n<ul>\n<li>Keep the pilot limited to the support handbook.</li>\n<li>Require a human reviewer before any generated page is published.</li>\n<li>Retain the original source beside the proposed page so that reviewers can compare wording and figures.</li>\n</ul>\n<p>These decisions apply immediately to the pilot and do not establish a company-wide retention policy.</p>\n\n<h3>Postponed and Rejected Proposals</h3>\n<ul>\n<li>The proposed expansion to the engineering handbook was postponed. A participant suggested a target in September, but the meeting did not approve a date.</li>\n<li>The proposal to publish drafts automatically was rejected because the review queue still contained ambiguous source material.</li>\n</ul>\n\n<h2>Actions</h2>\n<ul>\n<li>Facilitator: collect the missing ownership information by 2026-08-25.</li>\n<li>Support lead: review the wording of the approval checklist before the next pilot session.</li>\n<li>Operations group: test whether the source attachment remains accessible after publication and report the result in the pilot ticket.</li>\n</ul>\n\n<h2>Open questions</h2>\n<p>The meeting did not assign a permanent owner for the review queue and left the location of the pilot archive undecided. Participants requested clarification on how to record disagreements between reviewers without overwriting earlier comments. No budget, supplier contract, or external audit was approved.</p>\n\n<h2>Things a reviewer should check</h2>\n<ul>\n<li>Are the agreed pilot rules clearly distinguished from the postponed expansion?</li>\n<li>Does the action deadline for ownership information match the ticket?</li>\n<li>Which open questions still require an assigned owner?</li>\n</ul>",
+        "tags": [
+          "Bracken",
+          "pilot",
+          "internal handbook",
+          "document review"
+        ]
+      },
+      "latencyMs": 29615,
+      "tokens": 1572,
+      "status": 200,
+      "sourceHash": "b97d0fb0bfa55bf7cc283ad442233b8804e41b86df7acc157f12f8eb8eaad846",
+      "originalAssessment": {
+        "score": 100,
+        "faithfulness": {
+          "unsupportedNumbers": [],
+          "unsupportedNames": [],
+          "forbiddenFacts": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "document": "meeting",
+      "model": "deepseek-ai/DeepSeek-V3.2-TEE",
+      "score": 40,
+      "checks": {
+        "title": true,
+        "headings": true,
+        "requiredTerms": false,
+        "faithfulness": false,
+        "table": true,
+        "reviewerChecklist": true,
+        "language": false
+      },
+      "missingTerms": [
+        "postponed",
+        "rejected"
+      ],
+      "faithfulness": {
+        "unsupportedNumbers": [
+          "18",
+          "2026"
+        ],
+        "unsupportedNames": [
+          "Fehlerquoten",
+          "Treffen",
+          "Bracken-Teams",
+          "Pilotversuch",
+          "Dokumentenverarbeitung",
+          "Diskussion",
+          "Umfang",
+          "Piloten",
+          "Review-Warteschlange",
+          "Ausweitung",
+          "Nachweise",
+          "Pilotphase",
+          "Support-Handbuch",
+          "Seiten",
+          "Freigabe",
+          "Beispieldokumente",
+          "Trainingssammlung",
+          "Informationen",
+          "Dokumentenverantwortung",
+          "Stichprobe",
+          "Lücken",
+          "Schätzung",
+          "Kundendokumente",
+          "Teilnehmer",
+          "Runde",
+          "Fragen",
+          "Verantwortung",
+          "Seite",
+          "Veröffentlichung",
+          "Originalquelle",
+          "Wortlaut",
+          "Zahlen",
+          "Entscheidungen",
+          "Aufbewahrungsrichtlinie",
+          "Engineering-Handbuch",
+          "Ziel",
+          "Datum",
+          "Vorschlag",
+          "Entwürfe",
+          "Quellenmaterial",
+          "Moderator",
+          "Support-Lead",
+          "Freigabe-Checkliste",
+          "Pilot-Sitzung",
+          "Fristtermin",
+          "Operations-Gruppe",
+          "Quellenanhang",
+          "Ergebnis",
+          "Pilot-Ticket",
+          "Verantwortlichen",
+          "Speicherort",
+          "Pilot-Archivs",
+          "Klärung",
+          "Meinungsverschiedenheiten",
+          "Reviewern",
+          "Kommentare",
+          "Lieferantenvertrag",
+          "Prüfung",
+          "Pilot-Regeln",
+          "Frist",
+          "Aktion",
+          "Moderators",
+          "Archiv-Speicherort",
+          "Zuweisung",
+          "Maßnahme"
+        ],
+        "forbiddenFacts": [],
+        "passed": false
+      },
+      "headingCount": 6,
+      "reviewerItems": 4,
+      "draft": {
+        "title": "Bracken Pilot Meeting 2026-08-18",
+        "html": "<h2>Zusammenfassung</h2><p>Am 18. August 2026 fand ein internes Treffen des fiktiven Bracken-Teams statt, um einen Pilotversuch zur Dokumentenverarbeitung zu besprechen. Die Diskussion umfasste den Umfang des Piloten, die Review-Warteschlange und die für eine Ausweitung erforderlichen Nachweise. Die Pilotphase bleibt auf das Support-Handbuch beschränkt, und alle generierten Seiten benötigen eine manuelle Freigabe.</p><h2>Pilot-Umfang</h2><p>Das Team überprüfte 24 Beispieldokumente aus der Trainingssammlung. Davon enthielten 6 unvollständige Informationen zur Dokumentenverantwortung. Die Stichprobe wurde gezielt gewählt, um Lücken aufzuzeigen, und kann nicht zur Schätzung von Fehlerquoten in der gesamten Organisation verwendet werden. Es wurden keine Kundendokumente einbezogen. Die Teilnehmer waren sich einig, dass die nächste Runde innerhalb der Trainingssammlung bleiben soll, bis die Fragen zur Verantwortung geklärt sind.</p><h2>Entscheidungen</h2><ul><li>Den Pilotversuch auf das Support-Handbuch beschränken.</li><li>Für jede generierte Seite ist vor der Veröffentlichung ein menschlicher Reviewer erforderlich.</li><li>Die Originalquelle muss neben der vorgeschlagenen Seite erhalten bleiben, damit Reviewer Wortlaut und Zahlen vergleichen können.</li></ul><p>Diese Entscheidungen gelten sofort für den Pilotversuch; sie stellen keine unternehmensweite Aufbewahrungsrichtlinie dar.</p><p>Die vorgeschlagene Ausweitung auf das Engineering-Handbuch wurde verschoben. Ein Teilnehmer schlug ein Ziel im September vor, das Meeting genehmigte jedoch kein Datum. Der Vorschlag, Entwürfe automatisch zu veröffentlichen, wurde abgelehnt, da sich in der Review-Warteschlange noch mehrdeutiges Quellenmaterial befand.</p><h2>Aktionen</h2><ul><li>Der Moderator wird die fehlenden Informationen zur Dokumentenverantwortung bis zum 2026-08-25 sammeln.</li><li>Der Support-Lead wird den Wortlaut der Freigabe-Checkliste vor der nächsten Pilot-Sitzung überprüfen. Für diese Überprüfung wurde kein Fristtermin festgelegt.</li><li>Die Operations-Gruppe wird testen, ob der Quellenanhang nach der Veröffentlichung zugänglich bleibt, und das Ergebnis im Pilot-Ticket melden.</li></ul><h2>Offene Fragen</h2><p>Das Meeting hat keinen dauerhaften Verantwortlichen für die Review-Warteschlange benannt. Auch der Speicherort des Pilot-Archivs wurde nicht entschieden. Die Teilnehmer baten um Klärung, wie Meinungsverschiedenheiten zwischen Reviewern protokolliert werden können, ohne frühere Kommentare zu überschreiben. Es wurde kein Budget, kein Lieferantenvertrag und keine externe Prüfung genehmigt.</p><h2>Prüfpunkte für die Freigabe</h2><ul><li>Ist klar zwischen den vereinbarten Pilot-Regeln und der verschobenen Ausweitung auf das Engineering-Handbuch unterschieden?</li><li>Stimmt die Frist für die Aktion des Moderators (2026-08-25) mit dem entsprechenden Ticket überein?</li><li>Welche der offenen Fragen (z.B. Verantwortlicher für die Review-Warteschlange, Archiv-Speicherort) benötigen noch eine Zuweisung?</li><li>Wurde sichergestellt, dass der abgelehnte Vorschlag zur automatischen Veröffentlichung nicht als genehmigte Maßnahme dargestellt wird?</li></ul>",
+        "tags": [
+          "Pilotversuch",
+          "Dokumentenverarbeitung",
+          "Review-Prozess",
+          "Interne Besprechung",
+          "2026-08-18",
+          "Bracken"
+        ]
+      },
+      "latencyMs": 55045,
+      "tokens": 1904,
+      "status": 200,
+      "sourceHash": "b97d0fb0bfa55bf7cc283ad442233b8804e41b86df7acc157f12f8eb8eaad846",
+      "originalAssessment": {
+        "score": 40,
+        "faithfulness": {
+          "unsupportedNumbers": [
+            "18",
+            "2026"
+          ],
+          "unsupportedNames": [
+            "Fehlerquoten",
+            "Treffen",
+            "Bracken-Teams",
+            "Pilotversuch",
+            "Dokumentenverarbeitung",
+            "Diskussion",
+            "Umfang",
+            "Piloten",
+            "Review-Warteschlange",
+            "Ausweitung",
+            "Nachweise",
+            "Pilotphase",
+            "Support-Handbuch",
+            "Seiten",
+            "Freigabe",
+            "Beispieldokumente",
+            "Trainingssammlung",
+            "Informationen",
+            "Dokumentenverantwortung",
+            "Stichprobe",
+            "Lücken",
+            "Schätzung",
+            "Kundendokumente",
+            "Teilnehmer",
+            "Runde",
+            "Fragen",
+            "Verantwortung",
+            "Seite",
+            "Veröffentlichung",
+            "Originalquelle",
+            "Wortlaut",
+            "Zahlen",
+            "Entscheidungen",
+            "Aufbewahrungsrichtlinie",
+            "Engineering-Handbuch",
+            "Ziel",
+            "Datum",
+            "Vorschlag",
+            "Entwürfe",
+            "Quellenmaterial",
+            "Moderator",
+            "Support-Lead",
+            "Freigabe-Checkliste",
+            "Pilot-Sitzung",
+            "Fristtermin",
+            "Operations-Gruppe",
+            "Quellenanhang",
+            "Ergebnis",
+            "Pilot-Ticket",
+            "Verantwortlichen",
+            "Speicherort",
+            "Pilot-Archivs",
+            "Klärung",
+            "Meinungsverschiedenheiten",
+            "Reviewern",
+            "Kommentare",
+            "Lieferantenvertrag",
+            "Prüfung",
+            "Pilot-Regeln",
+            "Frist",
+            "Aktion",
+            "Moderators",
+            "Archiv-Speicherort",
+            "Zuweisung",
+            "Maßnahme"
+          ],
+          "forbiddenFacts": [],
+          "passed": false
+        }
+      }
+    },
+    {
+      "document": "process",
+      "model": "google/gemma-4-31B-turbo-TEE",
+      "score": 100,
+      "checks": {
+        "title": true,
+        "headings": true,
+        "requiredTerms": true,
+        "faithfulness": true,
+        "table": true,
+        "reviewerChecklist": true,
+        "language": true
+      },
+      "missingTerms": [],
+      "faithfulness": {
+        "unsupportedNumbers": [],
+        "unsupportedNames": [],
+        "forbiddenFacts": [],
+        "passed": true
+      },
+      "headingCount": 6,
+      "reviewerItems": 3,
+      "draft": {
+        "title": "Prozessnotizen zur Rückgabe von Leihgeräten (Gerätepool Kieselhafen)",
+        "html": "<h2>Zusammenfassung</h2>\n<p>Diese internen Arbeitsnotizen vom 2026-08-20 beschreiben den Ablauf der Rücknahme gemeinsam genutzter Geräte im fiktiven Gerätepool Kieselhafen. Die Notizen dienen als Grundlage für die Prüfung durch die Werkstatt und stellen keine Zusage an externe Kunden dar.</p>\n\n<h2>Eingang vorbereiten</h2>\n<p>Die annehmende Person öffnet den Rückgabebeleg und vergleicht die Gerätekennung mit dem Aufkleber am Gerät. Die Kennung muss vollständig übernommen werden. Wenn der Aufkleber fehlt, bleibt die Zuordnung offen; eine vermutete Kennung darf nicht eingetragen werden. Zum Vergleich dürfen vorhandene Ausgabebelege verwendet werden. Es gibt keine Regel zur Aufbewahrungsdauer dieser Belege.</p>\n\n<h2>Prüfung durchführen</h2>\n<p>Der Prüfprozess erfolgt in folgenden Schritten:</p>\n<ul>\n<li>Schritt 1: Das Gerät ausschalten und sichtbare Schäden dokumentieren. Fotos gehören ausschließlich in den internen Rückgabebeleg.</li>\n<li>Schritt 2: Das Zubehör mit der Ausgabeliste vergleichen. Der aktuelle Beispielsatz enthält 2 Kabel und 1 Netzteil (nur für den Beispielsatz gültig, nicht auf andere Gerätetypen übertragen).</li>\n<li>Schritt 3: Die Funktionsprüfung am vorgesehenen Prüfplatz durchführen. Die Prüfung dauert normalerweise 20 Minuten; bei einem Fehler bleibt die tatsächliche Dauer offen.</li>\n</ul>\n<p>Ein Gerät mit beschädigtem Gehäuse darf nicht erneut ausgegeben werden. Es wird im gesperrten Bereich abgelegt und im Beleg als gesperrt markiert. Die Werkstatt entscheidet nach einer gesonderten Prüfung über die weitere Verwendung. Die annehmende Person darf diese Entscheidung nicht vorwegnehmen, auch wenn der letzte Einsatz ohne Störung verlief.</p>\n\n<h2>Abschluss dokumentieren</h2>\n<p>Der Abschluss erfolgt über folgende Schritte:</p>\n<ul>\n<li>Schritt 4: Das Prüfergebnis mit Datum im Rückgabebeleg festhalten.</li>\n<li>Schritt 5: Bei erfolgreicher Prüfung den Status auf verfügbar setzen und das Gerät in das beschriftete Fach legen.</li>\n</ul>\n<p>Bei fehlendem Zubehör bleibt der Beleg offen. Eine automatische Bestellung von Ersatzteilen ist nicht vorgesehen.</p>\n\n<h2>Offene Abstimmung</h2>\n<ul>\n<li>Festlegung durch die Werkstatt, wer eine gesperrte Rückgabe bei Abwesenheit bearbeitet.</li>\n<li>Regelung zur Ablage älterer Fotos fehlt.</li>\n</ul>\n<p>Es werden keine Kostenpauschale und keine verbindliche Reparaturfrist genannt.</p>\n\n<h2>Prüfpunkte für die Freigabe</h2>\n<ul>\n<li>Ist die Reihenfolge der Schritte korrekt?</li>\n<li>Ist die Behandlung von fehlendem Zubehör ausreichend geregelt?</li>\n<li>Wurde die Zuständigkeit für gesperrte Geräte bei Abwesenheit geklärt?</li>\n</ul>",
+        "tags": [
+          "Gerätepool",
+          "Rückgabeprozess",
+          "Kieselhafen",
+          "Werkstatt",
+          "Qualitätssicherung"
+        ]
+      },
+      "latencyMs": 11536,
+      "tokens": 1909,
+      "status": 200,
+      "sourceHash": "b51e6e19fa112795bc87e4388afef474e3a029aa49f66d9e4643d2c18bdaf0d0",
+      "originalAssessment": {
+        "score": 100,
+        "faithfulness": {
+          "unsupportedNumbers": [],
+          "unsupportedNames": [],
+          "forbiddenFacts": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "document": "process",
+      "model": "deepseek-ai/DeepSeek-V3.2-TEE",
+      "score": 0,
+      "error": "draft generation failed",
+      "latencyMs": 90004,
+      "tokens": null,
+      "status": null,
+      "sourceHash": "b51e6e19fa112795bc87e4388afef474e3a029aa49f66d9e4643d2c18bdaf0d0"
+    },
+    {
+      "document": "customer-thread",
+      "model": "google/gemma-4-31B-turbo-TEE",
+      "score": 100,
+      "checks": {
+        "title": true,
+        "headings": true,
+        "requiredTerms": true,
+        "faithfulness": true,
+        "table": true,
+        "reviewerChecklist": true,
+        "language": true
+      },
+      "missingTerms": [],
+      "faithfulness": {
+        "unsupportedNumbers": [],
+        "unsupportedNames": [],
+        "forbiddenFacts": [],
+        "passed": true
+      },
+      "headingCount": 6,
+      "reviewerItems": 3,
+      "draft": {
+        "title": "Customer Enquiry: Fernwharf Workspace Migration",
+        "html": "<h2>Summary</h2>\n<p>This document records an email thread between the Fernwharf cooperative and Alderquill support regarding a potential migration of 18 handbook pages into a shared workspace for 9 colleagues. No order has been placed, and no migration has been approved.</p>\n\n<h2>Customer Message, 2026-08-21</h2>\n<p>The customer expressed interest in a possible trial and raised the following points:</p>\n<ul>\n<li>Request for confirmation on whether existing page tables (containing responsibility assignments) will survive the migration.</li>\n<li>Inquiry regarding whether a reviewer can compare an uploaded document with the suggested page before approval, as required by their internal process.</li>\n</ul>\n<p>The customer explicitly stated that this message is not approval to transfer existing files.</p>\n\n<h2>Support Reply, 2026-08-22</h2>\n<p>Support provided the following responses and instructions:</p>\n<ul>\n<li>Stated that a human approval step is part of the proposed workflow.</li>\n<li>Requested a fictional or redacted example of tables via the agreed intake channel for inspection before confirming table handling.</li>\n<li>Instructed the customer not to send account passwords or confidential customer records in the thread.</li>\n</ul>\n<p>The support desk has not confirmed a migration date, price, service availability target, or contractual data location.</p>\n\n<h2>Customer Follow-up, 2026-08-24</h2>\n<p>The customer provided the following updates:</p>\n<ul>\n<li>They will prepare a redacted example.</li>\n<li>A preferred migration window beginning on 2026-09-07 was mentioned as a preference, not an agreed appointment.</li>\n<li>The customer needs to identify the internal person who can approve the trial.</li>\n<li>Requested to keep the enquiry open.</li>\n</ul>\n\n<h2>Internal Handover</h2>\n<p>The next response must address table preservation, explain the review comparison, and distinguish the preferred window from a confirmed schedule. Ownership of the response is currently unassigned.</p>\n\n<h2>Things a reviewer should check</h2>\n<ul>\n<li>Has the redacted sample of tables arrived via the intake channel?</li>\n<li>Does internal trial approval from the customer exist?</li>\n<li>Has any subsequent message changed the status of the scheduling from a preference to a confirmed appointment?</li>\n</ul>",
+        "tags": [
+          "Fernwharf",
+          "Workspace Migration",
+          "Customer Enquiry",
+          "Alderquill Support"
+        ]
+      },
+      "latencyMs": 11263,
+      "tokens": 1668,
+      "status": 200,
+      "sourceHash": "d2ee3cc20c7b66fd301b8628f3c96dd1ff97b82bf9a06b643d58126a00ee9975",
+      "originalAssessment": {
+        "score": 100,
+        "faithfulness": {
+          "unsupportedNumbers": [],
+          "unsupportedNames": [],
+          "forbiddenFacts": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "document": "customer-thread",
+      "model": "deepseek-ai/DeepSeek-V3.2-TEE",
+      "score": 30,
+      "checks": {
+        "title": true,
+        "headings": false,
+        "requiredTerms": false,
+        "faithfulness": false,
+        "table": true,
+        "reviewerChecklist": true,
+        "language": false
+      },
+      "missingTerms": [
+        "2026-09-07",
+        "sample"
+      ],
+      "faithfulness": {
+        "unsupportedNumbers": [
+          "21.08.2026",
+          "07.09.2026",
+          "22.08.2022",
+          "24.08.2026"
+        ],
+        "unsupportedNames": [
+          "Tabellen",
+          "Folgendes",
+          "Kunde",
+          "Handbuchseiten",
+          "Fragen",
+          "Erhaltung",
+          "Genehmigungs-Workflow",
+          "Beispiel",
+          "Prüfung",
+          "Präferenz",
+          "Migrationszeitraum",
+          "Vereinbarung",
+          "Anfrage",
+          "Kollegen",
+          "Zugang",
+          "Seitentabellen",
+          "Zuständigkeitszuweisungen",
+          "Liste",
+          "Zellwerte",
+          "Dokument",
+          "Seite",
+          "Prozess",
+          "Kunden",
+          "Vergleich",
+          "Test",
+          "Genehmigung",
+          "Dateien",
+          "Genehmigungsschritt",
+          "Teil",
+          "Workflows",
+          "Aufnahmekanal",
+          "Kundendatensätze",
+          "Antwort",
+          "Migrationsdatum",
+          "Preis",
+          "Serviceverfügbarkeitsziel",
+          "Datenstandort",
+          "Themen",
+          "Beispielprüfung",
+          "Aussage",
+          "Behauptungen",
+          "Funktionen",
+          "Termin",
+          "Punkte",
+          "Erklärung",
+          "Review-Vergleichs",
+          "Abgrenzung",
+          "Zeitfensters",
+          "Zeitplan",
+          "Verantwortung",
+          "Nachricht",
+          "Terminplanung",
+          "Quellmaterial",
+          "Erstellung",
+          "Kommunikation",
+          "Zusagen",
+          "Servicezielen"
+        ],
+        "forbiddenFacts": [],
+        "passed": false
+      },
+      "headingCount": 9,
+      "reviewerItems": 5,
+      "draft": {
+        "title": "Fernwharf Workspace Migration Enquiry",
+        "html": "<h2>Zusammenfassung</h2><p>Der Kunde Fernwharf erkundigte sich am 21.08.2026 nach einer möglichen Migration von 18 Handbuchseiten in einen gemeinsamen Workspace. Es wurden Fragen zur Erhaltung von Tabellen und zum Genehmigungs-Workflow gestellt. Der Support bat um ein Beispiel zur Prüfung. Der Kunde äußerte eine Präferenz für einen Migrationszeitraum ab dem 07.09.2026, dies ist jedoch keine Vereinbarung. Die Anfrage ist noch offen.</p><h2>Kundenanfrage vom 21.08.2026</h2><p>Der Kunde unterhält derzeit 18 Handbuchseiten und möchte diese in einen gemeinsamen Workspace bringen. 9 Kollegen benötigen möglicherweise Zugang, wobei noch nicht entschieden ist, wer veröffentlichen darf.</p><h3>Fragen des Kunden</h3><ul><li>Kann bestätigt werden, ob bestehende Seitentabellen die Migration überstehen? Einige Tabellen enthalten Zuständigkeitszuweisungen; eine Liste unverbundener Zellwerte wäre nicht nützlich.</li><li>Kann ein Reviewer ein hochgeladenes Dokument mit der vorgeschlagenen Seite vergleichen, bevor er sie genehmigt? Der interne Prozess des Kunden erfordert diesen Vergleich.</li></ul><p>Der Kunde betont, dass es sich um eine Anfrage für einen möglichen Test handelt, nicht um eine Genehmigung zur Übertragung bestehender Dateien.</p><h2>Support-Antwort vom 22.08.2022</h2><p>Der Support bestätigt, dass ein menschlicher Genehmigungsschritt Teil des vorgeschlagenen Workflows ist.</p><h3>Anforderung zur weiteren Prüfung</h3><p>Um zu bestätigen, wie Tabellen behandelt werden, muss ein repräsentatives Beispiel inspiziert werden. Der Kunde wird gebeten, ein fiktives oder redigiertes Beispiel über den vereinbarten Aufnahmekanal zu senden. Kontopasswörter oder vertrauliche Kundendatensätze dürfen nicht in einer Antwort auf diesen Thread gesendet werden.</p><h3>Nicht bestätigte Punkte</h3><p>Der Support hat Folgendes nicht bestätigt: ein Migrationsdatum, einen Preis, ein Serviceverfügbarkeitsziel oder einen vertraglichen Datenstandort. Diese Themen benötigen eine separate Antwort nach der Beispielprüfung. Die Aussage zum Genehmigungs-Workflow soll nicht zu Behauptungen über nicht besprochene Funktionen erweitert werden.</p><h2>Kunden-Nachfrage vom 24.08.2026</h2><ul><li>Der Kunde wird ein redigiertes Beispiel vorbereiten.</li><li>Der bevorzugte Migrationszeitraum beginnt am 07.09.2026. Dies ist eine Präferenz, kein vereinbarter Termin.</li><li>Der Kunde muss intern die Person identifizieren, die den Test genehmigen kann.</li><li>Die Anfrage soll offen gehalten werden, während diese interne Genehmigung eingeholt wird.</li></ul><h2>Interne Übergabe</h2><p>Die nächste Antwort sollte folgende Punkte behandeln: Tabellenerhaltung, Erklärung des Review-Vergleichs und Abgrenzung des bevorzugten Zeitfensters von einem bestätigten Zeitplan. Die Verantwortung für diese Antwort ist noch nicht zugewiesen.</p><h2>Prüfpunkte für die Freigabe</h2><ul><li>Ist das vom Kunden angekündigte redigierte Beispiel über den Aufnahmekanal eingegangen?</li><li>Liegt eine interne Genehmigung des Kunden für einen Test vor?</li><li>Hat eine spätere Nachricht den Status der Terminplanung (Präferenz ab 07.09.2026) geändert? (Hinweis: In diesem Quellmaterial ist keine solche Nachricht enthalten.)</li><li>Ist die Verantwortung für die Erstellung der nächsten Antwort intern zugewiesen worden?</li><li>Wurden in der Kommunikation versehentlich Zusagen zu Migrationsdatum, Preis oder Servicezielen gemacht, die als nicht bestätigt gekennzeichnet werden müssen?</li></ul>",
+        "tags": [
+          "Kundenanfrage",
+          "Workspace-Migration",
+          "Genehmigungs-Workflow",
+          "Fernwharf",
+          "Tabellen",
+          "Support"
+        ]
+      },
+      "latencyMs": 88682,
+      "tokens": 2074,
+      "status": 200,
+      "sourceHash": "d2ee3cc20c7b66fd301b8628f3c96dd1ff97b82bf9a06b643d58126a00ee9975",
+      "originalAssessment": {
+        "score": 30,
+        "faithfulness": {
+          "unsupportedNumbers": [
+            "21.08.2026",
+            "07.09.2026",
+            "22.08.2022",
+            "24.08.2026"
+          ],
+          "unsupportedNames": [
+            "Tabellen",
+            "Folgendes",
+            "Kunde",
+            "Handbuchseiten",
+            "Fragen",
+            "Erhaltung",
+            "Genehmigungs-Workflow",
+            "Beispiel",
+            "Prüfung",
+            "Präferenz",
+            "Migrationszeitraum",
+            "Vereinbarung",
+            "Anfrage",
+            "Kollegen",
+            "Zugang",
+            "Seitentabellen",
+            "Zuständigkeitszuweisungen",
+            "Liste",
+            "Zellwerte",
+            "Dokument",
+            "Seite",
+            "Prozess",
+            "Kunden",
+            "Vergleich",
+            "Test",
+            "Genehmigung",
+            "Dateien",
+            "Genehmigungsschritt",
+            "Teil",
+            "Workflows",
+            "Aufnahmekanal",
+            "Kundendatensätze",
+            "Antwort",
+            "Migrationsdatum",
+            "Preis",
+            "Serviceverfügbarkeitsziel",
+            "Datenstandort",
+            "Themen",
+            "Beispielprüfung",
+            "Aussage",
+            "Behauptungen",
+            "Funktionen",
+            "Termin",
+            "Punkte",
+            "Erklärung",
+            "Review-Vergleichs",
+            "Abgrenzung",
+            "Zeitfensters",
+            "Zeitplan",
+            "Verantwortung",
+            "Nachricht",
+            "Terminplanung",
+            "Quellmaterial",
+            "Erstellung",
+            "Kommunikation",
+            "Zusagen",
+            "Servicezielen"
+          ],
+          "forbiddenFacts": [],
+          "passed": false
+        }
+      }
+    },
+    {
+      "document": "runbook",
+      "model": "google/gemma-4-31B-turbo-TEE",
+      "score": 100,
+      "checks": {
+        "title": true,
+        "headings": true,
+        "requiredTerms": true,
+        "faithfulness": true,
+        "table": true,
+        "reviewerChecklist": true,
+        "language": true
+      },
+      "missingTerms": [],
+      "faithfulness": {
+        "unsupportedNumbers": [],
+        "unsupportedNames": [],
+        "forbiddenFacts": [],
+        "passed": true
+      },
+      "headingCount": 6,
+      "reviewerItems": 3,
+      "draft": {
+        "title": "Driftglass queue recovery notes",
+        "html": "<h2>Summary</h2>\n<p>These notes describe a fictional staging service called Driftglass, recorded after a training exercise on 2026-08-26. They have not yet been approved for production use. The queue worker imports handbook source files from a local staging inbox.</p>\n\n<h2>Recognise the symptom</h2>\n<p>In the exercise, there were 12 waiting jobs and 0 active jobs. The worker health endpoint returned 503, while the web interface remained reachable. The relevant log marker was <code>QUEUE_PAUSED</code>. These observations are specific to the exercise; it is not claimed that every delayed queue will show the same marker or status code. The queue view and worker log should be compared before continuing.</p>\n\n<h2>Inspect safely</h2>\n<p>Open the staging dashboard and record current queue counts in the incident note. Check if a planned maintenance window explains the pause. The exercise used the command <code>queuectl status --scope staging</code> to inspect state, which reads status without restarting the worker. A production scope must not be substituted when following these training notes.</p>\n<p>If the marker is absent, stop the procedure and ask the service owner to investigate. These notes do not include a general diagnosis for database failures, network failures, or damaged uploads. Repeatedly restarting an unknown fault could make original evidence harder to interpret.</p>\n\n<h2>Recover and verify</h2>\n<p>After the service owner confirms maintenance has ended, run <code>queuectl resume --scope staging</code>. Wait 30 seconds, then check status again. In the exercise, the waiting count decreased to 8 and the active count became 4; these are exercise evidence, not pass criteria. The actual check is whether jobs begin progressing without a new error marker.</p>\n\n<h2>Escalation and gaps</h2>\n<p>If progress does not resume, preserve the incident note and ask the service owner for the next step. Do not delete queued jobs or source files.</p>\n<p>The following are not documented:</p>\n<ul>\n<li>A rollback command</li>\n<li>An on-call contact</li>\n<li>A maximum retry count</li>\n</ul>\n<p>These notes must remain explicitly labelled as a staging exercise until the review is complete.</p>\n\n<h2>Things a reviewer should check</h2>\n<ul>\n<li>Can the <code>queuectl</code> command be confirmed against the staging tooling?</li>\n<li>Who is the escalation contact?</li>\n<li>How should the approved production procedure be linked once it exists?</li>\n</ul>",
+        "tags": [
+          "Driftglass",
+          "queue recovery",
+          "staging",
+          "training exercise",
+          "runbook"
+        ]
+      },
+      "latencyMs": 21022,
+      "tokens": 1660,
+      "status": 200,
+      "sourceHash": "d2d5894e2d1b17313daf23eebceb864cdca82981fd9b6eaa014f0f43b1cf1514",
+      "originalAssessment": {
+        "score": 100,
+        "faithfulness": {
+          "unsupportedNumbers": [],
+          "unsupportedNames": [],
+          "forbiddenFacts": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "document": "runbook",
+      "model": "deepseek-ai/DeepSeek-V3.2-TEE",
+      "score": 60,
+      "checks": {
+        "title": true,
+        "headings": true,
+        "requiredTerms": true,
+        "faithfulness": false,
+        "table": true,
+        "reviewerChecklist": true,
+        "language": false
+      },
+      "missingTerms": [],
+      "faithfulness": {
+        "unsupportedNumbers": [
+          "26.08.2026"
+        ],
+        "unsupportedNames": [
+          "Notizen",
+          "Staging-Übung",
+          "Dienst",
+          "Queue-Worker",
+          "Symptome",
+          "Inspektionsschritte",
+          "Wiederaufnahme-Prozedur",
+          "Produktiveinsatz",
+          "Worker-Health-Endpunkt",
+          "Web-Oberfläche",
+          "Log-Marker",
+          "Beobachtungen",
+          "Sie",
+          "Staging-Dashboard",
+          "Queue-Zählstände",
+          "Incident-Notiz",
+          "Wartungsfenster",
+          "Befehl",
+          "Statusprüfung",
+          "Prozedur",
+          "Service-Owner",
+          "Untersuchung",
+          "Diagnose",
+          "Datenbankfehler",
+          "Netzwerkfehler",
+          "Bestätigung",
+          "Service-Owners",
+          "Wartung",
+          "Sekunden",
+          "Wartezahl",
+          "Zahl",
+          "Zahlen",
+          "Belege",
+          "Passkriterien",
+          "Prüfung",
+          "Fehler-Marker",
+          "Fortschritt",
+          "Warteschlange",
+          "Quelldateien",
+          "Rollback-Befehl",
+          "On-Call-Kontakt",
+          "Wiederholungsanzahl",
+          "Staging-Tools",
+          "Eskalationskontakt",
+          "Produktionsvorfälle",
+          "Produktionsprozedur"
+        ],
+        "forbiddenFacts": [],
+        "passed": false
+      },
+      "headingCount": 6,
+      "reviewerItems": 4,
+      "draft": {
+        "title": "Driftglass Warteschlangen-Wiederherstellungsnotizen (Staging-Übung)",
+        "html": "<h2>Zusammenfassung</h2><p>Diese Notizen dokumentieren eine fiktive Staging-Übung vom 26.08.2026 für den Dienst \"Driftglass\", bei der ein pausierter Queue-Worker wiederhergestellt wurde. Sie beschreiben Symptome, Inspektionsschritte und eine Wiederaufnahme-Prozedur. Die Notizen sind nicht für den Produktiveinsatz freigegeben.</p><h2>Erkennen des Symptoms</h2><p>Die Übung begann mit 12 wartenden Jobs und 0 aktiven Jobs. Der Worker-Health-Endpunkt gab 503 zurück, während die Web-Oberfläche erreichbar blieb. Der relevante Log-Marker war QUEUE_PAUSED. Diese Beobachtungen stammen aus der Übung.</p><h2>Sichere Inspektion</h2><p>Öffnen Sie das Staging-Dashboard und notieren Sie die aktuellen Queue-Zählstände im Incident-Notiz. Prüfen Sie, ob ein geplantes Wartungsfenster die Pause erklärt. In der Übung wurde der Befehl <code>queuectl status --scope staging</code> zur Statusprüfung verwendet. Dieser Befehl liest nur den Status und startet den Worker nicht neu.</p><p>Wenn der Marker fehlt, brechen Sie diese Prozedur ab und bitten Sie den Service-Owner um Untersuchung. Die Notizen enthalten keine allgemeine Diagnose für Datenbankfehler, Netzwerkfehler oder beschädigte Uploads.</p><h2>Wiederherstellen und Verifizieren</h2><p>Nach Bestätigung des Service-Owners, dass die Wartung beendet ist, führen Sie <code>queuectl resume --scope staging</code> aus. Warten Sie 30 Sekunden und prüfen Sie den Status erneut. In der Übung sank die Wartezahl auf 8 und die aktive Zahl wurde 4. Diese Zahlen sind Belege aus der Übung, keine Passkriterien für einen zukünftigen Incident. Die eigentliche Prüfung ist, ob Jobs ohne neuen Fehler-Marker fortschreiten.</p><h2>Eskalation und Lücken</h2><p>Wenn der Fortschritt nicht wieder aufgenommen wird, bewahren Sie die Incident-Notiz auf und fragen Sie den Service-Owner nach dem nächsten Schritt. Löschen Sie keine Jobs in der Warteschlange oder Quelldateien. Ein Rollback-Befehl, ein On-Call-Kontakt und eine maximale Wiederholungsanzahl sind nicht dokumentiert.</p><h2>Prüfpunkte für die Freigabe</h2><ul><li>Den Befehl <code>queuectl status --scope staging</code> gegen die aktuellen Staging-Tools validieren.</li><li>Den Eskalationskontakt (Service-Owner) für Produktionsvorfälle identifizieren.</li><li>Entscheiden, wie die freigegebene Produktionsprozedur mit diesen Notizen verlinkt werden soll, sobald sie existiert.</li><li>Prüfen, ob die Notizen weiterhin explizit als Staging-Übung gekennzeichnet bleiben, bis die Review abgeschlossen ist.</li></ul>",
+        "tags": [
+          "Driftglass",
+          "Queue",
+          "Wiederherstellung",
+          "Staging",
+          "Übung",
+          "Incident"
+        ]
+      },
+      "latencyMs": 73053,
+      "tokens": 1813,
+      "status": 200,
+      "sourceHash": "d2d5894e2d1b17313daf23eebceb864cdca82981fd9b6eaa014f0f43b1cf1514",
+      "originalAssessment": {
+        "score": 60,
+        "faithfulness": {
+          "unsupportedNumbers": [
+            "26.08.2026"
+          ],
+          "unsupportedNames": [
+            "Notizen",
+            "Staging-Übung",
+            "Dienst",
+            "Queue-Worker",
+            "Symptome",
+            "Inspektionsschritte",
+            "Wiederaufnahme-Prozedur",
+            "Produktiveinsatz",
+            "Worker-Health-Endpunkt",
+            "Web-Oberfläche",
+            "Log-Marker",
+            "Beobachtungen",
+            "Sie",
+            "Staging-Dashboard",
+            "Queue-Zählstände",
+            "Incident-Notiz",
+            "Wartungsfenster",
+            "Befehl",
+            "Statusprüfung",
+            "Prozedur",
+            "Service-Owner",
+            "Untersuchung",
+            "Diagnose",
+            "Datenbankfehler",
+            "Netzwerkfehler",
+            "Bestätigung",
+            "Service-Owners",
+            "Wartung",
+            "Sekunden",
+            "Wartezahl",
+            "Zahl",
+            "Zahlen",
+            "Belege",
+            "Passkriterien",
+            "Prüfung",
+            "Fehler-Marker",
+            "Fortschritt",
+            "Warteschlange",
+            "Quelldateien",
+            "Rollback-Befehl",
+            "On-Call-Kontakt",
+            "Wiederholungsanzahl",
+            "Staging-Tools",
+            "Eskalationskontakt",
+            "Produktionsvorfälle",
+            "Produktionsprozedur"
+          ],
+          "forbiddenFacts": [],
+          "passed": false
+        }
+      }
+    },
+    {
+      "document": "policy",
+      "model": "google/gemma-4-31B-turbo-TEE",
+      "score": 100,
+      "checks": {
+        "title": true,
+        "headings": true,
+        "requiredTerms": true,
+        "faithfulness": true,
+        "table": true,
+        "reviewerChecklist": true,
+        "language": true
+      },
+      "missingTerms": [],
+      "faithfulness": {
+        "unsupportedNumbers": [],
+        "unsupportedNames": [],
+        "forbiddenFacts": [],
+        "passed": true
+      },
+      "headingCount": 6,
+      "reviewerItems": 4,
+      "draft": {
+        "title": "Entwurf der Aufbewahrungsrichtlinie für Wolkensteg",
+        "html": "<h2>Zusammenfassung</h2>\n<p>Dieser Entwurf vom 2026-08-27 beschreibt eine vorgeschlagene Ablage von Arbeitsunterlagen für das interne Team Wolkensteg. Es handelt sich um ein Dokument ohne verbindliche Geltung, das keine Rechtsberatung oder Aussagen über gesetzliche Aufbewahrungsfristen darstellt.</p>\n\n<h2>Geltungsbereich</h2>\n<p>Der Entwurf betrifft ausschließlich im Team erzeugte Schulungsunterlagen und zugehörige Prüfnotizen. Folgende Dokumentarten sind nicht in dieser Ablage enthalten und werden im Entwurf nicht geregelt:</p>\n<ul>\n<li>Personalakten</li>\n<li>Rechnungen</li>\n<li>Kundenverträge</li>\n</ul>\n<p>Bei Dateien mit mehreren Zwecken muss die Zuordnung vor der Ablage geklärt werden. Eine Kennzeichnung als Schulungsunterlage allein aufgrund einer kürzeren Frist ist nicht zulässig.</p>\n\n<h2>Vorgeschlagene Fristen</h2>\n<p>Die Fristen beginnen jeweils nach dem Abschluss der zugehörigen Schulung.</p>\n\n<table>\n<thead>\n<tr>\n<th>Kategorie</th>\n<th>Frist</th>\n<th>Zuständigkeit</th>\n<th>Abschluss</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>Schulungsentwurf</td>\n<td>30 Tage</td>\n<td>Redaktion</td>\n<td>Löschung prüfen</td>\n</tr>\n<tr>\n<td>Prüfnotiz</td>\n<td>90 Tage</td>\n<td>Qualitätsteam</td>\n<td>Freigabe prüfen</td>\n</tr>\n<tr>\n<td>Freigegebene Anleitung</td>\n<td>365 Tage</td>\n<td>Fachteam</td>\n<td>Aktualität prüfen</td>\n</tr>\n</tbody>\n</table>\n\n<p>Die Tabelle beschreibt keine automatische Löschung. Die zuständige Gruppe prüft den Eintrag am Ende der Frist und dokumentiert das Ergebnis. Bei begründetem Bedarf zur weiteren Nutzung bleibt die Entscheidung offen, bis eine verantwortliche Person die Verlängerung bestätigt. Eine pauschale Verlängerungsdauer wurde nicht vereinbart.</p>\n\n<h2>Zugriff und Änderungen</h2>\n<p>Der Zugriff soll auf das jeweilige Team beschränkt bleiben; eine externe Freigabe ist nicht Teil des Entwurfs. Änderungen an einer Kategorie erfordern eine dokumentierte Entscheidung. Alte Prüfnotizen dürfen nicht stillschweigend durch neue Ergebnisse ersetzt werden.</p>\n\n<h2>Noch zu klären</h2>\n<ul>\n<li>Festlegung durch die interne Stelle, wer Verlängerungen bestätigen darf.</li>\n<li>Festlegung des Speicherorts für die Ergebnisse der Fristprüfung.</li>\n<li>Vorgehensweise zur Übernahme bereits vorhandener Dateien in die neue Ablage.</li>\n</ul>\n<p>Ein Termin für das Inkrafttreten existiert noch nicht.</p>\n\n<h2>Prüfpunkte für die Freigabe</h2>\n<ul>\n<li>Wurde der Geltungsbereich durch die zuständige interne Stelle bestätigt?</li>\n<li>Ist festgelegt, wer Verlängerungen bestätigen darf und wo die Prüfungsergebnisse gespeichert werden?</li>\n<li>Wie erfolgt die Übernahme bereits vorhandener Dateien in die Ablage?</li>\n<li>Wurde die unveränderte Zuordnung aller Tabellenzellen und der Entwurfsstatus korrekt übernommen?</li>\n</ul>",
+        "tags": [
+          "Wolkensteg",
+          "Aufbewahrungsrichtlinie",
+          "Entwurf",
+          "Schulungsunterlagen",
+          "Archivierung"
+        ]
+      },
+      "latencyMs": 19105,
+      "tokens": 2048,
+      "status": 200,
+      "sourceHash": "2c232e8749bc5825fec51b77200b5d0ad3658f95675c7461c2d1cc752ffe1a4d",
+      "originalAssessment": {
+        "score": 100,
+        "faithfulness": {
+          "unsupportedNumbers": [],
+          "unsupportedNames": [],
+          "forbiddenFacts": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "document": "policy",
+      "model": "deepseek-ai/DeepSeek-V3.2-TEE",
+      "score": 100,
+      "checks": {
+        "title": true,
+        "headings": true,
+        "requiredTerms": true,
+        "faithfulness": true,
+        "table": true,
+        "reviewerChecklist": true,
+        "language": true
+      },
+      "missingTerms": [],
+      "faithfulness": {
+        "unsupportedNumbers": [],
+        "unsupportedNames": [],
+        "forbiddenFacts": [],
+        "passed": true
+      },
+      "headingCount": 6,
+      "reviewerItems": 4,
+      "draft": {
+        "title": "Entwurf Aufbewahrungsrichtlinie Wolkensteg",
+        "html": "<h2>Zusammenfassung</h2><p>Dies ist ein fiktiver Entwurf einer internen Aufbewahrungsrichtlinie für das Team Wolkensteg, Stand 2026-08-27. Er schlägt Fristen und Zuständigkeiten für Schulungsunterlagen und Prüfnotizen vor. Die Richtlinie ist noch nicht freigegeben und enthält keine verbindlichen Regelungen für andere Dokumentarten wie Personalakten oder Rechnungen.</p><h2>Geltungsbereich</h2><p>Der Entwurf betrifft ausschließlich die im Team erzeugten Schulungsunterlagen und die zugehörigen Prüfnotizen. Personalakten, Rechnungen und Kundenverträge gehören nicht in diese Ablage. Für diese Dokumentarten enthält der Entwurf keine Regelung. Wenn eine Datei mehrere Zwecke erfüllt, muss ihre Zuordnung vor der Ablage geklärt werden. Eine Person darf sie nicht allein deshalb als Schulungsunterlage kennzeichnen, weil das kürzer erscheint.</p><h2>Vorgeschlagene Fristen</h2><p>Die folgende Tabelle enthält die vorgeschlagenen Kategorien. Jede Zeile bildet eine zusammengehörige Regel; die Angaben dürfen beim Übertragen nicht zwischen den Zeilen vertauscht werden. Die Frist beginnt jeweils nach dem Abschluss der zugehörigen Schulung.</p><table><thead><tr><th>Kategorie</th><th>Frist</th><th>Zuständigkeit</th><th>Abschluss</th></tr></thead><tbody><tr><td>Schulungsentwurf</td><td>30 Tage</td><td>Redaktion</td><td>Löschung prüfen</td></tr><tr><td>Prüfnotiz</td><td>90 Tage</td><td>Qualitätsteam</td><td>Freigabe prüfen</td></tr><tr><td>Freigegebene Anleitung</td><td>365 Tage</td><td>Fachteam</td><td>Aktualität prüfen</td></tr></tbody></table><p>Die Tabelle beschreibt keine automatische Löschung. Am Ende der genannten Frist prüft die zuständige Gruppe den Eintrag und dokumentiert das Ergebnis. Besteht ein begründeter Bedarf zur weiteren Nutzung, bleibt die Entscheidung offen, bis eine verantwortliche Person die Verlängerung bestätigt. Eine pauschale Verlängerungsdauer wurde nicht vereinbart.</p><h2>Zugriff und Änderungen</h2><p>Der Zugriff soll auf das jeweilige Team beschränkt bleiben. Eine externe Freigabe ist nicht Teil dieses Entwurfs. Änderungen an einer Kategorie benötigen eine dokumentierte Entscheidung, damit spätere Prüfer die ursprüngliche Zuordnung nachvollziehen können. Alte Prüfnotizen dürfen nicht stillschweigend durch neue Ergebnisse ersetzt werden.</p><h2>Noch zu klären</h2><ul><li>Die interne Stelle muss festlegen, wer Verlängerungen bestätigen darf.</li><li>Es muss festgelegt werden, wo die Ergebnisse der Fristprüfung gespeichert werden.</li><li>Es ist offen, wie bereits vorhandene Dateien in die neue Ablage übernommen werden sollen.</li><li>Es gibt noch keinen Termin für das Inkrafttreten.</li></ul><h2>Prüfpunkte für die Freigabe</h2><ul><li>Ist der Entwurfsstatus und der fiktive Charakter der Richtlinie klar gekennzeichnet?</li><li>Sind alle Zellen der vorgeschlagenen Fristentabelle unverändert und korrekt zugeordnet übernommen worden?</li><li>Wurden die noch fehlenden Zuständigkeiten (für Verlängerungsbestätigung und Speicherort der Prüfergebnisse) identifiziert und müssen vor einer Freigabe geklärt werden?</li><li>Ist der eingeschränkte Geltungsbereich (nur Schulungsunterlagen und Prüfnotizen) deutlich und werden keine falschen Rückschlüsse auf andere Dokumentarten gezogen?</li></ul>",
+        "tags": [
+          "Richtlinienentwurf",
+          "Dokumentenverwaltung",
+          "Aufbewahrung",
+          "Schulungsunterlagen",
+          "Interne Prozesse",
+          "Entwurfsstatus"
+        ]
+      },
+      "latencyMs": 74777,
+      "tokens": 2346,
+      "status": 200,
+      "sourceHash": "2c232e8749bc5825fec51b77200b5d0ad3658f95675c7461c2d1cc752ffe1a4d",
+      "originalAssessment": {
+        "score": 100,
+        "faithfulness": {
+          "unsupportedNumbers": [],
+          "unsupportedNames": [],
+          "forbiddenFacts": [],
+          "passed": true
+        }
+      }
+    }
+  ],
+  "scorerHash": "6e6630695257825eac031ef3a36069fb36af11d3b0df43af45b9574213fd0ea8",
+  "expectationsHash": "9587d61aa023941825445547ad920e5d1892c282d68e5e4d89e7c3ab9a4562e0",
+  "rescoringNote": "Both runs scored with identical final checker; fixes ignore ordinary capitalization at HTML block boundaries and also check tags. Original assessments preserved. No new inference calls."
+}

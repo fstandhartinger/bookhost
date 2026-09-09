@@ -395,3 +395,9 @@ and makes no Stripe purchases. `INTAKE_DB_TEST=1 npm test` additionally exercise
 real concurrent joins, the revocation ordering, verification/password replacement,
 shared password limits, removal/demotion, and migration 017 twice in an isolated
 rolled-back schema. Set optional `INVITE_SCREENSHOT` to save a mobile screenshot.
+
+## Draft quality & eval
+
+Run `npm run eval:intake` with `CHUTES_API_KEY` available in the environment. `INTAKE_MODELS` optionally selects up to two Chutes models. The runner calls the production draft function on six fictional English/German documents, with at most twelve requests and no fallback or retries per model. It prints scores, latency and provider token counts and saves drafts plus checks in `eval/results/<timestamp>.json`.
+
+Drafts preserve source order, exact figures, uncertainty and HTML tables, use source-specific English/German review headings with a parser check, and have titles of at most 80 characters. Empty sections are removed after sanitization. Human approval is still required: the automated fact checker is a lexical heuristic, not a guarantee of factual correctness. See [evaluation rules](eval/README.md) and [measured model comparison](eval/REPORT.md).

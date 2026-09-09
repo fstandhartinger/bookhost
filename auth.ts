@@ -50,7 +50,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
                 : undefined,
             },
-            from: process.env.SMTP_FROM || "Wissen <noreply@localhost>",
+            from: process.env.SMTP_FROM || "BookHost <noreply@mail.mintapis.com>",
             maxAge: 900,
             async sendVerificationRequest({ identifier, url, provider }) {
               if (
@@ -69,8 +69,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               await transport.sendMail({
                 to: identifier,
                 from: provider.from,
-                subject: "Sign in to Wissen",
-                text: `Sign in to Wissen: ${url}\nThis link expires in 15 minutes. If you did not request it, ignore this email.`,
+                subject: "Sign in to BookHost",
+                text: `Sign in to BookHost: ${url}\nThis link expires in 15 minutes. If you did not request it, ignore this email.`,
               });
             },
           }),
@@ -95,6 +95,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async session({ session, token }) {
       if (session.user && token.sub) session.user.id = token.sub;
+      session.session_version =
+        typeof token.session_version === "number"
+          ? token.session_version
+          : undefined;
       session.auth_time =
         typeof token.auth_time === "number" ? token.auth_time : undefined;
       return session;

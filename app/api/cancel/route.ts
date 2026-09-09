@@ -61,7 +61,7 @@ export async function POST(request: Request) {
         : "I cancel my subscription at the earliest possible date. / Ich kündige zum nächstmöglichen Termin.";
     const message =
       "We will implement your request in the Stripe customer portal within 2 working days and confirm it by email. Your declaration takes effect according to the applicable contract and law from its receipt; processing time does not postpone receipt. / Wir setzen Ihre Erklärung innerhalb von 2 Werktagen im Stripe-Kundenportal um und bestätigen sie per E-Mail. Maßgeblich ist der Eingang Ihrer Erklärung; die Bearbeitungszeit verschiebt ihn nicht.";
-    const receipt = `Wissen — Request received / Eingangsbestätigung\nReference: ${row.id}\nReceived (UTC): ${received}\nEmail: ${data.email}\n${declaration}\n${data.note}\n\n${message}\n\nproductivity-boost.com Betriebs UG (haftungsbeschränkt) & Co. KG\nReichenbergerstr. 2, 94036 Passau\ninfo@productivity-boost.com`;
+    const receipt = `BookHost — Request received / Eingangsbestätigung\nReference: ${row.id}\nReceived (UTC): ${received}\nEmail: ${data.email}\n${declaration}\n${data.note}\n\n${message}\n\nproductivity-boost.com Betriebs UG (haftungsbeschränkt) & Co. KG\nReichenbergerstr. 2, 94036 Passau\ninfo@productivity-boost.com`;
     if (request.headers.get("accept")?.includes("application/json"))
       return Response.json(
         {
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
         { status: 201, headers },
       );
     return new Response(
-      `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Request received · Wissen</title><style>body{font:16px/1.7 system-ui;background:#f8faf7;color:#172921;max-width:760px;margin:48px auto;padding:24px}pre{font:inherit;white-space:pre-wrap;overflow-wrap:anywhere}a{color:#285b43;display:inline-block;margin:12px 24px 12px 0}</style></head><body><main><h1>Request received / Erklärung eingegangen</h1><pre>${escapeHtml(receipt)}</pre><a download="wissen-confirmation.txt" href="data:text/plain;charset=utf-8,${escapeHtml(encodeURIComponent(receipt))}">Download confirmation / Bestätigung speichern</a><a href="/">Back to Wissen</a></main></body></html>`,
+      `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Request received · BookHost</title><style>body{font:16px/1.7 system-ui;background:#f8faf7;color:#172921;max-width:760px;margin:48px auto;padding:24px}pre{font:inherit;white-space:pre-wrap;overflow-wrap:anywhere}a{color:#285b43;display:inline-block;margin:12px 24px 12px 0}</style></head><body><main><h1>Request received / Erklärung eingegangen</h1><pre>${escapeHtml(receipt)}</pre><a download="bookhost-confirmation.txt" href="data:text/plain;charset=utf-8,${escapeHtml(encodeURIComponent(receipt))}">Download confirmation / Bestätigung speichern</a><a href="/">Back to BookHost</a></main></body></html>`,
       {
         status: 201,
         headers: {

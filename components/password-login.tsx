@@ -1,7 +1,11 @@
 "use client";
 import { signIn } from "next-auth/react";
 import { useState } from "react";
-export function PasswordLogin() {
+export function PasswordLogin({
+  destination = "/app",
+}: {
+  destination?: string;
+}) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   return (
@@ -24,7 +28,7 @@ export function PasswordLogin() {
                 ? "Too many attempts. Try again in 15 minutes."
                 : "E-mail or password is incorrect",
             );
-          else window.location.assign("/app");
+          else window.location.assign(destination);
         } catch {
           setError("Unable to sign in. Please try again.");
         } finally {

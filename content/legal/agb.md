@@ -1,10 +1,10 @@
-# Allgemeine Geschäftsbedingungen für Wissen
+# Allgemeine Geschäftsbedingungen für BookHost
 
 Stand: 08.09.2026
 
 ## 1. Anbieter, Geltungsbereich und Kundenkreis
 
-Anbieter von Wissen ist die productivity-boost.com Betriebs UG (haftungsbeschränkt) & Co. KG, Reichenbergerstr. 2, 94036 Passau, Deutschland, vertreten durch Florian Standhartinger, E-Mail: info@productivity-boost.com, Telefon: +49 178 1981631. Vollständige Anbieterangaben stehen im [Impressum](impressum.md).
+Anbieter von BookHost ist die productivity-boost.com Betriebs UG (haftungsbeschränkt) & Co. KG, Reichenbergerstr. 2, 94036 Passau, Deutschland, vertreten durch Florian Standhartinger, E-Mail: info@productivity-boost.com, Telefon: +49 178 1981631. Vollständige Anbieterangaben stehen im [Impressum](impressum.md).
 
 Diese AGB gelten für die gehostete BookStack-Leistung einschließlich Kontoverwaltung und der ausdrücklich vereinbarten Zusatzfunktionen. Das Angebot richtet sich vorrangig an Unternehmer im Sinne des § 14 BGB, insbesondere Teams, IT-Abteilungen und Agenturen. Schließt eine natürliche Person den Vertrag überwiegend zu privaten Zwecken, bleiben ihre Verbraucherrechte uneingeschränkt bestehen. Für Verbraucher gelten insbesondere die Abschnitte 4, 5, 10 und 12 dieser AGB.
 
@@ -22,7 +22,7 @@ Wir übermitteln die Vertragsbestätigung einschließlich Leistungsumfang, Preis
 
 ## 3. Leistungsumfang und angekündigte Funktionen
 
-Wissen stellt dem Kunden eine über das Internet erreichbare BookStack-Instanz zur Verwaltung von Wissensseiten und Anhängen bereit. Zum Team-Tarif gehören deren Betrieb, notwendige Wartung und Sicherheitsaktualisierungen, tägliche Backups mit sieben Tagen Aufbewahrung sowie Support per E-Mail. Der Team-Tarif umfasst bis zu 25 Nutzer je Workspace und 5 GB Upload-Speicher. Für CPU- und Datenbankressourcen gilt Fair Use im Rahmen der üblichen Wissensverwaltung eines Teams dieser Größe. Bei höherem Bedarf an Nutzern, Speicher oder Rechen- und Datenbankressourcen kontaktieren Sie uns für eine individuelle Vereinbarung. Die konkrete Instanzadresse ergibt sich aus der Bestellbestätigung.
+BookHost stellt dem Kunden eine über das Internet erreichbare BookStack-Instanz zur Verwaltung von BookStack-Seiten und Anhängen bereit. Zum Team-Tarif gehören deren Betrieb, notwendige Wartung und Sicherheitsaktualisierungen, tägliche Backups mit sieben Tagen Aufbewahrung sowie Support per E-Mail. Der Team-Tarif umfasst bis zu 25 Nutzer je Workspace und 5 GB Upload-Speicher. Für CPU- und Datenbankressourcen gilt Fair Use im Rahmen der üblichen BookStack-Verwaltung eines Teams dieser Größe. Bei höherem Bedarf an Nutzern, Speicher oder Rechen- und Datenbankressourcen kontaktieren Sie uns für eine individuelle Vereinbarung. Die konkrete Instanzadresse ergibt sich aus der Bestellbestätigung.
 
 Die BookStack-Exportfunktionen stehen während der Vertragslaufzeit im Rahmen der vergebenen Berechtigungen jederzeit zur Verfügung. Ein Inhalts-Export ist nicht zwangsläufig eine vollständige Systemsicherung einschließlich Nutzerverwaltung und sämtlicher Einstellungen. Individuelle Migrationen, besondere Integrationen und zusätzliche Dienstleistungen werden nur nach gesonderter Vereinbarung geschuldet; etwaige Kosten müssen vorher vereinbart werden.
 
@@ -44,7 +44,7 @@ Der entgeltliche Vertrag hat eine monatliche Abrechnungsperiode. Er läuft ansch
 
 Die Kündigung ist über das Stripe-Kundenportal in der Kontoverwaltung oder per E-Mail an info@productivity-boost.com möglich. Wir bestätigen den Eingang und das Vertragsende in Textform. Die Nutzung bleibt bis zum Vertragsende möglich. Gesetzliche Rechte auf außerordentliche Kündigung, Erstattung, Minderung und Widerruf bleiben unberührt.
 
-Verbrauchern steht zusätzlich die gesetzliche, ohne Anmeldung zugängliche Kündigungsschaltfläche auf unserer Website zur Verfügung: [Verträge hier kündigen](https://wissen.app.mintapis.com/cancel). Die Portal-Anmeldung ist keine Voraussetzung für die Ausübung gesetzlicher Kündigungsrechte.
+Verbrauchern steht zusätzlich die gesetzliche, ohne Anmeldung zugängliche Kündigungsschaltfläche auf unserer Website zur Verfügung: [Verträge hier kündigen](https://bookhost.co/cancel). Die Portal-Anmeldung ist keine Voraussetzung für die Ausübung gesetzlicher Kündigungsrechte.
 
 ## 6. Verfügbarkeit, Wartung und Sicherungen
 
@@ -70,7 +70,7 @@ Für personenbezogene Kundeninhalte schließen die Parteien den [AVV](avv.md), d
 
 Der Kunde kann seine Inhalte während des Vertrags jederzeit mit den BookStack-Exportfunktionen exportieren. Nach Vertragsende endet der reguläre produktive Zugang. Bis zur Löschung unterstützen wir auf Anfrage die Herausgabe noch vorhandener Inhalte; ein nachträglicher Exportwunsch sollte unverzüglich an den Support gehen.
 
-Kundeninhalte werden spätestens 30 Tage nach Vertragsende aus den aktiven Systemen gelöscht, auf zulässige Weisung auch früher. Sicherungskopien laufen innerhalb weiterer sieben Tage aus, also spätestens am 37. Tag nach Vertragsende. Nach einer früheren Löschung ist ein Export gegebenenfalls nicht mehr möglich. Gesetzlich notwendige Aufbewahrung betrifft nur die davon erfassten Unterlagen und erfolgt zweckgebunden, insbesondere für Rechnungen; sie berechtigt nicht zur pauschalen Aufbewahrung aller Wissensseiten. Entsprechendes gilt nach einer nicht fortgesetzten Testphase. Gesetzliche Datenherausgabe- und Wechselrechte bleiben unberührt.
+Kundeninhalte werden spätestens 30 Tage nach Vertragsende aus den aktiven Systemen gelöscht, auf zulässige Weisung auch früher. Sicherungskopien laufen innerhalb weiterer sieben Tage aus, also spätestens am 37. Tag nach Vertragsende. Nach einer früheren Löschung ist ein Export gegebenenfalls nicht mehr möglich. Gesetzlich notwendige Aufbewahrung betrifft nur die davon erfassten Unterlagen und erfolgt zweckgebunden, insbesondere für Rechnungen; sie berechtigt nicht zur pauschalen Aufbewahrung aller BookStack-Seiten. Entsprechendes gilt nach einer nicht fortgesetzten Testphase. Gesetzliche Datenherausgabe- und Wechselrechte bleiben unberührt.
 
 ## 10. Mängelrechte und Haftung
 
@@ -98,7 +98,7 @@ Sie haben das Recht, binnen vierzehn Tagen ohne Angabe von Gründen diesen Vertr
 
 Um Ihr Widerrufsrecht auszuüben, müssen Sie uns, productivity-boost.com Betriebs UG (haftungsbeschränkt) & Co. KG, Reichenbergerstr. 2, 94036 Passau, Deutschland, E-Mail: info@productivity-boost.com, Telefon: +49 178 1981631, mittels einer eindeutigen Erklärung, beispielsweise einem mit der Post versandten Brief oder einer E-Mail, über Ihren Entschluss, diesen Vertrag zu widerrufen, informieren. Sie können dafür das nachstehende Muster-Widerrufsformular verwenden, das jedoch nicht vorgeschrieben ist.
 
-Sie können den Widerruf außerdem über die elektronische Widerrufsfunktion auf unserer Website abgeben: [Vertrag widerrufen](https://wissen.app.mintapis.com/cancel?kind=withdrawal). Wenn Sie diese Möglichkeit nutzen, erhalten Sie unverzüglich eine Eingangsbestätigung mit Datum, Uhrzeit und Inhalt Ihrer Erklärung zum Herunterladen und Speichern. Die Umsetzung bestätigen wir innerhalb von zwei Werktagen per E-Mail.
+Sie können den Widerruf außerdem über die elektronische Widerrufsfunktion auf unserer Website abgeben: [Vertrag widerrufen](https://bookhost.co/cancel?kind=withdrawal). Wenn Sie diese Möglichkeit nutzen, erhalten Sie unverzüglich eine Eingangsbestätigung mit Datum, Uhrzeit und Inhalt Ihrer Erklärung zum Herunterladen und Speichern. Die Umsetzung bestätigen wir innerhalb von zwei Werktagen per E-Mail.
 
 Zur Wahrung der Widerrufsfrist reicht es aus, dass Sie die Mitteilung über die Ausübung des Widerrufsrechts vor Ablauf der Widerrufsfrist absenden.
 

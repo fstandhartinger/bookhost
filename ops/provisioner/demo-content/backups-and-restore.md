@@ -1,4 +1,4 @@
-Wissen's hosting operations include encrypted daily backups of the BookStack database and application files. A useful backup must be restorable; an archive existing on disk is not sufficient evidence.
+BookHost's hosting operations include encrypted daily backups of the BookStack database and application files. A useful backup must be restorable; an archive existing on disk is not sufficient evidence.
 
 ## What is checked
 The operator's restore test starts an isolated copy, restores the database and files, boots BookStack and compares page counts, book counts and book titles with the snapshot. The temporary copy has no public route and is removed after the test.

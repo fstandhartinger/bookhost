@@ -1,7 +1,8 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { IntakeError } from "./access";
 export const EMAIL_LIMIT = 15 * 1024 * 1024;
-export const EMAIL_DOMAIN = "intake.wissen.app.mintapis.com";
+import { TENANT_DOMAIN } from "../config";
+export const EMAIL_DOMAIN = `intake.${TENANT_DOMAIN}`;
 export function verifySignature(
   raw: Buffer,
   header: string | null,
@@ -93,10 +94,8 @@ export function parseEmail(raw: Buffer) {
     );
   }
   const recipient = body.to[0].toLowerCase();
-  const match =
-    /^([a-z0-9]+(?:-[a-z0-9]+)*)@intake\.wissen\.app\.mintapis\.com$/.exec(
-      recipient,
-    );
+  const tenantDomainPattern = TENANT_DOMAIN.split(".").map((part) => part.replace(/[\\^$*+?.()|[\]{}]/g, "\\$&")).join("\\.");
+  const match = new RegExp(`^([a-z0-9]+(?:-[a-z0-9]+)*)@intake\\.${tenantDomainPattern}$`).exec(recipient);
   if (!match) throw new IntakeError("Workspace not found.", 404);
   if (body.attachments.length > 5)
     throw new IntakeError("At most five attachments are accepted.", 413);

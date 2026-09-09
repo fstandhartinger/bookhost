@@ -1,0 +1,25 @@
+# Draft quality & eval
+
+Run `CHUTES_API_KEY=… npm run eval:intake` with the key supplied by your environment (do not paste it into shell history). `INTAKE_MODELS` selects one model per run; the default is `google/gemma-4-31B-turbo-TEE`. Run other models separately. `EVAL_LABEL` labels a run. The catalog was checked through the authenticated Chutes models endpoint before measuring.
+
+The runner imports the **real** `generateDraft` TypeScript function through a small TypeScript loader. It pins each request to one model, disables fallback for that request, and sends the same production prompt, temperature, token budget and timeout. Six documents × one model × at most two attempts = twelve requests maximum; larger runs are rejected before inference. The default is google/gemma-4-31B-turbo-TEE. Requests are sequential; validation failures receive at most one correction request on the same model. HTTP 429 stops the run. Results are checkpointed after every response, including failures. A generation failure has score 0; missing token usage is `null`, never an estimate. Exit status is nonzero for generation failures or rate limiting.
+
+Only the six fictional fixtures are submitted. Results include their generated drafts, source hashes, pipeline hash, scores, milliseconds and the provider's total token usage. The runner neither publishes a page nor touches the database. Never replace committed fixtures/results with customer material or credentials. `results/<timestamp>.json` is intentionally versioned.
+
+## Evaluation rules
+
+Each document in `expectations.json` has heading bounds, required terms, forbidden invented facts, a table requirement, at least three specific manual reviewer checks, a source language, known proper names and an 80-character title limit. The documents contain 348–400 whitespace-delimited words each, including headings. They cover onboarding, meeting decisions, a German process, an email thread, a staging runbook, and a German policy table.
+
+The score is out of 100: title 10, heading bounds 10, required terms 20, lexical fact fidelity 30, table preservation 10, reviewer list of at least three items 10, and localized opening/closing headings 10. Table comparison checks complete ordered cells within each row, so swapped assignments fail. Source section order, full language consistency and the relevance of the reviewer checklist also require human review against `reviewerShouldCheck`; the score does not pretend to judge these semantically.
+
+The fact checker matches numbers, ISO dates, times, signs, percentages and decimals exactly against source tokens, including numbers in titles and tags. It checks forbidden phrases and candidate names/acronyms. It tolerates ordinary capitalization changes and HTML block boundaries. Candidate-name detection is heuristic, especially for German: ordinary capitalized nouns are not entities. It cannot prove that every name was found, or detect all altered relationships, changed units, negations, spelled-out numbers, omissions, or promises expressed in different words. Zero detected violations is **not** proof of no hallucinations; human approval remains mandatory. Exact-date formatting changes are fidelity violations even when they denote the same calendar date.
+
+`node eval/rescore.mjs` applies the current checker to saved drafts without inference, verifies the source hashes, preserves original assessments, and stamps checker/expectation hashes. This was used to apply the same capitalization/HTML-boundary fixes and tag check to both measured runs. It does not change generated text or latency.
+
+## Interpretation
+
+See [Measured comparison](REPORT.md) for baseline and final tables, model choice and limitations. Single samples at temperature 0.2 are diagnostic, not statistically significant benchmarks. Availability, shared endpoint load and request timeouts influence latency and aggregate scores. A failed production validation allows one corrective generation; successful drafts use a single request.
+
+## Source language regression
+
+The first expanded prompt listed both English and German heading examples. DeepSeek translated English fixtures into German despite the language instruction; a stronger instruction alone did not fix that, so the partial `language-clarification-aborted` run is retained. The pipeline uses proportional English/German word evidence with a three-word minimum and a greater-than-two-to-one margin. Uncertain documents use the title/first nonempty line, then the longest line; entirely neutral text defaults explicitly to English. German review headings are “Zusammenfassung” and “Was ein Reviewer prüfen sollte”. The validator checks every H2, summary, prose, title and tag for contrary language evidence, enforces the initial summary paragraph and final list of at least three distinct checks, and preserves Markdown/HTML tables as ordered matrices. Neutral names and technical terms are allowed. This heuristic is not a general multilingual classifier or proof of semantic faithfulness. Final results save the actual per-document system prompt, and `prompts.json` preserves earlier prompt variants.

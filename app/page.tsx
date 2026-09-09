@@ -3,6 +3,7 @@ import Image from "next/image";
 import { ActionButton } from "@/components/action-button";
 import { Pricing } from "@/components/pricing";
 import { faqs, benefits, steps } from "@/lib/landing-copy";
+import { TENANT_DOMAIN } from "@/lib/config";
 export default function Home() {
   return (
     <>
@@ -29,7 +30,7 @@ export default function Home() {
             <ActionButton>Start my 14-day free trial</ActionButton>
             <div>
               <a
-                href="https://demo.wissen.app.mintapis.com"
+                href={`https://demo.${TENANT_DOMAIN}`}
                 className="button-secondary"
               >
                 Open live demo <span aria-hidden="true">↗</span>
@@ -105,7 +106,7 @@ export default function Home() {
         </p>
         <p className="mt-5 text-sm leading-6 text-slate-600">
           Only workspace owners/admins can publish; members can upload and
-          review. Drafts are shared with your Wissen dashboard team; BookStack
+          review. Drafts are shared with your BookHost dashboard team; BookStack
           page permissions apply after publication.
         </p>
         <div className="mt-10 space-y-12">

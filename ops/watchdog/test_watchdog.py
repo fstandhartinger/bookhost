@@ -55,7 +55,7 @@ class StateTests(unittest.TestCase):
     def test_message_format(self):
         state, _ = self.sequence([False, False])
         msg = w.message('Test', state, 'failure')
-        self.assertTrue(msg.startswith('Wissen: Test ausgefallen seit '))
+        self.assertTrue(msg.startswith('BookHost: Test ausgefallen seit '))
         self.assertLessEqual(len(msg.splitlines()), 4)
         self.assertIn(str(w.LOG), msg)
 

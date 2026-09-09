@@ -1,5 +1,5 @@
 {
-  "name": "wissen-control-plane",
+  "name": "bookhost-control-plane",
   "version": "1.0.0",
   "private": true,
   "engines": {
@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "stats": "node scripts/stats.mjs",
-    "migrate": "node scripts/migrate.mjs"
+    "migrate": "node scripts/migrate.mjs",
+    "eval:intake": "node eval/run.mjs"
   },
   "dependencies": {
     "argon2": "^0.45.1",

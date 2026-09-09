@@ -4,8 +4,8 @@ Stand: 08.09.2026
 
 ## Angaben gemäß § 5 DDG
 
-**Wissen** – gehostetes BookStack für Teams  
-https://wissen.app.mintapis.com
+**BookHost** – gehostetes BookStack für Teams
+https://bookhost.co
 
 productivity-boost.com Betriebs UG (haftungsbeschränkt) & Co. KG  
 Reichenbergerstr. 2  
@@ -42,4 +42,4 @@ Wir sind weder verpflichtet noch bereit, an Streitbeilegungsverfahren vor einer 
 
 ## BookStack
 
-Wissen ist ein eigenständiges Hosting-Angebot des oben genannten Betreibers. BookStack ist ein eigenständiges Open-Source-Projekt; Wissen ist kein offizieller Dienst des BookStack-Projekts.
+BookHost ist ein eigenständiges Hosting-Angebot des oben genannten Betreibers. BookStack ist ein eigenständiges Open-Source-Projekt; BookHost ist kein offizieller Dienst des BookStack-Projekts.

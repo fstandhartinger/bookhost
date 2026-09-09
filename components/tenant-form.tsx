@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { TENANT_DOMAIN } from "@/lib/config";
 import { useRouter } from "next/navigation";
 import { validateSlug } from "@/lib/slug";
 export function TenantForm({ teamName }: { teamName: string }) {
@@ -67,7 +68,7 @@ export function TenantForm({ teamName }: { teamName: string }) {
       />
       <p id="slug-help" className="mt-2 break-all text-sm text-slate-500">
         https://<strong className="text-moss">{slug || "your-team"}</strong>
-        .wissen.app.mintapis.com
+        .{TENANT_DOMAIN}
       </p>
       <p className="mt-2 text-xs text-slate-500">
         3–30 lowercase letters, numbers or hyphens. Your address cannot be

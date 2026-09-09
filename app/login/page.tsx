@@ -1,3 +1,4 @@
+import { loginDestination } from "@/lib/join-context";
 import { auth, signIn } from "@/auth";
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
@@ -17,7 +18,8 @@ export default async function Login({
     reset?: string;
   }>;
 }) {
-  if (await auth()) redirect("/app");
+  const destination = await loginDestination();
+  if (await auth()) redirect(destination);
   const params = await searchParams;
   const emailEnabled = smtpReady();
   return (
@@ -51,7 +53,7 @@ export default async function Login({
           )}
         </p>
       )}
-      <PasswordLogin />
+      <PasswordLogin destination={destination} />
       {params.reset && (
         <p role="status" className="mt-4">
           Password reset. Sign in with your new password.
@@ -68,7 +70,10 @@ export default async function Login({
             if (!/^\S+@\S+\.\S+$/.test(email) || email.length > 254)
               redirect("/login?error=email");
             try {
-              await signIn("nodemailer", { email, redirectTo: "/app" });
+              await signIn("nodemailer", {
+                email,
+                redirectTo: await loginDestination(),
+              });
             } catch (error) {
               if (error instanceof AuthError) redirect("/login?error=email");
               throw error;
@@ -98,7 +103,7 @@ export default async function Login({
           className="mt-4"
           action={async () => {
             "use server";
-            await signIn("google", { redirectTo: "/app" });
+            await signIn("google", { redirectTo: await loginDestination() });
           }}
         >
           <button className="button-secondary w-full">
@@ -107,7 +112,7 @@ export default async function Login({
         </form>
       )}
       <p className="mt-8 text-center text-xs text-slate-500">
-        Secure access to your Wissen dashboard.
+        Secure access to your BookHost dashboard.
       </p>
     </section>
   );

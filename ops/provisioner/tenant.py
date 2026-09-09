@@ -31,11 +31,14 @@ def env_read(path):
         key, value = parts[0].split('=',1); values[key] = value
     return values
 
+LIMITS = env_read(HERE / 'limits.env') if (HERE / 'limits.env').exists() else {}
+TENANT_DOMAIN = os.environ.get('TENANT_DOMAIN') or LIMITS.get('TENANT_DOMAIN', 'wissen.app.mintapis.com')
+
 def compose(path, *args, data=None):
     return run(['sudo','-n','docker','compose','--project-directory',str(path),'-p','wissen-'+path.name,'-f',str(path/'docker-compose.yml'),*args], data)
 
 def config(path, public=True):
-    slug = path.name; host = slug+'.wissen.app.mintapis.com'; router='wissen-'+slug
+    slug = path.name; host = slug+'.'+TENANT_DOMAIN; router='wissen-'+slug
     app = dict(image=IMAGE, restart='unless-stopped', mem_limit='512m', environment={'PUID':'1000','PGID':'1000','TZ':'UTC','APP_URL':'${APP_URL}','APP_KEY':'${APP_KEY}','DB_HOST':'db','DB_PORT':'3306','DB_USERNAME':'bookstack','DB_PASSWORD':'${DB_PASSWORD}','DB_DATABASE':'bookstack'}, volumes=['./bookstack:/config'], depends_on={'db':{'condition':'service_healthy'}}, networks=['private'])
     db = dict(image=DB_IMAGE, restart='unless-stopped',mem_limit='512m', environment={'MARIADB_DATABASE':'bookstack','MARIADB_USER':'bookstack','MARIADB_PASSWORD':'${DB_PASSWORD}','MARIADB_ROOT_PASSWORD':'${DB_ROOT_PASSWORD}'},volumes=['./database:/var/lib/mysql'],networks=['private'],healthcheck={'test':['CMD','healthcheck.sh','--connect','--innodb_initialized'],'interval':'5s','timeout':'5s','retries':60}, command=['--innodb-buffer-pool-size=128M','--max-connections=50'])
     networks = {'private':{'name':router+'-internal','internal':True}}
@@ -144,7 +147,7 @@ if (!$b) $b=app(BookStack\Entities\Repos\BookRepo::class)->create(['name'=>'Team
 if (!$b->pages()->where('name','How to use this wiki')->exists()) {
 $repo=app(BookStack\Entities\Repos\PageRepo::class);
 $draft=$repo->getNewDraftPage($b);
-$repo->publishDraft($draft,['name'=>'How to use this wiki','editor'=>'wysiwyg','html'=>'<h1>Welcome to your team wiki</h1><p>Keep useful knowledge here and update it as your team learns.</p><h2>Books, chapters and pages</h2><p>Books group a topic, optional chapters organize sections, and pages hold the actual content. Edit this handbook or create a book for each project.</p><h2>Roles and access</h2><p>Ask your workspace administrator to invite teammates and assign BookStack roles. Check book permissions before adding sensitive information.</p><h2>Find answers</h2><p>Use the search bar to find pages across the books you can access. Clear titles and tags help everyone find answers.</p><h2>Document intake in Wissen</h2><p>Open Document intake in your Wissen dashboard, upload a PDF, DOCX, Markdown or text file, and choose a book. Review the AI suggestion against the source. A team owner or admin approves publication; uploaded documents are not published automatically.</p>']);
+$repo->publishDraft($draft,['name'=>'How to use this wiki','editor'=>'wysiwyg','html'=>'<h1>Welcome to your team wiki</h1><p>Keep useful knowledge here and update it as your team learns.</p><h2>Books, chapters and pages</h2><p>Books group a topic, optional chapters organize sections, and pages hold the actual content. Edit this handbook or create a book for each project.</p><h2>Roles and access</h2><p>Ask your workspace administrator to invite teammates and assign BookStack roles. Check book permissions before adding sensitive information.</p><h2>Find answers</h2><p>Use the search bar to find pages across the books you can access. Clear titles and tags help everyone find answers.</p><h2>Document intake in BookHost</h2><p>Open Document intake in your BookHost dashboard, upload a PDF, DOCX, Markdown or text file, and choose a book. Review the AI suggestion against the source. A team owner or admin approves publication; uploaded documents are not published automatically.</p>']);
 }
 });
 ''', {'email': email})
@@ -154,7 +157,7 @@ def provision(path,email):
     ef=path/'.env'
     fresh=not ef.exists()
     if fresh:
-        values={'APP_URL':'https://'+path.name+'.wissen.app.mintapis.com','APP_KEY':'base64:'+base64.b64encode(secrets.token_bytes(32)).decode(),'DB_PASSWORD':secrets.token_hex(32),'DB_ROOT_PASSWORD':secrets.token_hex(32),'BOOKSTACK_ADMIN_EMAIL':email,'BOOKSTACK_ADMIN_PASSWORD':secrets.token_urlsafe(24)}
+        values={'APP_URL':'https://'+path.name+'.'+TENANT_DOMAIN,'APP_KEY':'base64:'+base64.b64encode(secrets.token_bytes(32)).decode(),'DB_PASSWORD':secrets.token_hex(32),'DB_ROOT_PASSWORD':secrets.token_hex(32),'BOOKSTACK_ADMIN_EMAIL':email,'BOOKSTACK_ADMIN_PASSWORD':secrets.token_urlsafe(24)}
         ef.write_text(''.join(k+'='+shlex.quote(v)+'\n' for k,v in values.items())); ef.chmod(0o600)
     if not fresh:
         if not (path/'.initialized').exists() or not (path/'docker-compose.yml').exists():
@@ -336,7 +339,7 @@ def main():
             if (path/'.destroy_requested_at').exists() or (ROOT/'.destroy-requests'/slug).exists(): raise ValueError('Tenant marked for destruction')
             def interrupted(*_): raise RuntimeError('Provisioning interrupted')
             signal.signal(signal.SIGTERM,interrupted)
-            try: provision(path,sys.argv[3] if len(sys.argv)>3 else 'admin@'+slug+'.wissen.app.mintapis.com')
+            try: provision(path,sys.argv[3] if len(sys.argv)>3 else 'admin@'+slug+'.'+TENANT_DOMAIN)
             except BaseException:
                 signal.signal(signal.SIGTERM,signal.SIG_IGN)
                 if (path/'docker-compose.yml').exists(): compose(path,'down','--remove-orphans')

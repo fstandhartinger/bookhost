@@ -70,7 +70,7 @@ it("requires owner/admin and scopes normalized sender mutations to their team", 
   const request = () =>
     new Request("http://localhost/api/intake/senders?tenant=tenant", {
       method: "POST",
-      headers: { origin: "https://wissen.app.mintapis.com" },
+      headers: { origin: "https://bookhost.co" },
       body: JSON.stringify({ action: "add", pattern: " @Company.com " }),
     });
   vi.mocked(workspace).mockResolvedValue({ team_id: "team", role: "member" });

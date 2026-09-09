@@ -66,9 +66,9 @@ $t=BookStack\Api\ApiToken::where('token_id',$v['id'])->first();
 if ($t && $t->user->system_name === 'wissen-intake') {
 $u=$t->user;
 $role=BookStack\Users\Models\Role::where('system_name','wissen-intake')->first()
-    ?? $u->roles()->where('display_name','Wissen Intake')->first()
+    ?? $u->roles()->where('display_name','BookHost Intake')->first()
     ?? new BookStack\Users\Models\Role();
-$role->forceFill(['system_name'=>'wissen-intake','display_name'=>'Wissen Intake','description'=>'Team-wide reviewed document intake; read destinations, create books and create/update pages.']); $role->save();
+$role->forceFill(['system_name'=>'wissen-intake','display_name'=>'BookHost Intake','description'=>'Team-wide reviewed document intake; read destinations, create books and create/update pages.']); $role->save();
 $names=['access-api','book-view-all','book-create-all','chapter-view-all','page-view-all','page-create-all','page-update-all'];
 $permissions=BookStack\Permissions\Models\RolePermission::whereIn('name',$names)->pluck('id');
 if(count($permissions)!==count($names)) throw new RuntimeException('Missing intake permissions');
@@ -85,16 +85,16 @@ $v=json_decode(stream_get_contents(STDIN),true);
 Illuminate\Support\Facades\DB::transaction(function() use ($v) {
 $u=BookStack\Users\Models\User::where('system_name','wissen-intake')->first();
 if (!$u) $u=new BookStack\Users\Models\User();
-$u->forceFill(['name'=>'Wissen Intake','email'=>'wissen-intake@invalid.local','system_name'=>'wissen-intake','password'=>'','email_confirmed'=>true]);
+$u->forceFill(['name'=>'BookHost Intake','email'=>'wissen-intake@invalid.local','system_name'=>'wissen-intake','password'=>'','email_confirmed'=>true]);
 $u->save();
 $role=BookStack\Users\Models\Role::firstOrNew(['system_name'=>'wissen-intake']);
-$role->forceFill(['system_name'=>'wissen-intake','display_name'=>'Wissen Intake','description'=>'Team-wide reviewed document intake; read destinations, create books and create/update pages.']); $role->save();
+$role->forceFill(['system_name'=>'wissen-intake','display_name'=>'BookHost Intake','description'=>'Team-wide reviewed document intake; read destinations, create books and create/update pages.']); $role->save();
 $names=['access-api','book-view-all','book-create-all','chapter-view-all','page-view-all','page-create-all','page-update-all'];
 $permissions=BookStack\Permissions\Models\RolePermission::whereIn('name',$names)->pluck('id');
 if(count($permissions)!==count($names)) throw new RuntimeException('Missing intake permissions');
 $role->permissions()->sync($permissions); $u->roles()->sync([$role->id]);
 BookStack\Api\ApiToken::where('user_id',$u->id)->orWhere('token_id',$v['old_id'])->delete();
-$t=(new BookStack\Api\ApiToken())->forceFill(['name'=>'Wissen reviewed document intake','token_id'=>$v['id'],'secret'=>Illuminate\Support\Facades\Hash::make($v['secret']),'user_id'=>$u->id,'expires_at'=>BookStack\Api\ApiToken::defaultExpiry()]); $t->save();
+$t=(new BookStack\Api\ApiToken())->forceFill(['name'=>'BookHost reviewed document intake','token_id'=>$v['id'],'secret'=>Illuminate\Support\Facades\Hash::make($v['secret']),'user_id'=>$u->id,'expires_at'=>BookStack\Api\ApiToken::defaultExpiry()]); $t->save();
 });
 app(BookStack\Permissions\JointPermissionBuilder::class)->rebuildForAll();
 """, {'old_id': old_ident, 'id': ident, 'secret': secret})

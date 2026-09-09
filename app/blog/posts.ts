@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
-export const blogOrigin = "https://wissen.app.mintapis.com";
+export const blogOrigin = "https://bookhost.co";
 export type BlogPost = {
   slug: string;
   title: string;

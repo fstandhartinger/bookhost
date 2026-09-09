@@ -9,6 +9,7 @@ import {
   itemForUser,
 } from "@/lib/intake/access";
 import { canPublish, canTransition, cleanHtml } from "@/lib/intake/content";
+import { TENANT_DOMAIN } from "@/lib/config";
 type Context = { params: Promise<{ id: string }> };
 export async function GET(_request: Request, context: Context) {
   try {
@@ -46,7 +47,7 @@ export async function GET(_request: Request, context: Context) {
         source_preview: (item.extracted_text || "").slice(0, 2000),
         can_publish: canPublish(role),
         url: bookstack_page_id
-          ? `https://${slug}.wissen.app.mintapis.com/link/${bookstack_page_id}`
+          ? `https://${slug}.${TENANT_DOMAIN}/link/${bookstack_page_id}`
           : null,
       },
       { headers: { "Cache-Control": "no-store" } },
@@ -81,7 +82,7 @@ export async function POST(request: Request, context: Context) {
       throw new IntakeError("Only team owners and admins can publish.", 403);
     if (item.status === "published")
       return Response.json({
-        url: `https://${item.slug}.wissen.app.mintapis.com/link/${item.bookstack_page_id}`,
+        url: `https://${item.slug}.${TENANT_DOMAIN}/link/${item.bookstack_page_id}`,
       });
     if (!canTransition(item.status, "approved"))
       throw new IntakeError("This document has already been reviewed.", 409);

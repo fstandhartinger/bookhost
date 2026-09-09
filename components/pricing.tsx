@@ -47,7 +47,7 @@ export function Pricing() {
           </ul>
           <p className="mt-5 text-xs leading-5 text-slate-600">
             Only workspace owners/admins can publish; members can upload and
-            review. Drafts are shared with your Wissen dashboard team; BookStack
+            review. Drafts are shared with your BookHost dashboard team; BookStack
             page permissions apply after publication.
           </p>
           <p className="mt-5 text-xs leading-5 text-slate-600">

@@ -191,7 +191,7 @@ try {
     )
   ).rows[0];
   const remote = await fetch(
-    `https://demo.wissen.app.mintapis.com/api/pages/${row.bookstack_page_id}`,
+    `https://demo.bookhost.co/api/pages/${row.bookstack_page_id}`,
     {
       headers: {
         Authorization: `Token ${secret.api_id}:${decrypt(secret.api_secret_enc, "demo")}`,

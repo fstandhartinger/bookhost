@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { blogOrigin, formatDate, getPosts } from "./posts";
 
-const title = "The Wissen blog";
+const title = "The BookHost blog";
 const description =
   "Practical notes on hosted BookStack, reviewed document intake and the work behind reliable team knowledge.";
 export const metadata: Metadata = {
@@ -30,8 +30,8 @@ export const metadata: Metadata = {
 export default function Blog() {
   return (
     <section className="section mx-auto max-w-3xl">
-      <p className="eyebrow">NOTES FROM WISSEN</p>
-      <h1>The Wissen blog</h1>
+      <p className="eyebrow">NOTES FROM BOOKHOST</p>
+      <h1>The BookHost blog</h1>
       <p className="lede">
         Practical notes on BookStack, thoughtful document review and the work
         behind your team’s wiki.

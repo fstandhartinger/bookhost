@@ -1,3 +1,7 @@
+import { OnboardingChecklist } from "@/components/onboarding-checklist";
+import { cookies } from "next/headers";
+import { ACTIVE_TEAM_COOKIE } from "@/lib/join-context";
+import { TeamPanel } from "@/components/team-panel";
 import { billingEligible } from "@/lib/trial";
 import { invoicePreview } from "@/lib/invoice-preview";
 import { BillingNotice } from "@/components/billing-notice";
@@ -8,6 +12,7 @@ import { PasswordForm } from "@/components/password-form";
 import { auth, signOut } from "@/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { TENANT_DOMAIN } from "@/lib/config";
 import { ActionButton } from "@/components/action-button";
 import { TenantForm, RevealPassword } from "@/components/tenant-form";
 import { RefreshStatus } from "@/components/refresh-status";
@@ -26,16 +31,38 @@ const date = (value: Date | string) =>
 export default async function Dashboard({
   searchParams,
 }: {
-  searchParams: Promise<{ setup?: string }>;
+  searchParams: Promise<{ setup?: string; team?: string }>;
 }) {
-  const { setup } = await searchParams;
+  const { setup, team: selectedTeam } = await searchParams;
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
-  const team = (
-    await db.query("SELECT * FROM teams WHERE owner_user_id=$1", [
-      session.user.id,
-    ])
-  ).rows[0];
+  const teams = (
+    await db.query(
+      "SELECT t.*,m.role FROM teams t JOIN memberships m ON m.team_id=t.id WHERE m.user_id=$1 ORDER BY m.created_at DESC,t.id",
+      [session.user.id],
+    )
+  ).rows;
+  const activeTeam = (await cookies()).get(ACTIVE_TEAM_COOKIE)?.value;
+  const team =
+    teams.find((t) => t.id === (selectedTeam || activeTeam)) || teams[0];
+  const isOwner = !team || team.owner_user_id === session.user.id;
+  const canManage = team && ["owner", "admin"].includes(team.role);
+  const members = canManage
+    ? (
+        await db.query(
+          "SELECT m.user_id,u.email,m.role,m.created_at FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.team_id=$1 ORDER BY m.created_at,u.email",
+          [team.id],
+        )
+      ).rows
+    : [];
+  const invites = canManage
+    ? (
+        await db.query(
+          "SELECT id,role,uses,max_uses,expires_at FROM team_invites WHERE team_id=$1 AND revoked_at IS NULL AND expires_at>now() AND uses<max_uses ORDER BY created_at DESC",
+          [team.id],
+        )
+      ).rows
+    : [];
   const subscription = team
     ? (
         await db.query(
@@ -44,7 +71,11 @@ export default async function Dashboard({
         )
       ).rows[0]
     : null;
-  if (subscription?.status === "active" && !subscription.cancel_at_period_end)
+  if (
+    isOwner &&
+    subscription?.status === "active" &&
+    !subscription.cancel_at_period_end
+  )
     subscription.invoice_amount = await invoicePreview(
       subscription.stripe_subscription_id,
     );
@@ -104,7 +135,7 @@ export default async function Dashboard({
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div>
           <p className="eyebrow">YOUR WORKSPACE</p>
-          <h1 className="text-4xl">{team?.name || "Welcome to Wissen."}</h1>
+          <h1 className="text-4xl">{team?.name || "Welcome to BookHost."}</h1>
           <p className="mt-3 text-sm text-slate-600">
             Signed in as {session.user.email}
           </p>
@@ -118,7 +149,47 @@ export default async function Dashboard({
           <button className="button-secondary">Sign out</button>
         </form>
       </div>
-      {(subscription || tenant) && (
+      {team && isOwner && (
+        <OnboardingChecklist
+          teamId={team.id}
+          dismissed={!!team.onboarding_dismissed_at}
+        />
+      )}
+      {teams.length > 1 && (
+        <nav aria-label="Teams" className="mt-4 flex flex-wrap gap-4">
+          <form action="/api/team/active" method="post" className="flex gap-3">
+            <label>
+              Active team{" "}
+              <select name="team" defaultValue={team.id}>
+                {teams.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button className="button-secondary">Switch team</button>
+          </form>
+        </nav>
+      )}
+      {canManage && (
+        <div id="team-members">
+          <TeamPanel
+            teamId={team.id}
+            userId={session.user.id}
+            role={team.role}
+            members={members.map((m) => ({
+              ...m,
+              created_at: m.created_at.toISOString(),
+            }))}
+            invites={invites.map((i) => ({
+              ...i,
+              expires_at: i.expires_at.toISOString(),
+            }))}
+          />
+        </div>
+      )}
+      {isOwner && (subscription || tenant) && (
         <BillingNotice
           subscription={
             subscription
@@ -146,9 +217,11 @@ export default async function Dashboard({
                   {date(notice.created_at)} ·{" "}
                   {notice.read_at ? "Read" : "Unread"}
                 </p>
-                <a href="/app/billing" className="mr-4 text-sm underline">
-                  Resume workspace
-                </a>
+                {isOwner && (
+                  <a href="/app/billing" className="mr-4 text-sm underline">
+                    Resume workspace
+                  </a>
+                )}
                 {!notice.read_at && (
                   <form
                     className="inline"
@@ -170,10 +243,20 @@ export default async function Dashboard({
           <p className="mt-3 text-sm text-slate-500">You’re all caught up.</p>
         )}
       </section>
+      {user?.email_verified_at && !user?.password_set_at && (
+        <p role="status" className="mt-4 rounded-lg bg-amber-50 p-4">
+          Your email is now verified. Any password set before verification was
+          removed.{" "}
+          <a className="underline" href="#password-setup">
+            Set a new password
+          </a>{" "}
+          to use password sign-in.
+        </p>
+      )}
       {!user?.email_verified_at && (
         <p className="mt-4 text-sm text-slate-500">
-          Confirm your e-mail by signing in via link once e-mail sign-in is
-          available
+          Confirm your e-mail once by signing in with Google or an e-mailed
+          sign-in link
         </p>
       )}
       <p className="mt-4 text-sm text-slate-600">
@@ -186,8 +269,8 @@ export default async function Dashboard({
       >
         <h2 className="text-2xl">Sign-in for next time</h2>
         <p className="mt-3 text-sm text-slate-600">
-          Set a password to return to this dashboard. Magic link and Google
-          sign-in are coming soon.
+          Set a password to return to this dashboard. You can also sign in
+          with Google or an e-mailed sign-in link.
         </p>
         {user?.password_set_at && (
           <p className="mt-3 text-sm">
@@ -206,7 +289,7 @@ export default async function Dashboard({
         )}
       </section>
       <div className="mt-10 grid items-start gap-6 lg:grid-cols-[1.6fr_1fr]">
-        <div className="price-card">
+        <div id="workspace" className="price-card">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-2xl">Your BookStack</h2>
             {tenant && <span className="badge">{status}</span>}
@@ -218,7 +301,7 @@ export default async function Dashboard({
                   ? "Taking longer than expected — we’re on it"
                   : descriptions[status] || "Checking workspace status."}
               </p>
-              {status === "suspended" && (
+              {isOwner && status === "suspended" && (
                 <ActionButton
                   endpoint={
                     !subscription ||
@@ -234,17 +317,17 @@ export default async function Dashboard({
                 </ActionButton>
               )}
               <p className="mt-4 break-all text-sm font-medium">
-                {tenant.slug}.wissen.app.mintapis.com
+                {tenant.slug}.{TENANT_DOMAIN}
               </p>
               {!delayed &&
                 ["pending", "provisioning", "restoring"].includes(status) && (
-                  <RefreshStatus />
+                  <RefreshStatus status={status} />
                 )}
               {status === "running" && (
                 <>
                   <a
                     className="button mt-6"
-                    href={`https://${tenant.slug}.wissen.app.mintapis.com`}
+                    href={`/api/bookstack/open?team=${team.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -253,27 +336,29 @@ export default async function Dashboard({
                   <a className="button-secondary mt-3" href="/app/intake">
                     Document intake (beta)
                   </a>
-                  <div className="mt-6 border-t pt-5">
-                    <h3 className="font-semibold">First sign-in</h3>
-                    <p className="mt-2 text-sm text-slate-600">
-                      Your BookStack login is separate from this dashboard.
-                    </p>
-                    <p className="mt-2 break-all text-sm">
-                      Admin email:{" "}
-                      <strong>
-                        {tenant.admin_email || session.user.email}
-                      </strong>
-                    </p>
-                    {tenant.has_password ? (
-                      <RevealPassword />
-                    ) : (
-                      <p className="mt-3 text-sm text-slate-600">
-                        The initial password is no longer stored here. If you
-                        need access, use “Forgot password” in BookStack or
-                        contact support.
+                  {isOwner && (
+                    <div className="mt-6 border-t pt-5">
+                      <h3 className="font-semibold">First sign-in</h3>
+                      <p className="mt-2 text-sm text-slate-600">
+                        Your BookStack login is separate from this dashboard.
                       </p>
-                    )}
-                  </div>
+                      <p className="mt-2 break-all text-sm">
+                        Admin email:{" "}
+                        <strong>
+                          {tenant.admin_email || session.user.email}
+                        </strong>
+                      </p>
+                      {tenant.has_password ? (
+                        <RevealPassword />
+                      ) : (
+                        <p className="mt-3 text-sm text-slate-600">
+                          The initial password is no longer stored here. If you
+                          need access, use “Forgot password” in BookStack or
+                          contact support.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </>
               )}
               {["failed", "suspended"].includes(status) && (
@@ -285,6 +370,13 @@ export default async function Dashboard({
                 </a>
               )}
             </>
+          ) : !isOwner ? (
+            <p className="mt-4">
+              Your owner is setting up this workspace.{" "}
+              <a className="underline" href="/app/intake">
+                Open document intake
+              </a>
+            </p>
           ) : eligible ? (
             <>
               <p className="mt-4 text-slate-600">
@@ -315,83 +407,91 @@ export default async function Dashboard({
             </>
           )}
         </div>
-        <aside className="price-card">
-          <h2 className="text-xl">Your plan</h2>
-          <div className="my-5 flex items-center justify-between">
-            <span>Team · €39/month</span>
-            <span className="badge">
-              {subscription?.status || "Not started"}
-            </span>
-          </div>
-          {subscription?.trial_end && (
-            <p className="mb-4 text-sm text-slate-600">
-              Trial {subscription.status === "trialing" ? "ends" : "ended"}{" "}
-              {date(subscription.trial_end)} (UTC).
-            </p>
-          )}
-          {subscription?.cancel_at_period_end && (
-            <p className="mb-4 text-sm text-amber-800">
-              Cancels at the end of your billing period
-              {subscription.current_period_end
-                ? ` on ${date(subscription.current_period_end)}`
-                : ""}
+        {isOwner && (
+          <aside className="price-card">
+            <h2 className="text-xl">Your plan</h2>
+            <div className="my-5 flex items-center justify-between">
+              <span>Team · €39/month</span>
+              <span className="badge">
+                {subscription?.status || "Not started"}
+              </span>
+            </div>
+            {subscription?.trial_end && (
+              <p className="mb-4 text-sm text-slate-600">
+                Trial {subscription.status === "trialing" ? "ends" : "ended"}{" "}
+                {date(subscription.trial_end)} (UTC).
+              </p>
+            )}
+            {subscription?.cancel_at_period_end && (
+              <p className="mb-4 text-sm text-amber-800">
+                Cancels at the end of your billing period
+                {subscription.current_period_end
+                  ? ` on ${date(subscription.current_period_end)}`
+                  : ""}
+                .
+              </p>
+            )}
+            {subscription?.status === "trialing" &&
+              !subscription.has_payment_method &&
+              !subscription.cancel_at_period_end && (
+                <p className="mb-5 text-sm leading-6 text-slate-600">
+                  Add a payment method to continue after your trial. Without
+                  one, the subscription ends automatically.
+                </p>
+              )}
+            {subscription?.status === "past_due" && (
+              <p className="mb-5 text-sm text-red-800">
+                Your payment needs attention. Update your payment method below.
+              </p>
+            )}
+            {team?.stripe_customer_id ? (
+              <ActionButton
+                endpoint="/api/portal"
+                className="button-secondary w-full"
+              >
+                Manage billing
+              </ActionButton>
+            ) : (
+              <p className="text-sm text-slate-500">
+                Billing becomes available after checkout.
+              </p>
+            )}
+            <section className="mt-6 border-t pt-5">
+              <h2 className="text-xl">Contract</h2>
+              {consents.length ? (
+                consents.map((consent) => (
+                  <p
+                    key={`${consent.document}-${consent.version}`}
+                    className="mt-3 text-sm"
+                  >
+                    <a
+                      className="underline"
+                      href={`/legal/${consent.document}`}
+                    >
+                      {consent.document.toUpperCase()}
+                    </a>{" "}
+                    · version {consent.version} · accepted{" "}
+                    {date(consent.accepted_at)} (UTC)
+                  </p>
+                ))
+              ) : (
+                <p className="mt-3 text-sm text-slate-500">
+                  No contract acceptance recorded yet.
+                </p>
+              )}
+            </section>
+            <p className="mt-6 text-xs leading-5 text-slate-500">
+              Need a hand?{" "}
+              <a
+                className="underline"
+                href="mailto:info@productivity-boost.com"
+              >
+                Contact support
+              </a>
               .
             </p>
-          )}
-          {subscription?.status === "trialing" &&
-            !subscription.has_payment_method &&
-            !subscription.cancel_at_period_end && (
-              <p className="mb-5 text-sm leading-6 text-slate-600">
-                Add a payment method to continue after your trial. Without one,
-                the subscription ends automatically.
-              </p>
-            )}
-          {subscription?.status === "past_due" && (
-            <p className="mb-5 text-sm text-red-800">
-              Your payment needs attention. Update your payment method below.
-            </p>
-          )}
-          {team?.stripe_customer_id ? (
-            <ActionButton
-              endpoint="/api/portal"
-              className="button-secondary w-full"
-            >
-              Manage billing
-            </ActionButton>
-          ) : (
-            <p className="text-sm text-slate-500">
-              Billing becomes available after checkout.
-            </p>
-          )}
-          <section className="mt-6 border-t pt-5">
-            <h2 className="text-xl">Contract</h2>
-            {consents.length ? (
-              consents.map((consent) => (
-                <p
-                  key={`${consent.document}-${consent.version}`}
-                  className="mt-3 text-sm"
-                >
-                  <a className="underline" href={`/legal/${consent.document}`}>
-                    {consent.document.toUpperCase()}
-                  </a>{" "}
-                  · version {consent.version} · accepted{" "}
-                  {date(consent.accepted_at)} (UTC)
-                </p>
-              ))
-            ) : (
-              <p className="mt-3 text-sm text-slate-500">
-                No contract acceptance recorded yet.
-              </p>
-            )}
-          </section>
-          <p className="mt-6 text-xs leading-5 text-slate-500">
-            Need a hand?{" "}
-            <a className="underline" href="mailto:info@productivity-boost.com">
-              Contact support
-            </a>
-            .
-          </p>
-        </aside>
+          </aside>
+        )}
       </div>
     </section>
   );

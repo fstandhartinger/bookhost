@@ -29,9 +29,9 @@ export function startAuthCleanup() {
                 await mailTransport().sendMail({
                   from:
                     process.env.SMTP_FROM ||
-                    "Wissen <noreply@wissen.app.mintapis.com>",
+                    "BookHost <noreply@mail.mintapis.com>",
                   to: email,
-                  subject: "Your Wissen workspace: billing notice",
+                  subject: "Your BookHost workspace: billing notice",
                   text: `${text}\n\nManage billing: ${baseUrl()}/app/billing`,
                 });
               }

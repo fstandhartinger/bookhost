@@ -1,5 +1,5 @@
 ## Can I edit this demo?
-No. The public demo is read-only, including for its non-admin roles. Start your own workspace from [wissen.app.mintapis.com](https://wissen.app.mintapis.com) to write pages and explore your team's workflow.
+No. The public demo is read-only, including for its non-admin roles. Start your own workspace from [bookhost.co](https://bookhost.co) to write pages and explore your team's workflow.
 
 ## Do I need a card for the trial?
 The trial lasts 14 days and starts without a payment card. The Team plan is EUR 39 per month and can be cancelled monthly. Confirm the current terms in the dashboard before subscribing.

@@ -1,7 +1,7 @@
 **Demonstration provenance:** “this page was created via reviewed intake” is the label illustrated by this example. This demo page is maintained by the demo provisioner; the label is not evidence of an actual approval event for this version.
 
 ## 1. Choose a source
-In your Wissen dashboard, open **Document intake** and select the destination book. Upload a supported PDF, DOCX, Markdown or text document. Use a document you are authorized to process and remove unnecessary personal or confidential information first.
+In your BookHost dashboard, open **Document intake** and select the destination book. Upload a supported PDF, DOCX, Markdown or text document. Use a document you are authorized to process and remove unnecessary personal or confidential information first.
 
 ## 2. Inspect the proposal
 Wait for the suggested title and page content. Read the original alongside the proposal. Check names, dates, numbers and instructions carefully: a fluent summary can omit a condition or state something the source never said.

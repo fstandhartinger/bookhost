@@ -1,4 +1,4 @@
-# Wissen operational watchdog
+# BookHost operational watchdog
 
 `./ops/watchdog/run.sh --dry-run` runs all seven live checks without sending
 Telegram or modifying state. `--dry-run --simulate` additionally runs an isolated

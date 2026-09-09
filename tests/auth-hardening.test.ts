@@ -60,10 +60,10 @@ import { resetPassword } from "../lib/password-reset";
 import { POST } from "../app/api/account/reset/route";
 import { sessionToken } from "../lib/session";
 const req = (body: unknown, ip = "192.0.2.1") =>
-  new Request("https://wissen.app.mintapis.com/api/account/reset", {
+  new Request("https://bookhost.co/api/account/reset", {
     method: "POST",
     headers: {
-      origin: "https://wissen.app.mintapis.com",
+      origin: "https://bookhost.co",
       "x-forwarded-for": ip,
       "content-type": "application/json",
     },
@@ -146,7 +146,7 @@ it("trusts the last forwarded IP only when enabled, otherwise socket/x-real-ip, 
   expect(clientIp(req({}))).toBeNull();
   const direct = new Request("http://localhost", {
     headers: {
-      origin: "https://wissen.app.mintapis.com",
+      origin: "https://bookhost.co",
       "x-real-ip": "127.0.0.1",
       "x-forwarded-for": "198.51.100.1",
     },

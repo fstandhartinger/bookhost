@@ -43,8 +43,8 @@ def transition(previous, ok, now):
 
 
 def message(label, state, event):
-    first = (f'Wissen: {label} ausgefallen seit {state["since"]}' if event == 'failure'
-             else f'Wissen: {label} wieder ok seit {state["since"]}')
+    first = (f'BookHost: {label} ausgefallen seit {state["since"]}' if event == 'failure'
+             else f'BookHost: {label} wieder ok seit {state["since"]}')
     return first + '\n' + ('Bitte Ursache prüfen.' if event == 'failure' else 'Störung beendet.') + f'\nLog: {LOG}'
 
 
@@ -91,7 +91,7 @@ ROLLBACK;
 
 def http(url, health=False):
     start = time.monotonic()
-    request = urllib.request.Request(url, headers={'User-Agent': 'Wissen-Operator-Watchdog/1.0'})
+    request = urllib.request.Request(url, headers={'User-Agent': 'BookHost-Operator-Watchdog/1.0'})
     with urllib.request.urlopen(request, timeout=5) as response:
         if response.status != 200:
             return False
@@ -126,7 +126,7 @@ def checks():
             results[label] = {'ok': bool(ok), 'detail': detail}
         except Exception:
             results[label] = {'ok': False, 'detail': 'Prüfung fehlgeschlagen; Verbindung/Konfiguration lokal prüfen'}
-    check(LABELS[0], lambda: (http(os.environ.get('WATCHDOG_TEST_URL', 'https://wissen.app.mintapis.com/healthz'), True), 'HTTP 200, db=true, <5s'))
+    check(LABELS[0], lambda: (http(os.environ.get('WATCHDOG_TEST_URL', 'https://bookhost.co/healthz'), True), 'HTTP 200, db=true, <5s'))
     check(LABELS[1], lambda: (http('https://demo.wissen.app.mintapis.com/'), 'HTTP 200'))
     try:
         db = database()

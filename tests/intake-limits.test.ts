@@ -29,10 +29,10 @@ it("rejects a third upload before reading its body and releases slots once", asy
   try {
     const response = await POST(
       new Request(
-        `https://wissen.app.mintapis.com/api/intake?tenant=${tenant}`,
+        `https://bookhost.co/api/intake?tenant=${tenant}`,
         {
           method: "POST",
-          headers: { origin: "https://wissen.app.mintapis.com" },
+          headers: { origin: "https://bookhost.co" },
           body: "unread",
         },
       ),

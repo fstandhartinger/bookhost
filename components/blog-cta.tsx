@@ -1,9 +1,10 @@
 import Link from "next/link";
+import { TENANT_DOMAIN } from "@/lib/config";
 
 export default function BlogCta() {
   return (
     <aside
-      aria-label="Try Wissen"
+      aria-label="Try BookHost"
       className="mt-12 rounded-2xl border border-ink/15 bg-white p-6 sm:p-8"
     >
       <h2 className="text-2xl md:text-3xl">
@@ -20,7 +21,7 @@ export default function BlogCta() {
         </Link>
         <a
           className="text-sm font-semibold text-moss underline"
-          href="https://demo.wissen.app.mintapis.com"
+          href={`https://demo.${TENANT_DOMAIN}`}
         >
           Explore the public demo ↗
         </a>

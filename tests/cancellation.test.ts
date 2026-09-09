@@ -5,10 +5,10 @@ import { POST } from "@/app/api/cancel/route";
 import { cancellationRateLimit } from "@/lib/cancellation";
 let counter = 0;
 function request(data: unknown, extra: Record<string, string> = {}) {
-  return new Request("https://wissen.app.mintapis.com/api/cancel", {
+  return new Request("https://bookhost.co/api/cancel", {
     method: "POST",
     headers: {
-      origin: "https://wissen.app.mintapis.com",
+      origin: "https://bookhost.co",
       "content-type": "application/json",
       "x-forwarded-for": `192.0.2.${++counter}`,
       ...extra,
@@ -38,7 +38,7 @@ describe("Public cancellation", () => {
       expect(response.status).toBe(201);
       const body = await response.text();
       expect(body).toContain("2026-09-08T12:34:56.000Z");
-      expect(body).toContain('download="wissen-confirmation.txt"');
+      expect(body).toContain('download="bookhost-confirmation.txt"');
       expect(body).not.toContain("<script>");
       expect(body).toContain("&lt;script&gt;");
       expect(db.query).toHaveBeenCalledWith(
@@ -53,10 +53,10 @@ describe("Public cancellation", () => {
   );
   it("accepts the native browser form", async () => {
     const response = await POST(
-      new Request("https://wissen.app.mintapis.com/api/cancel", {
+      new Request("https://bookhost.co/api/cancel", {
         method: "POST",
         headers: {
-          origin: "https://wissen.app.mintapis.com",
+          origin: "https://bookhost.co",
           "content-type": "application/x-www-form-urlencoded",
           "x-forwarded-for": "198.51.100.1",
         },

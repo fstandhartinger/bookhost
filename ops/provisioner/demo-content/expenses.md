@@ -1,4 +1,4 @@
-This fictional policy demonstrates how a team can make routine decisions easy to find. It is not a promise of reimbursement by Wissen.
+This fictional policy demonstrates how a team can make routine decisions easy to find. It is not a promise of reimbursement by BookHost.
 
 ## Before spending
 Agree business travel and unusual purchases with your manager in writing. Our example team requires approval for any single purchase above EUR 100 and for every recurring subscription, regardless of price. Check for an existing team license before buying another one.

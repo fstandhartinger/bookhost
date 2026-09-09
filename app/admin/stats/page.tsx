@@ -10,7 +10,13 @@ export const metadata = {
 };
 export default async function StatsPage() {
   const session = await auth();
-  if (!isAdmin(session?.user?.email)) notFound();
+  if (!session?.user?.id || !isAdmin(session.user.email)) notFound();
+  const operator = (
+    await db.query("SELECT email,email_verified_at FROM users WHERE id=$1", [
+      session.user.id,
+    ])
+  ).rows[0];
+  if (!operator?.email_verified_at || !isAdmin(operator.email)) notFound();
   const report = await analyticsReport(db);
   function table(rows: Record<string, string | number>[], label: string) {
     const keys = [

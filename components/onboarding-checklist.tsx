@@ -10,10 +10,10 @@ export async function OnboardingChecklist({
   teamId: string;
   dismissed: boolean;
 }) {
-  const steps = await onboarding(teamId);
   if (dismissed) return null;
+  const steps = await onboarding(teamId);
   const count = steps.filter((s) => s.done).length;
-  if (count === steps.length)
+  if (steps.filter((s) => s.name !== "payment").every((s) => s.done))
     return (
       <section className="price-card mt-6" aria-label="Onboarding complete">
         <h2 className="text-xl">Done — you&apos;re all set</h2>
@@ -40,7 +40,9 @@ export async function OnboardingChecklist({
     );
   return (
     <section className="price-card mt-6" aria-labelledby="onboarding-title">
-      <OnboardingRefresh />
+      <OnboardingRefresh
+        progress={steps.map((s) => `${s.name}:${s.done}`).join(",")}
+      />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id="onboarding-title" className="text-2xl">
           Get started with Wissen

@@ -401,3 +401,22 @@ rolled-back schema. Set optional `INVITE_SCREENSHOT` to save a mobile screenshot
 Run `npm run eval:intake` with `CHUTES_API_KEY` available in the environment. `INTAKE_MODELS` optionally selects up to two Chutes models. The runner calls the production draft function on six fictional English/German documents, with at most twelve requests and no fallback or retries per model. It prints scores, latency and provider token counts and saves drafts plus checks in `eval/results/<timestamp>.json`.
 
 Drafts preserve source order, exact figures, uncertainty and HTML tables, use source-specific English/German review headings with a parser check, and have titles of at most 80 characters. Empty sections are removed after sanitization. Human approval is still required: the automated fact checker is a lexical heuristic, not a guarantee of factual correctness. See [evaluation rules](eval/README.md) and [measured model comparison](eval/REPORT.md).
+
+### Persistent onboarding (migration 019)
+
+`019_team_onboarding.sql` stores first completion in `team_onboarding(team_id, step, done_at)`.
+Database triggers capture user/team, workspace, intake, membership and subscription changes;
+intake cleanup, member removal and analytics retention do not reset completed steps.
+Backfill uses retained step events and current records without emitting new analytics.
+If no historical timestamp exists (membership), `done_at` is the first observation time.
+The operational history is kept even for analytics opt-out; team deletion cascades to it.
+The owner checklist reads these records and skips all progress queries when dismissed.
+Payment is optional for onboarding completion. Provisioning and incomplete onboarding share
+one visible-tab refresh scheduler: 60 seconds, backing off to 5 minutes after 10 unchanged
+minutes. Current workspace availability continues to use the live tenant/billing state.
+
+Apply migration 019 before deploying this code. The opt-in regression can be run with
+`INTAKE_DB_TEST=1 npx vitest run tests/onboarding-db.integration.test.ts` and the external
+DB/TLS environment. It creates and deletes uniquely named fictional fixtures; it is a
+write test, not a read-only check. It exercises repeatable migration, concurrent detection,
+analytics opt-out, member removal and intake/event retention.

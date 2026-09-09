@@ -57,7 +57,7 @@ describe("Document extraction and safe drafts", () => {
   it("validates structured drafts", () => {
     const value = {
       title: "Guide",
-      html: "<h2>Summary</h2><p>Example</p><h2>Things a reviewer should check</h2><ul><li>Date</li></ul>",
+      html: "<h2>Summary</h2><p>Example</p><h2>Things a reviewer should check</h2><ul><li>Date</li><li>Owner</li><li>Status</li></ul>",
       tags: ["guide", "handover", "review"],
     };
     expect(parseDraft(JSON.stringify(value))).toEqual(value);
@@ -178,12 +178,12 @@ describe("BookStack client", () => {
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
 });
-it("falls back to another fast model on malformed output but never on rate limiting", async () => {
+it("corrects malformed output once but never retries rate limiting", async () => {
   vi.stubEnv("CHUTES_API_KEY", "unit-test");
   vi.stubEnv("INTAKE_MODELS", "fast,second");
   const value = {
     title: "Guide",
-    html: "<h2>Summary</h2><p>Example</p><h2>Things a reviewer should check</h2><ul><li>Date</li></ul>",
+    html: "<h2>Summary</h2><p>Example</p><h2>Things a reviewer should check</h2><ul><li>Date</li><li>Owner</li><li>Status</li></ul>",
     tags: ["one", "two", "three"],
   };
   const fetcher = vi
@@ -307,19 +307,17 @@ it("pins evaluation to one model and reports provider token usage", async () => 
   vi.stubEnv("CHUTES_API_KEY", "unit-test");
   vi.stubEnv("INTAKE_MODELS", "unused,fallback");
   const onResponse = vi.fn();
-  const fetcher = vi
-    .fn()
-    .mockResolvedValue(
-      Response.json({
-        usage: { total_tokens: 123 },
-        choices: [{ message: { content: "invalid" } }],
-      }),
-    );
+  const fetcher = vi.fn().mockResolvedValue(
+    Response.json({
+      usage: { total_tokens: 123 },
+      choices: [{ message: { content: "invalid" } }],
+    }),
+  );
   vi.stubGlobal("fetch", fetcher);
   await expect(
     generateDraft("source", { model: "pinned", onResponse }),
   ).rejects.toThrow();
-  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(fetcher).toHaveBeenCalledTimes(2);
   expect(JSON.parse(fetcher.mock.calls[0][1].body).model).toBe("pinned");
   expect(onResponse).toHaveBeenCalledWith({
     model: "pinned",

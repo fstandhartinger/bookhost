@@ -106,7 +106,7 @@ describe("draft cleanup", () => {
   it("accepts German review sections and limits titles to 80 characters", () => {
     const value = {
       title: "Leitfaden",
-      html: "<h2>Zusammenfassung</h2><p>Entwurf</p><h2>Prüfpunkte für die Freigabe</h2><ul><li>Frist</li><li>Zuständigkeit</li><li>Status</li></ul>",
+      html: "<h2>Zusammenfassung</h2><p>Entwurf</p><h2>Was ein Reviewer prüfen sollte</h2><ul><li>Frist</li><li>Zuständigkeit</li><li>Status</li></ul>",
       tags: ["Frist", "Prüfung", "Entwurf"],
     };
     expect(parseDraft(JSON.stringify(value))).toEqual(value);
@@ -178,12 +178,12 @@ it("routes clear English and German sources without foreign-language prompt exam
     "Die Gruppe und die Person werden die Unterlagen für den Ablauf mit der Werkstatt prüfen. Eine Frist ist nicht bestätigt.";
   expect(sourceLocale(en)).toBe("en");
   expect(sourceLocale(de)).toBe("de");
-  expect(sourceLocale("Mixed notes")).toBeUndefined();
+  expect(sourceLocale("Mixed notes")).toBe("en");
   expect(buildPrompt(en)[0].content).not.toContain("Zusammenfassung");
   expect(buildPrompt(de)[0].content).not.toContain("<h2>Summary</h2>");
   const value = {
     title: "Entwurf",
-    html: "<h2>Zusammenfassung</h2><p>Text</p><h2>Prüfpunkte für die Freigabe</h2><ul><li>Frist</li></ul>",
+    html: "<h2>Zusammenfassung</h2><p>Text</p><h2>Was ein Reviewer prüfen sollte</h2><ul><li>Frist</li><li>Zuständigkeit</li><li>Status</li></ul>",
     tags: ["eins", "zwei", "drei"],
   };
   expect(() => parseDraft(JSON.stringify(value), en)).toThrow(

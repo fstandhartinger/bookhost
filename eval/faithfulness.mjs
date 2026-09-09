@@ -114,7 +114,7 @@ export function scoreDraft(source, draft, expected) {
   const faithfulness = checkFaithfulness(source, draft, expected);
   const review =
     draft.html.split(
-      /<h2>\s*(?:Things a reviewer should check|Prüfpunkte für die Freigabe)\s*<\/h2>/i,
+      /<h2>\s*(?:Things a reviewer should check|Was ein Reviewer prüfen sollte)\s*<\/h2>/i,
     )[1] || "";
   const reviewerItems = (review.match(/<li\b/g) || []).length;
   const sourceRows = source
@@ -151,7 +151,7 @@ export function scoreDraft(source, draft, expected) {
     language:
       expected.language === "de"
         ? headings[0] === "Zusammenfassung" &&
-          headings.at(-1) === "Prüfpunkte für die Freigabe"
+          headings.at(-1) === "Was ein Reviewer prüfen sollte"
         : headings[0] === "Summary" &&
           headings.at(-1) === "Things a reviewer should check",
   };

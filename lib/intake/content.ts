@@ -1,3 +1,4 @@
+import { validateDraft } from "./validate";
 import { sourceLocale, draftHeadings } from "./prompt";
 import { cleanHtml as sanitizeHtml } from "./html";
 /** Keep the shared security allowlist, including table structure, then drop empty sections. */
@@ -83,24 +84,7 @@ export function parseDraft(raw: string, source?: string) {
   )
     throw new Error("Invalid draft format.");
   const html = cleanHtml(value.html);
-  if (
-    !/<h2>(?:Summary|Zusammenfassung)<\/h2>/i.test(html) ||
-    !/<h2>(?:Things a reviewer should check|Prüfpunkte für die Freigabe)<\/h2>/i.test(
-      html,
-    )
-  )
-    throw new Error("Draft is missing review sections.");
-  const locale = source ? sourceLocale(source) : undefined;
-  if (locale) {
-    const headings = draftHeadings(locale);
-    if (
-      !html.includes(`<h2>${headings.summary}</h2>`) ||
-      !html.includes(`<h2>${headings.review}</h2>`)
-    )
-      throw new Error(
-        "Draft review sections do not match the source language.",
-      );
-  }
+  validateDraft({ title: value.title, html, tags: value.tags }, source);
   return {
     title: value.title.trim() as string,
     html,

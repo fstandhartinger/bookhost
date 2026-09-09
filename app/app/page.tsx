@@ -320,7 +320,7 @@ export default async function Dashboard({
               </p>
               {!delayed &&
                 ["pending", "provisioning", "restoring"].includes(status) && (
-                  <RefreshStatus />
+                  <RefreshStatus status={status} />
                 )}
               {status === "running" && (
                 <>

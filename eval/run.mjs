@@ -12,10 +12,7 @@ const expectations = JSON.parse(
 );
 const models = [
   ...new Set(
-    (
-      process.env.INTAKE_MODELS ||
-      "google/gemma-4-31B-turbo-TEE,deepseek-ai/DeepSeek-V3.2-TEE"
-    )
+    (process.env.INTAKE_MODELS || "google/gemma-4-31B-turbo-TEE")
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean),
@@ -23,9 +20,9 @@ const models = [
 ];
 if (!process.env.CHUTES_API_KEY)
   throw new Error("CHUTES_API_KEY is required (never stored in results).");
-if (!models.length || expectations.length * models.length > 12)
+if (!models.length || expectations.length * models.length * 2 > 12)
   throw new Error(
-    "Maximum 12 calls per run; choose at most two models for six documents.",
+    "Maximum 12 calls per run; choose one model for six documents, allowing one correction each.",
   );
 const result = {
   scorerHash: createHash("sha256")
@@ -41,6 +38,7 @@ const result = {
     .update(await readFile(new URL("../lib/intake/content.ts", root)))
     .update(await readFile(new URL("../lib/intake/draft.ts", root)))
     .update(await readFile(new URL("../lib/intake/prompt.ts", root)))
+    .update(await readFile(new URL("../lib/intake/validate.ts", root)))
     .digest("hex"),
   rows: [],
 };

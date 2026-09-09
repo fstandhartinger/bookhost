@@ -1,19 +1,24 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-
-export function OnboardingRefresh() {
+import { createRefreshScheduler } from "@/lib/dashboard-refresh";
+let shared: ReturnType<typeof createRefreshScheduler> | undefined;
+export function OnboardingRefresh({ progress }: { progress: string }) {
   const router = useRouter();
+  const id = useRef(Symbol());
   useEffect(() => {
-    const refresh = () => {
-      if (document.visibilityState === "visible") router.refresh();
-    };
-    window.addEventListener("focus", refresh);
-    const timer = setInterval(refresh, 30000);
-    return () => {
-      window.removeEventListener("focus", refresh);
-      clearInterval(timer);
-    };
-  }, [router]);
+    if (!shared) {
+      shared = createRefreshScheduler(
+        () => router.refresh(),
+        () => document.visibilityState === "visible",
+      );
+      document.addEventListener("visibilitychange", shared.visibilityChanged);
+    }
+    shared.update(id.current, progress);
+  }, [router, progress]);
+  useEffect(() => {
+    const key = id.current;
+    return () => shared?.remove(key);
+  }, []);
   return null;
 }

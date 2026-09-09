@@ -237,6 +237,18 @@ Migration 006 checks for duplicate normalized emails before modifying anything a
 
 Migration `012_analytics.sql` adds cookieless page views, funnel events and team attribution. Set **`ADMIN_EMAILS`** to a comma-separated allowlist of operator email addresses; `/admin/stats` returns 404 to everyone else, including when unset. `npm run stats` uses the same query with the standard DB/TLS environment. Both show the last 14 UTC dates including today; visits are distinct daily visitor hashes per source, summed over dates, not unique people over 14 days. Events are activity counts rather than cohort conversion rates. Workspace and intake status events are transactional database triggers; successful welcome consumption records trials once.
 
+The CLI cohort report keeps visits in `internal` or labelled `unclear` only: a
+marketing UTM never proves an external visitor. Internal visits use the QA source
+list (`test`, `orchestrator-smoke`, `qa`, `e2e`, `smoke`, `owner`, `internal`,
+`claude`, `codex`, `hermes`), QA/test medium, or a BookHost-owned referrer domain.
+Team `external` requires all three conditions: a known non-internal owner email,
+an intake row whose first status is `approved` or `published`, and qualified
+product usage on a later UTC calendar day. Owner/admin identities, owned email
+domains, QA attribution and QA-like team names are always `internal`; everything
+else is `unclear` with a reason. The report covers the last 14 UTC dates including
+today. Visits are unique `(visitor_hash, UTC day)` pairs. “Day 2” means a UTC
+calendar date strictly after the UTC signup date, not an elapsed 24-hour interval.
+
 The browser stores sanitized UTM labels in sessionStorage, forwards source only to same-origin checkout fetches, and honors DNT/GPC. Checkout persists opt-out for team events. No analytics cookies, IPs, raw user agents, query strings or private paths are stored. Referrer is hostname only. Random process-local salts are destroyed at UTC midnight; restarts can increase deduplicated visit counts. Run one application process, as for the existing hourly cleanup. Cleanup deletes analytics rows older than 90 days at startup/hourly. Tracking is limited to 60 requests per daily visitor hash per minute and requires the existing trusted proxy IP configuration. Failed/dropped beacons silently return 204. Team attribution lasts with the team; analytics retention does not alter operational or consent records.
 
 ## Trial notices and operator stats

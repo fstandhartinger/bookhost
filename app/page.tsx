@@ -4,6 +4,7 @@ import { ActionButton } from "@/components/action-button";
 import { Pricing } from "@/components/pricing";
 import { faqs, benefits, steps } from "@/lib/landing-copy";
 import { TENANT_DOMAIN } from "@/lib/config";
+import Link from "next/link";
 export default function Home() {
   return (
     <>
@@ -36,7 +37,8 @@ export default function Home() {
                 Open live demo <span aria-hidden="true">↗</span>
               </a>
               <p className="mt-2 text-center text-xs text-slate-600">
-                Read-only demo workspace
+                Read-only demo workspace (the demo runs on our workspace domain
+                wissen.app.mintapis.com)
               </p>
             </div>
           </div>
@@ -77,6 +79,14 @@ export default function Home() {
               </span>
               <h3 className="text-xl font-semibold">{title}</h3>
               <p className="mt-3 text-sm leading-6 text-slate-600">{text}</p>
+              {title === "Backups with a way back" && (
+                <Link
+                  className="mt-3 inline-block text-sm underline"
+                  href="/blog/how-we-test-every-bookstack-backup-restore"
+                >
+                  How we test restores
+                </Link>
+              )}
             </article>
           ))}
         </div>
@@ -84,7 +94,7 @@ export default function Home() {
       <section id="how-it-works" className="section">
         <p className="eyebrow">FROM SCATTERED TO SHARED</p>
         <h2>From sign-up to shared knowledge.</h2>
-        <div className="mt-10 grid gap-8 md:grid-cols-3">
+        <div className="mt-10 grid gap-8 md:grid-cols-4">
           {steps.map(([n, title, text]) => (
             <div key={n} className="border-t border-moss/30 pt-6">
               <span className="badge">Step {n}</span>
@@ -171,7 +181,10 @@ export default function Home() {
       <div className="border-y border-ink/10">
         <Pricing />
       </div>
-      <section className="section grid gap-10 md:grid-cols-[1fr_1.6fr]">
+      <section
+        id="faq"
+        className="section grid gap-10 md:grid-cols-[1fr_1.6fr]"
+      >
         <div>
           <p className="eyebrow">A FEW GOOD QUESTIONS</p>
           <h2>Before you move in.</h2>

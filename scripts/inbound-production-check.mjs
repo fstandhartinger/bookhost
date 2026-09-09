@@ -106,14 +106,14 @@ try {
     cipher.update(raw.subarray(12, -16)),
     cipher.final(),
   ]).toString();
-  const response = await fetch(
-    "https://demo.bookhost.co/api/books?count=1",
-    {
-      headers: { Authorization: `Token ${credentials.api_id}:${token}` },
-      redirect: "error",
-      signal: AbortSignal.timeout(20000),
-    },
-  );
+  const demoBaseUrl = (
+    process.env.DEMO_BASE_URL || "https://demo.wissen.app.mintapis.com"
+  ).replace(/\/$/, "");
+  const response = await fetch(demoBaseUrl + "/api/books?count=1", {
+    headers: { Authorization: `Token ${credentials.api_id}:${token}` },
+    redirect: "error",
+    signal: AbortSignal.timeout(20000),
+  });
   assert.equal(response.status, 200, "Demo book lookup failed.");
   const book = (await response.json()).data[0];
   assert.ok(book, "Existing demo book required.");

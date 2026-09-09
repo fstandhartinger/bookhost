@@ -190,8 +190,11 @@ try {
       [demoId],
     )
   ).rows[0];
+  const demoBaseUrl = (
+    process.env.DEMO_BASE_URL || "https://demo.wissen.app.mintapis.com"
+  ).replace(/\/$/, "");
   const remote = await fetch(
-    `https://demo.bookhost.co/api/pages/${row.bookstack_page_id}`,
+    demoBaseUrl + "/api/pages/" + row.bookstack_page_id,
     {
       headers: {
         Authorization: `Token ${secret.api_id}:${decrypt(secret.api_secret_enc, "demo")}`,

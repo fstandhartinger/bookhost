@@ -15,8 +15,9 @@ export function Pricing() {
           </p>
           <p className="mt-6 text-sm text-slate-600">
             Try your own workspace for {PLAN.trialDays} days. No card needed.
-            Your trial starts when you sign up; your workspace is usually ready
-            within 5 minutes.
+            Your trial starts when you sign up through the Stripe registration,
+            enter the billing address and choose your workspace address; your
+            workspace is usually ready within 5 minutes.
           </p>
         </div>
         <div className="price-card">
@@ -30,6 +31,10 @@ export function Pricing() {
             </strong>
             <span className="text-slate-600"> / month</span>
           </p>
+          <div id="trial">
+            <ActionButton className="button w-full" />
+            <PaymentNote />
+          </div>
           <ul className="checklist">
             <li>Your own hosted BookStack workspace</li>
             <li>Up to 25 users per workspace and 5 GB of uploads</li>
@@ -38,7 +43,15 @@ export function Pricing() {
             </li>
             <li>BookStack content exports, governed by your permissions</li>
             <li>Hosting, maintenance and security updates</li>
-            <li>Daily backups and email support</li>
+            <li>
+              Daily backups and email support —{" "}
+              <Link
+                className="underline"
+                href="/blog/how-we-test-every-bookstack-backup-restore"
+              >
+                How we test restores
+              </Link>
+            </li>
             <li>Seven-day backup retention and restore help</li>
             <li>Reviewed document intake — available now (beta)</li>
             <li>20 drafts during the trial; 300 drafts/month on Team</li>
@@ -47,15 +60,13 @@ export function Pricing() {
           </ul>
           <p className="mt-5 text-xs leading-5 text-slate-600">
             Only workspace owners/admins can publish; members can upload and
-            review. Drafts are shared with your BookHost dashboard team; BookStack
-            page permissions apply after publication.
+            review. Drafts are shared with your BookHost dashboard team;
+            BookStack page permissions apply after publication.
           </p>
           <p className="mt-5 text-xs leading-5 text-slate-600">
             Planned: email intake and permission-aware AI answers. These are not
             available today; there is no committed release date.
           </p>
-          <ActionButton className="button w-full mt-8" />
-          <PaymentNote />
           <p className="mt-4 text-xs text-slate-600 text-center">
             No credit card · Cancel anytime · Plus applicable VAT
           </p>

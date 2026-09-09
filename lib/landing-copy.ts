@@ -59,6 +59,11 @@ export const benefits = [
 ];
 export const steps = [
   [
+    "0",
+    "Sign up and choose your workspace address",
+    "No card is needed. Your workspace is ready in about 5 minutes, and BookStack has its own login.",
+  ],
+  [
     "1",
     "Upload a document",
     "Start a workspace with a 14-day free trial, then upload a PDF, DOCX, Markdown or TXT file and choose a destination book. Document intake is available now in beta.",

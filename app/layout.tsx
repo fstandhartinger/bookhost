@@ -80,10 +80,11 @@ export default function RootLayout({
                 Log in
               </Link>
               <Link
-                className="hidden rounded-lg border border-ink/20 px-4 py-2 sm:block"
+                className="rounded-lg border border-ink/20 px-3 py-2 sm:px-4"
                 href="/pricing"
               >
-                Try BookHost ↗
+                <span className="sm:hidden">Try free ↗</span>
+                <span className="hidden sm:inline">Try BookHost ↗</span>
               </Link>
             </div>
           </nav>

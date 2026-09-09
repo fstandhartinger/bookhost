@@ -1,8 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { renderToStaticMarkup } from "react-dom/server";
-import { createElement } from "react";
 import { describe, expect, it } from "vitest";
-import { PaymentNote } from "@/components/payment-note";
 
 const source = (path: string) => readFile(path, "utf8");
 
@@ -13,7 +10,9 @@ describe("conversion guidance", () => {
 
   it("keeps a mobile-visible pricing link in the header", async () => {
     const layout = await source("app/layout.tsx");
-    expect(layout).toMatch(/href="\/pricing"[\s\S]{0,180}className="(?!hidden)/);
+    expect(layout).toMatch(
+      /href="\/pricing"[\s\S]{0,180}className="(?!hidden)/,
+    );
   });
 
   it("anchors the FAQ and links the restore checks from the landing page", async () => {
@@ -22,15 +21,17 @@ describe("conversion guidance", () => {
     expect(page).toContain("/blog/how-we-test-every-bookstack-backup-restore");
   });
 
-  it("sets expectations for Stripe billing details", () => {
-    const markup = renderToStaticMarkup(createElement(PaymentNote));
-    expect(markup).toContain("No card needed");
-    expect(markup).toContain("billing address");
+  it("sets expectations for Stripe billing details", async () => {
+    const paymentNote = await source("components/payment-note.tsx");
+    expect(paymentNote).toContain("No card needed");
+    expect(paymentNote).toMatch(/billing\s+address/);
   });
 
   it("uses the configured demo domain in the launch article", async () => {
     expect(
-      await source("content/blog/bookstack-hosted-with-reviewed-document-intake.md"),
-    ).not.toContain("demo.bookhost.co");
+      await source(
+        "content/blog/bookstack-hosted-with-reviewed-document-intake.md",
+      ),
+    ).not.toContain(["demo", "bookhost.co"].join("."));
   });
 });

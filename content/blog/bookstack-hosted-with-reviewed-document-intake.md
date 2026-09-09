@@ -34,7 +34,7 @@ BookHost provisions a BookStack application and MariaDB for each team, with a te
 
 Daily backups encrypt the archive and authenticate it before restoration. We have tested a demo restore into temporary containers, comparing book and page counts and selected titles. That is a real recovery check, not an independent audit, a recovery-time SLA or proof of complete host-loss recovery. **Off-host backup delivery is in preparation**; we do not describe local encrypted backups as protection against losing the whole host. Our [backup restore article](/blog/how-we-test-every-bookstack-backup-restore) explains what the test covers and what it does not. [Operations documentation](https://github.com/fstandhartinger/bookstack-ops/tree/main/ops/provisioner).
 
-You can sign in to BookHost with an email address and password. You can also explore the [public, read-only demo](https://demo.bookhost.co) without creating an account. It contains example team knowledge so you can assess BookStack's structure before starting a workspace. Demo content illustrates the workflow; it is not evidence that a particular document has passed through intake.
+You can sign in to BookHost with an email address and password. You can also explore the [public, read-only demo](https://demo.wissen.app.mintapis.com) without creating an account. It contains example team knowledge so you can assess BookStack's structure before starting a workspace. Demo content illustrates the workflow; it is not evidence that a particular document has passed through intake.
 
 ## What reviewed intake means today
 

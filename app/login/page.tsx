@@ -29,6 +29,12 @@ export default async function Login({
       <p className="mt-5 text-slate-600">
         Sign in to manage your team and workspace.
       </p>
+      <p className="mt-5 rounded-lg bg-[#e8edde] p-4 text-sm">
+        New to BookHost?{" "}
+        <a className="font-medium underline" href="/pricing#trial">
+          Start your free 14-day trial — no card needed.
+        </a>
+      </p>
       {params.sent && (
         <p role="status" className="mt-6 rounded-lg bg-green-50 p-4 text-sm">
           Check your inbox for a sign-in link. It expires in 15 minutes.
@@ -53,7 +59,6 @@ export default async function Login({
           )}
         </p>
       )}
-      <PasswordLogin destination={destination} />
       {params.reset && (
         <p role="status" className="mt-4">
           Password reset. Sign in with your new password.
@@ -111,6 +116,11 @@ export default async function Login({
           </button>
         </form>
       )}
+      <p className="mt-6 text-sm text-slate-600">
+        Set a password later from your dashboard; you can always sign in with an
+        e-mailed link or Google.
+      </p>
+      <PasswordLogin destination={destination} />
       <p className="mt-8 text-center text-xs text-slate-500">
         Secure access to your BookHost dashboard.
       </p>

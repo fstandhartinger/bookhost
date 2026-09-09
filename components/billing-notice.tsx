@@ -13,7 +13,7 @@ export function BillingNotice({
   const baseNotice = billingNotice(subscription, new Date(), role);
   const notice =
     role === "member"
-      ? {
+      ? baseNotice && {
           ...baseNotice,
           action: "none" as const,
           text: "Billing is managed by the team owner.",

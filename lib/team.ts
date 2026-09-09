@@ -1,3 +1,4 @@
+import { ensureBookStackLogin } from "./bookstack-members";
 import { randomBytes } from "node:crypto";
 import { db, transaction } from "./db";
 import { digest } from "./security";
@@ -152,7 +153,7 @@ export async function joinTeam(
     );
   // Hash before acquiring the team lock; authenticate existing accounts under lock.
   const hash = userId ? null : await hashPassword(password);
-  return transaction(async (c) => {
+  const joined = await transaction(async (c) => {
     await c.query("SELECT id FROM teams WHERE id=$1 FOR UPDATE", [
       initial.team_id,
     ]);
@@ -233,4 +234,11 @@ export async function joinTeam(
     ]);
     return { ...user, team_id: invite.team_id };
   });
+  // Membership is already committed; tenant/API failures must not block joining.
+  try {
+    await ensureBookStackLogin(joined.team_id, joined.id);
+  } catch {
+    // Provisioning errors are persisted by ensureBookStackLogin; retry in the dashboard.
+  }
+  return joined;
 }

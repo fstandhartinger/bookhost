@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import React, { useState } from "react";
 import { TENANT_DOMAIN } from "@/lib/config";
 import { useRouter } from "next/navigation";
 import { validateSlug } from "@/lib/slug";
@@ -67,8 +67,8 @@ export function TenantForm({ teamName }: { teamName: string }) {
         aria-describedby="slug-help"
       />
       <p id="slug-help" className="mt-2 break-all text-sm text-slate-500">
-        https://<strong className="text-moss">{slug || "your-team"}</strong>
-        .{TENANT_DOMAIN}
+        https://<strong className="text-moss">{slug || "your-team"}</strong>.
+        {TENANT_DOMAIN}
       </p>
       <p className="mt-2 text-xs text-slate-500">
         3–30 lowercase letters, numbers or hyphens. Your address cannot be
@@ -85,7 +85,10 @@ export function TenantForm({ teamName }: { teamName: string }) {
     </form>
   );
 }
-export function RevealPassword() {
+export function RevealPassword({
+  endpoint = "/api/tenants/password",
+  teamId,
+}: { endpoint?: string; teamId?: string } = {}) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -107,8 +110,14 @@ export function RevealPassword() {
           onClick={async () => {
             setBusy(true);
             try {
-              const res = await fetch("/api/tenants/password", {
+              const res = await fetch(endpoint, {
                 method: "POST",
+                ...(teamId
+                  ? {
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ teamId }),
+                    }
+                  : {}),
               });
               const data = await res.json();
               if (!res.ok) throw new Error(data.error);

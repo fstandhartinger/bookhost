@@ -2,6 +2,7 @@ import { OnboardingChecklist } from "@/components/onboarding-checklist";
 import React from "react";
 import { cookies } from "next/headers";
 import { ACTIVE_TEAM_COOKIE } from "@/lib/join-context";
+import { MemberBookStackLogin } from "@/components/member-bookstack-login";
 import { TeamPanel } from "@/components/team-panel";
 import { billingEligible } from "@/lib/trial";
 import { invoicePreview } from "@/lib/invoice-preview";
@@ -51,7 +52,7 @@ export default async function Dashboard({
   const members = canManage
     ? (
         await db.query(
-          "SELECT m.user_id,u.email,m.role,m.created_at FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.team_id=$1 ORDER BY m.created_at,u.email",
+          "SELECT m.user_id,u.email,m.role,m.created_at,CASE WHEN m.role='owner' THEN CASE WHEN EXISTS(SELECT 1 FROM tenants WHERE team_id=m.team_id AND status='running') THEN 'ready' ELSE 'pending' END WHEN l.last_error IS NOT NULL THEN 'error' WHEN l.bookstack_user_id IS NOT NULL THEN 'ready' ELSE 'pending' END AS bookstack_login_status FROM memberships m JOIN users u ON u.id=m.user_id LEFT JOIN member_bookstack_logins l ON l.team_id=m.team_id AND l.user_id=m.user_id WHERE m.team_id=$1 ORDER BY m.created_at,u.email",
           [team.id],
         )
       ).rows
@@ -89,9 +90,18 @@ export default async function Dashboard({
         )
       ).rows[0]
     : null;
+  const memberLogin =
+    team && !isOwner
+      ? (
+          await db.query(
+            "SELECT bookstack_user_id,bookstack_role,last_error,(initial_password IS NOT NULL) AS has_password FROM member_bookstack_logins WHERE team_id=$1 AND user_id=$2",
+            [team.id, session.user.id],
+          )
+        ).rows[0]
+      : null;
   const user = (
     await db.query(
-      "SELECT email_verified_at,password_set_at FROM users WHERE id=$1",
+      "SELECT email,email_verified_at,password_set_at FROM users WHERE id=$1",
       [session.user.id],
     )
   ).rows[0];
@@ -271,8 +281,8 @@ export default async function Dashboard({
       >
         <h2 className="text-2xl">Sign-in for next time</h2>
         <p className="mt-3 text-sm text-slate-600">
-          Set a password to return to this dashboard. You can also sign in
-          with Google or an e-mailed sign-in link.
+          Set a password to return to this dashboard. You can also sign in with
+          Google or an e-mailed sign-in link.
         </p>
         {user?.password_set_at && (
           <p className="mt-3 text-sm">
@@ -338,6 +348,15 @@ export default async function Dashboard({
                   <a className="button-secondary mt-3" href="/app/intake">
                     Document intake (beta)
                   </a>
+                  {!isOwner && (
+                    <MemberBookStackLogin
+                      key={`${team.id}:${session.user.id}`}
+                      teamId={team.id}
+                      email={user?.email || session.user.email || ""}
+                      slug={tenant.slug}
+                      login={memberLogin}
+                    />
+                  )}
                   {isOwner && (
                     <div className="mt-6 border-t pt-5">
                       <h3 className="font-semibold">First sign-in</h3>

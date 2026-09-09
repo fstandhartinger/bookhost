@@ -68,8 +68,8 @@ $u=$t->user;
 $role=BookStack\Users\Models\Role::where('system_name','wissen-intake')->first()
     ?? $u->roles()->where('display_name','BookHost Intake')->first()
     ?? new BookStack\Users\Models\Role();
-$role->forceFill(['system_name'=>'wissen-intake','display_name'=>'BookHost Intake','description'=>'Team-wide reviewed document intake; read destinations, create books and create/update pages.']); $role->save();
-$names=['access-api','book-view-all','book-create-all','chapter-view-all','page-view-all','page-create-all','page-update-all'];
+$role->forceFill(['system_name'=>'wissen-intake','display_name'=>'BookHost Intake','description'=>'Team-wide reviewed document intake; read destinations, create books/pages and provision member logins.']); $role->save();
+$names=['access-api','book-view-all','book-create-all','chapter-view-all','page-view-all','page-create-all','page-update-all','users-manage','user-roles-manage'];
 $permissions=BookStack\Permissions\Models\RolePermission::whereIn('name',$names)->pluck('id');
 if(count($permissions)!==count($names)) throw new RuntimeException('Missing intake permissions');
 $role->permissions()->sync($permissions); $u->roles()->sync([$role->id]);
@@ -88,8 +88,8 @@ if (!$u) $u=new BookStack\Users\Models\User();
 $u->forceFill(['name'=>'BookHost Intake','email'=>'wissen-intake@invalid.local','system_name'=>'wissen-intake','password'=>'','email_confirmed'=>true]);
 $u->save();
 $role=BookStack\Users\Models\Role::firstOrNew(['system_name'=>'wissen-intake']);
-$role->forceFill(['system_name'=>'wissen-intake','display_name'=>'BookHost Intake','description'=>'Team-wide reviewed document intake; read destinations, create books and create/update pages.']); $role->save();
-$names=['access-api','book-view-all','book-create-all','chapter-view-all','page-view-all','page-create-all','page-update-all'];
+$role->forceFill(['system_name'=>'wissen-intake','display_name'=>'BookHost Intake','description'=>'Team-wide reviewed document intake; read destinations, create books/pages and provision member logins.']); $role->save();
+$names=['access-api','book-view-all','book-create-all','chapter-view-all','page-view-all','page-create-all','page-update-all','users-manage','user-roles-manage'];
 $permissions=BookStack\Permissions\Models\RolePermission::whereIn('name',$names)->pluck('id');
 if(count($permissions)!==count($names)) throw new RuntimeException('Missing intake permissions');
 $role->permissions()->sync($permissions); $u->roles()->sync([$role->id]);

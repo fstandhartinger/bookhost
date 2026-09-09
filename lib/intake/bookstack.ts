@@ -29,9 +29,11 @@ export class BookStack {
     if (!response.ok)
       throw new IntakeError(
         [401, 403].includes(response.status)
-          ? path === "books" && body
-            ? "BookStack cannot create books. Contact your workspace administrator to enable Create all books for BookHost Intake."
-            : "BookStack token rejected. Contact support to restore intake access."
+          ? /^(users|roles)([/?]|$)/.test(path)
+            ? "BookStack login access is unavailable. Contact support to enable users-manage and user-roles-manage for BookHost Intake."
+            : path === "books" && body
+              ? "BookStack cannot create books. Contact your workspace administrator to enable Create all books for BookHost Intake."
+              : "BookStack token rejected. Contact support to restore intake access."
           : response.status === 404
             ? "Book or chapter not found. Choose another destination."
             : response.status === 429

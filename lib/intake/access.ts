@@ -45,9 +45,12 @@ export async function itemForUser(userId: string, id: string) {
     throw new IntakeError("Your workspace is not running.", 409);
   return row;
 }
-export async function clientFor(tenant: { id: string; slug: string }) {
+export async function clientFor(
+  tenant: { id: string; slug: string },
+  database: Pick<typeof db, "query"> = db,
+) {
   const secret = (
-    await db.query(
+    await database.query(
       "SELECT api_id,api_secret_enc FROM tenant_secrets WHERE tenant_id=$1",
       [tenant.id],
     )

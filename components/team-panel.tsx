@@ -6,6 +6,7 @@ type Member = {
   email: string;
   role: string;
   created_at: string;
+  bookstack_login_status?: "ready" | "pending" | "error";
 };
 type Invite = {
   id: string;
@@ -55,8 +56,8 @@ export function TeamPanel({
       <h2 className="text-2xl">Team</h2>
       <p className="mt-2 text-sm text-slate-600">
         {members.length} / 25 members · Your plan includes up to 25 members.
-        Invitations expire after 7 days. Dashboard membership does not create a
-        BookStack login.
+        Invitations expire after 7 days. Teammates get their own BookStack login
+        automatically.
       </p>
       <ul className="mt-4 divide-y">
         {members.map((m) => (
@@ -66,6 +67,11 @@ export function TeamPanel({
           >
             <span className="min-w-0 break-all">{m.email}</span>
             <span className="badge">{m.role}</span>
+            {role === "owner" && (
+              <span className="badge">
+                BookStack login: {m.bookstack_login_status || "pending"}
+              </span>
+            )}
             <span className="text-sm text-slate-500">
               Since {m.created_at.slice(0, 10)}
             </span>

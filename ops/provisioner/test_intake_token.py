@@ -30,6 +30,8 @@ class IntakeTokenTests(unittest.TestCase):
                 self.assertIn("'book-create-all'", php.call_args_list[0].args[1])
                 self.assertIn("'book-create-all'", php.call_args_list[1].args[1])
                 self.assertIn("'system_name'=>'wissen-intake'", php.call_args_list[1].args[1])
+                for call in php.call_args_list:
+                    self.assertIn("'users-manage','user-roles-manage'", call.args[1])
                 rotated = token.ensure_token('demo', rotate=True)
                 self.assertNotEqual(first[0], rotated[0])
                 values = token.env_read(tenant / '.env')

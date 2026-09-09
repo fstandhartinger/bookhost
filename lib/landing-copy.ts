@@ -5,7 +5,7 @@ export const faqs = [
   ],
   [
     "Where is our data hosted?",
-    "Our core hosting and backups use Hetzner infrastructure in Germany or Finland, within the EU. This does not mean every service processes data only in the EU: Stripe payments and optional Google sign-in can involve international processing. Future AI features will send selected content to Chutes only when enabled and requested by your team, under the processing terms described in our German privacy notice and data processing agreement; we do not promise EU-only AI inference.",
+    "Our core hosting and backups use Hetzner infrastructure in Germany or Finland, within the EU. This does not mean every service processes data only in the EU: Stripe payments and optional Google sign-in can involve international processing. Document intake (beta) sends the text of each uploaded document to Chutes when your team requests a draft, under the processing terms described in our German privacy notice and data processing agreement; we do not promise EU-only AI inference.",
   ],
   [
     "What happens if we need a backup restored?",
@@ -20,8 +20,12 @@ export const faqs = [
     "Contact us before switching anything off. We will assess your version, data size, attachments, authentication and custom changes, then agree the scope, any separate cost and the cutover approach before work starts. Migration is not advertised as an automatic one-click import or as included for every existing setup. Keep your current instance and backup until the migrated content and permissions have been checked.",
   ],
   [
-    "Will AI respect our BookStack permissions?",
-    "AI answers and reviewed intake are coming in the next weeks — included in your plan; they are not available today and timing is an estimate. The release requirement is that answers use only sources the requesting person is allowed to access, and that proposed pages are published only after an authorised reviewer approves them. Those controls must be verified before release; we are not claiming they have already passed testing. Human review checks content quality, while access controls determine who can see it. AI output can still contain mistakes.",
+    "How does document intake work?",
+    "Document intake is available now in beta. Upload a PDF, DOCX, Markdown or TXT file to get a draft with a summary, tags and a reviewer checklist. Check and edit the suggestion; only a team owner or admin can approve publication to BookStack. The trial includes 20 drafts in total; Team includes 300 drafts per month. Files can be up to 10 MB and 60,000 extracted characters; scanned PDFs need OCR first. AI output can contain mistakes.",
+  ],
+  [
+    "Who can see drafts, and what is still planned?",
+    "Intake is a shared inbox for your Control-Plane team: all team members can see its drafts and available destinations. It does not mirror each person's BookStack permissions. Owners and admins approve publication; the published page follows its destination book's BookStack permissions. Email intake and permission-aware AI answers are planned and are not available today. There is no committed release date.",
   ],
   [
     "Do I need a card for the trial, and will I be charged automatically?",
@@ -46,23 +50,23 @@ export const benefits = [
   [
     "03",
     "Review before it becomes team knowledge",
-    "Reviewed document intake is coming in the next weeks — included in your plan, with timing still an estimate. You will be able to submit a document or email, check the proposed page and publish it only after an authorised person approves it.",
+    "Document intake is available now (beta). Upload a document, check its suggested summary, tags and reviewer checklist, then have a team owner or admin approve the page for BookStack. Includes 20 drafts during the trial and 300 per month on Team.",
   ],
 ];
 export const steps = [
   [
     "1",
-    "Start your workspace",
-    "Sign up for a 14-day free trial without a card and open your team’s BookStack instance.",
+    "Upload a document",
+    "Start a workspace with a 14-day free trial, then upload a PDF, DOCX, Markdown or TXT file and choose a destination book. Document intake is available now in beta.",
   ],
   [
     "2",
-    "Bring your knowledge",
-    "Create pages, invite colleagues and organise access. Already self-hosting? Contact us to assess your migration before changing your existing instance.",
+    "Check the draft",
+    "Review the proposed page, summary, tags and reviewer checklist alongside the source. Edit mistakes and resolve open questions before publishing. AI suggestions need human review.",
   ],
   [
     "3",
-    "Choose whether to stay",
-    "Add a payment method to continue after the trial, or let it end with no charge. Reviewed document and email intake, plus AI answers, are coming in the next weeks — included in your plan. They are not available today; timing is an estimate.",
+    "Approve and publish",
+    "A team owner or admin approves the draft to create a page in BookStack. The destination book determines who can read it. Your trial includes 20 drafts; Team includes 300 drafts per month.",
   ],
 ];

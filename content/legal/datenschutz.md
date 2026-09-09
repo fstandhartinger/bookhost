@@ -77,11 +77,11 @@ Supportzugriffe auf Inhalte erfolgen nur, soweit für einen vom Kunden veranlass
 
 Anfragen zu personenbezogenen Informationen in einer Kundeninstanz richten Sie bitte an deren Betreiber. Erreichen uns solche Anfragen, unterstützen wir den Kunden bei ihrer Bearbeitung und leiten sie ihm zu, soweit zulässig.
 
-## 8. Geplante KI-Verarbeitung von Dokumenten und E-Mails
+## 8. KI-Verarbeitung von Dokumenten (Beta) und geplante Funktionen
 
-**Diese Funktionen gehören zur angekündigten Phase 2 und stehen zum Stand dieser Erklärung noch nicht zur Verfügung.** Die folgenden Regeln gelten erst nach Freischaltung und Veranlassung durch den Kunden. Allein die Registrierung oder das Anlegen einer BookStack-Instanz löst keine Übermittlung ihrer Inhalte an Chutes aus.
+**Der Dokument-Eingang per Upload ist als Beta verfügbar. Die KI-Verarbeitung durch Chutes erfolgt auf Veranlassung des Kunden je Upload.** E-Mail-Eingang und rechtebewusste KI-Antworten sind weiterhin geplant und noch nicht verfügbar. Allein die Registrierung oder das Anlegen einer BookStack-Instanz löst keine Übermittlung ihrer Inhalte an Chutes aus.
 
-Beim geplanten Dokument-Eingang übermittelt der Kunde ausgewählte Dateien oder E-Mails einschließlich der für den Auftrag erforderlichen Anhänge, Absenderdaten und Inhalte. Daraus wird ein Vorschlag für eine Wissensseite erzeugt. Erst eine berechtigte Person des Kunden darf diesen prüfen und in BookStack veröffentlichen. Für später angebotene KI-Antworten dürfen nur Inhalte verarbeitet und ausgegeben werden, auf die der anfragende Nutzer zugreifen darf. KI-Ausgaben können Fehler enthalten und bedürfen einer sachlichen Prüfung.
+Beim Dokument-Eingang lädt der Kunde eine ausgewählte Datei hoch. Ihr extrahierter Text wird an Chutes übermittelt, um einen Seitenentwurf mit Zusammenfassung, Tags und Prüfliste zu erzeugen. Erst ein Owner oder Admin des Kunden darf diesen nach Prüfung in BookStack veröffentlichen. Für später angebotene KI-Antworten dürfen nur Inhalte verarbeitet und ausgegeben werden, auf die der anfragende Nutzer zugreifen darf. KI-Ausgaben können Fehler enthalten und bedürfen einer sachlichen Prüfung.
 
 Als KI-Dienst ist Chutes, betrieben von Chutes Global Corp, vorgesehen. Die Inferenz erfolgt in einem Trusted Execution Environment (TEE). TEE-Verarbeitung schützt Daten während der Berechnung; sie ist weder ein Nachweis für ausschließliche EU-Verarbeitung noch gleichbedeutend mit Ende-zu-Ende-Verschlüsselung des gesamten Übertragungswegs. Nach der [Chutes-Datenschutzerklärung](https://chutes.ai/privacy) werden Inhalte öffentlicher LLM-API-Anfragen nicht dauerhaft gespeichert und nicht zum Training verwendet; technische Nutzungsmetadaten werden verarbeitet. Diese Aussagen gelten nicht pauschal für beliebige, von Dritten erstellte Chutes.
 

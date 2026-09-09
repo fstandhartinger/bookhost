@@ -6,11 +6,36 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], display: "swap" });
 export const metadata: Metadata = {
   title: {
-    default: "Wissen — Hosted BookStack for Teams | €39/month",
+    default: "Wissen — Hosted BookStack & Document Intake (Beta)",
     template: "%s · Wissen",
   },
   description:
-    "Managed BookStack for teams at €39/month plus VAT. Daily backups, monthly cancellation and a 14-day free trial. No card required.",
+    "Hosted BookStack with document intake (beta): upload, review and approve. €39/month plus VAT. 14 days free, no card; 20 trial drafts, 300/month on Team.",
+  metadataBase: new URL("https://wissen.app.mintapis.com"),
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://wissen.app.mintapis.com",
+    siteName: "Wissen",
+    title: "Your team’s BookStack. Hosting handled.",
+    description:
+      "Document intake (beta) available now. Upload, review and approve. 14 days free, no card required; then €39/month plus VAT.",
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        alt: "Wissen document intake beta with a real reviewed document draft",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Wissen — Hosted BookStack & Document Intake (Beta)",
+    description:
+      "Upload a document. Review the draft. Approve for BookStack. 14 days free, no card required.",
+    images: ["/og.png"],
+  },
   robots: { index: true, follow: true },
 };
 export default function RootLayout({

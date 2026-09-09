@@ -35,23 +35,14 @@ export function Pricing() {
             <li>Hosting, maintenance and security updates</li>
             <li>Daily backups and email support</li>
             <li>Seven-day backup retention and restore help</li>
-            <li>
-              Reviewed intake{" "}
-              <span className="text-xs text-slate-500">
-                — coming in the next weeks — included
-              </span>
-            </li>
-            <li>
-              Permission-aware answers{" "}
-              <span className="text-xs text-slate-500">
-                — coming in the next weeks — included
-              </span>
-            </li>
+            <li>Reviewed document intake — available now (beta)</li>
+            <li>20 drafts during the trial; 300 drafts/month on Team</li>
+            <li>Summary, tags and reviewer checklist for each draft</li>
+            <li>Owner/admin approval before publication to BookStack</li>
           </ul>
           <p className="mt-5 text-xs leading-5 text-slate-600">
-            Hosting is available at launch. Document/email intake and AI answers
-            are planned for the coming weeks and included once released; timing
-            is not guaranteed.
+            Planned: email intake and permission-aware AI answers. These are not
+            available today; there is no committed release date.
           </p>
           <ActionButton className="button w-full mt-8" />
           <p className="mt-4 text-xs text-slate-600 text-center">

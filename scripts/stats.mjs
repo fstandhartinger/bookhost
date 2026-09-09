@@ -30,8 +30,7 @@ try {
       (SELECT min(e.ts) FROM events e WHERE e.team_id=t.id
         AND e.name IN ('intake_draft','intake_published','bookstack_opened')
         AND (e.ts AT TIME ZONE 'UTC')::date > (t.created_at AT TIME ZONE 'UTC')::date) AS "laterDayUsageAt"
-    FROM teams t JOIN memberships m ON m.team_id=t.id AND m.user_id=t.owner_user_id AND m.role='owner'
-      JOIN users u ON u.id=m.user_id
+    FROM teams t JOIN users u ON u.id=t.owner_user_id
     WHERE t.created_at >= ${windowStart}`);
   const teamRows = teams.rows.map((row) => ({ ...row, ownerEmail: row.ownerEmail, teamName: row.name }));
   const classifications = teamRows.map((row) => ({ ...row, ...classifyTeam(row, { adminEmails }) }));

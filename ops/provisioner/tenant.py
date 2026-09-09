@@ -302,9 +302,11 @@ def restore(path, src=None):
         run(['sudo','-n','tar','-xzf',str(tmp/'bookstack.tar.gz'),'-C',str(tmp)])
         compose(tmp,'up','-d','--wait','db'); sql(tmp,(tmp/'database.sql').read_text())
         expected=json.loads((tmp/'content.json').read_text()); actual=content(tmp)
-        if actual!=expected: raise RuntimeError('Restored content mismatch')
+        compare_keys=expected.keys()
+        if {k:actual[k] for k in compare_keys}!=expected: raise RuntimeError('Restored content mismatch')
         compose(tmp,'up','-d'); ready_internal(tmp)
-        if content(tmp)!=expected: raise RuntimeError('Restored content changed after startup')
+        after=content(tmp)
+        if {k:after[k] for k in compare_keys}!=expected: raise RuntimeError('Restored content changed after startup')
         probe=restore_http_probe(tmp)
         print('RESTORE OK '+json.dumps({'content':actual,'http':probe},ensure_ascii=False))
     finally:

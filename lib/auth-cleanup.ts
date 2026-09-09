@@ -13,6 +13,10 @@ export function startAuthCleanup() {
         "DELETE FROM password_reset_tokens WHERE expires_at<now()",
       );
       await db.query("DELETE FROM rate_limits WHERE expires_at<now()");
+      await db.query(
+        "DELETE FROM page_views WHERE ts<now()-interval '90 days'",
+      );
+      await db.query("DELETE FROM events WHERE ts<now()-interval '90 days'");
     } catch {
       console.error("Authentication cleanup failed");
     } finally {

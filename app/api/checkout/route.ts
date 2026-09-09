@@ -1,3 +1,5 @@
+import { campaign, optedOut } from "@/lib/analytics/shared";
+import { requestHash } from "@/lib/analytics/server";
 import { normalizeEmail } from "@/lib/email";
 import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
@@ -73,6 +75,10 @@ export async function POST(request: Request) {
         { error: "Billing is being set up. Please try again shortly." },
         { status: 503 },
       );
+    const noAnalytics = optedOut(request.headers);
+    const utmSource = noAnalytics
+      ? null
+      : campaign(request.headers.get("x-wissen-utm-source") || body.utm_source);
     const stripe = stripeClient();
     const checkout = await stripe.checkout.sessions.create(
       checkoutParams({
@@ -81,6 +87,8 @@ export async function POST(request: Request) {
         email,
         customer: team?.stripe_customer_id,
         teamId: team?.id,
+        utmSource,
+        noAnalytics,
       }),
     );
     const nonce = randomBytes(32).toString("hex");
@@ -88,6 +96,13 @@ export async function POST(request: Request) {
       "INSERT INTO checkout_attempts(session_id,nonce_hash,user_id) VALUES($1,$2,$3)",
       [checkout.id, digest(nonce), session?.user?.id || null],
     );
+    if (!noAnalytics)
+      await db
+        .query(
+          "INSERT INTO events(name,team_id,utm_source,visitor_hash) VALUES('checkout_start',$1,$2,$3)",
+          [team?.id || null, utmSource, requestHash(request)],
+        )
+        .catch(() => {});
     const response = NextResponse.json({ url: checkout.url });
     response.cookies.set("wissen-checkout", nonce, {
       httpOnly: true,

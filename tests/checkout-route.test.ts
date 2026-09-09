@@ -61,3 +61,28 @@ it("uses the signed-in customer's identity for an empty CTA body", async () => {
     expect.objectContaining({ customer_email: "owner@example.invalid" }),
   );
 });
+it("forwards sanitized attribution and privacy choice into Stripe metadata", async () => {
+  state.status = "";
+  await POST(
+    new Request("http://localhost/api/checkout", {
+      method: "POST",
+      headers: { "x-wissen-utm-source": "Reddit" },
+      body: "{}",
+    }),
+  );
+  expect(state.create).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      metadata: expect.objectContaining({ utm_source: "reddit" }),
+    }),
+  );
+  await POST(
+    new Request("http://localhost/api/checkout", {
+      method: "POST",
+      headers: { dnt: "1", "x-wissen-utm-source": "reddit" },
+      body: "{}",
+    }),
+  );
+  const params = state.create.mock.calls.at(-1)?.[0];
+  expect(params).toMatchObject({ metadata: { no_analytics: "1" } });
+  expect(params).not.toHaveProperty("metadata.utm_source");
+});

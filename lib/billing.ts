@@ -1,3 +1,4 @@
+import { campaign } from "./analytics/shared";
 import { normalizeEmail } from "./email";
 import type Stripe from "stripe";
 import type { PoolClient } from "pg";
@@ -21,7 +22,17 @@ export async function syncCheckout(
     "SELECT * FROM teams WHERE stripe_customer_id=$1",
     [customer],
   );
-  if (existing.rows[0]) return existing.rows[0];
+  if (existing.rows[0]) {
+    await client.query(
+      "UPDATE teams SET utm_source=COALESCE(utm_source,$2),analytics_opt_out=$3 WHERE id=$1",
+      [
+        existing.rows[0].id,
+        campaign(session.metadata?.utm_source),
+        session.metadata?.no_analytics === "1",
+      ],
+    );
+    return existing.rows[0];
+  }
   const account = await client.query(
     `INSERT INTO users(email,name,checkout_session_id) VALUES($1,$2,$3) ON CONFLICT (lower(email)) DO NOTHING RETURNING *`,
     [email, session.customer_details?.name || null, session.id],
@@ -36,11 +47,13 @@ export async function syncCheckout(
     if (!u) return null;
   }
   const team = await client.query(
-    `INSERT INTO teams(name,owner_user_id,stripe_customer_id) VALUES($1,$2,$3) RETURNING *`,
+    `INSERT INTO teams(name,owner_user_id,stripe_customer_id,utm_source,analytics_opt_out) VALUES($1,$2,$3,$4,$5) RETURNING *`,
     [
       `${session.customer_details?.name || email.split("@")[0]}'s team`,
       u.id,
       customer,
+      campaign(session.metadata?.utm_source),
+      session.metadata?.no_analytics === "1",
     ],
   );
   await client.query(

@@ -5,12 +5,16 @@ export function checkoutParams({
   email,
   customer,
   teamId,
+  utmSource,
+  noAnalytics,
 }: {
   price: string;
   url: string;
   email?: string;
   customer?: string;
   teamId?: string;
+  utmSource?: string | null;
+  noAnalytics?: boolean;
 }): Stripe.Checkout.SessionCreateParams {
   return {
     mode: "subscription",
@@ -18,7 +22,12 @@ export function checkoutParams({
     subscription_data: {
       trial_period_days: 14,
       trial_settings: { end_behavior: { missing_payment_method: "cancel" } },
-      metadata: { venture: "wissen", ...(teamId ? { team_id: teamId } : {}) },
+      metadata: {
+        ...(utmSource ? { utm_source: utmSource } : {}),
+        ...(noAnalytics ? { no_analytics: "1" } : {}),
+        venture: "wissen",
+        ...(teamId ? { team_id: teamId } : {}),
+      },
     },
     payment_method_collection: "if_required",
     allow_promotion_codes: true,
@@ -30,6 +39,11 @@ export function checkoutParams({
     ...(customer ? { customer } : email ? { customer_email: email } : {}),
     success_url: `${url}/welcome?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${url}/pricing?canceled=1`,
-    metadata: { venture: "wissen", ...(teamId ? { team_id: teamId } : {}) },
+    metadata: {
+      ...(utmSource ? { utm_source: utmSource } : {}),
+      ...(noAnalytics ? { no_analytics: "1" } : {}),
+      venture: "wissen",
+      ...(teamId ? { team_id: teamId } : {}),
+    },
   };
 }

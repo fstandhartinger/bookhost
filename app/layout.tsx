@@ -1,3 +1,4 @@
+import AnalyticsBeacon from "@/lib/analytics/beacon";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Link from "next/link";
@@ -20,6 +21,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
+        <AnalyticsBeacon />
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-white focus:p-4"

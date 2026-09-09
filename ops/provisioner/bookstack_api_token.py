@@ -63,7 +63,19 @@ def ensure_token(slug, rotate=False):
             service = php(path, r"""
 $v=json_decode(stream_get_contents(STDIN),true);
 $t=BookStack\Api\ApiToken::where('token_id',$v['id'])->first();
-echo $t && $t->user->system_name === 'wissen-intake' ? 'service' : 'legacy';
+if ($t && $t->user->system_name === 'wissen-intake') {
+$u=$t->user;
+$role=BookStack\Users\Models\Role::where('system_name','wissen-intake')->first()
+    ?? $u->roles()->where('display_name','Wissen Intake')->first()
+    ?? new BookStack\Users\Models\Role();
+$role->forceFill(['system_name'=>'wissen-intake','display_name'=>'Wissen Intake','description'=>'Team-wide reviewed document intake; read destinations, create books and create/update pages.']); $role->save();
+$names=['access-api','book-view-all','book-create-all','chapter-view-all','page-view-all','page-create-all','page-update-all'];
+$permissions=BookStack\Permissions\Models\RolePermission::whereIn('name',$names)->pluck('id');
+if(count($permissions)!==count($names)) throw new RuntimeException('Missing intake permissions');
+$role->permissions()->sync($permissions); $u->roles()->sync([$role->id]);
+app(BookStack\Permissions\JointPermissionBuilder::class)->rebuildForAll();
+echo 'service';
+} else { echo 'legacy'; }
 """, {'id': old_ident})
             if not rotate and service.strip() == b'service' and api_valid(slug, old_ident, old_secret):
                 return old_ident, values['BOOKSTACK_API_SECRET']
@@ -76,8 +88,8 @@ if (!$u) $u=new BookStack\Users\Models\User();
 $u->forceFill(['name'=>'Wissen Intake','email'=>'wissen-intake@invalid.local','system_name'=>'wissen-intake','password'=>'','email_confirmed'=>true]);
 $u->save();
 $role=BookStack\Users\Models\Role::firstOrNew(['system_name'=>'wissen-intake']);
-$role->forceFill(['display_name'=>'Wissen Intake','description'=>'Team-wide reviewed document intake; read destinations and create/update pages only.']); $role->save();
-$names=['access-api','book-view-all','chapter-view-all','page-view-all','page-create-all','page-update-all'];
+$role->forceFill(['system_name'=>'wissen-intake','display_name'=>'Wissen Intake','description'=>'Team-wide reviewed document intake; read destinations, create books and create/update pages.']); $role->save();
+$names=['access-api','book-view-all','book-create-all','chapter-view-all','page-view-all','page-create-all','page-update-all'];
 $permissions=BookStack\Permissions\Models\RolePermission::whereIn('name',$names)->pluck('id');
 if(count($permissions)!==count($names)) throw new RuntimeException('Missing intake permissions');
 $role->permissions()->sync($permissions); $u->roles()->sync([$role->id]);

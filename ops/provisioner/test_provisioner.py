@@ -49,6 +49,26 @@ class LifecycleTests(unittest.TestCase):
             with patch.object(tenant,'compose') as compose,patch.object(tenant,'ready_internal'),patch.object(tenant,'public_ready'),patch.object(tenant,'php') as php,patch.object(tenant,'config') as config:
                 tenant.provision(p,'valid@example.invalid');compose.assert_called_once_with(p,'up','-d');php.assert_not_called();config.assert_not_called()
 
+    def test_fresh_tenant_seeds_before_initialization_and_resume_skips_seed(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d)
+            def seeded(path, email):
+                self.assertEqual(email, 'valid@example.invalid')
+                self.assertFalse((path/'.initialized').exists())
+            with patch.object(tenant,'compose'), patch.object(tenant,'ready_internal'), patch.object(tenant,'public_ready'), patch.object(tenant,'php'), patch.object(tenant,'seed_starter_book',side_effect=seeded) as seed:
+                tenant.provision(p,'valid@example.invalid')
+                self.assertTrue((p/'.initialized').exists())
+                tenant.provision(p,'valid@example.invalid')
+                seed.assert_called_once_with(p,'valid@example.invalid')
+
+    def test_failed_seed_does_not_mark_initialized(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d)
+            with patch.object(tenant,'compose'), patch.object(tenant,'ready_internal'), patch.object(tenant,'php'), patch.object(tenant,'seed_starter_book',side_effect=RuntimeError('seed failed')):
+                with self.assertRaisesRegex(RuntimeError,'seed failed'):
+                    tenant.provision(p,'valid@example.invalid')
+                self.assertFalse((p/'.initialized').exists())
+
     def test_capacity_disk_and_count_and_notice_throttle(self):
         with tempfile.TemporaryDirectory() as d:
             with patch.object(worker,'ROOT',Path(d)),patch.object(worker.subprocess,'check_output',side_effect=['Avail\n100\n','wissen-demo-bookstack-1\n']*2),contextlib.redirect_stdout(io.StringIO()) as out:

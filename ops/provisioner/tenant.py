@@ -73,6 +73,22 @@ def public_ready(url):
         time.sleep(5)
     raise RuntimeError('HTTPS login readiness timed out')
 
+def seed_starter_book(path, email):
+    """Safe to repeat during initial bootstrap; never called by resume."""
+    php(path, r'''
+$v=json_decode(stream_get_contents(STDIN),true);
+auth()->setUser(BookStack\Users\Models\User::where('email',$v['email'])->firstOrFail());
+Illuminate\Support\Facades\DB::transaction(function() {
+$b=BookStack\Entities\Models\Book::where('name','Team handbook')->first();
+if (!$b) $b=app(BookStack\Entities\Repos\BookRepo::class)->create(['name'=>'Team handbook','description'=>'A home for your team knowledge.']);
+if (!$b->pages()->where('name','How to use this wiki')->exists()) {
+$repo=app(BookStack\Entities\Repos\PageRepo::class);
+$draft=$repo->getNewDraftPage($b);
+$repo->publishDraft($draft,['name'=>'How to use this wiki','editor'=>'wysiwyg','html'=>'<h1>Welcome to your team wiki</h1><p>Keep useful knowledge here and update it as your team learns.</p><h2>Books, chapters and pages</h2><p>Books group a topic, optional chapters organize sections, and pages hold the actual content. Edit this handbook or create a book for each project.</p><h2>Roles and access</h2><p>Ask your workspace administrator to invite teammates and assign BookStack roles. Check book permissions before adding sensitive information.</p><h2>Find answers</h2><p>Use the search bar to find pages across the books you can access. Clear titles and tags help everyone find answers.</p><h2>Document intake in Wissen</h2><p>Open Document intake in your Wissen dashboard, upload a PDF, DOCX, Markdown or text file, and choose a book. Review the AI suggestion against the source. A team owner or admin approves publication; uploaded documents are not published automatically.</p>']);
+}
+});
+''', {'email': email})
+
 def provision(path,email):
     if not re.fullmatch(r'[^\s@\x00-\x1f]+@[^\s@\x00-\x1f]+\.[^\s@\x00-\x1f]+',email): raise ValueError('Invalid admin email')
     ef=path/'.env'
@@ -92,6 +108,7 @@ def provision(path,email):
     compose(path,'up','-d'); ready_internal(path)
     if not (path/'.initialized').exists():
         php(path,"$v=json_decode(stream_get_contents(STDIN),true); $u=BookStack\\Users\\Models\\User::where('email','admin@admin.com')->first(); if (!$u) {$u=BookStack\\Users\\Models\\User::where('email',$v['email'])->firstOrFail();} $u->email=$v['email']; $u->password=Illuminate\\Support\\Facades\\Hash::make($v['secret']); $u->save();",{'email':values['BOOKSTACK_ADMIN_EMAIL'],'secret':values['BOOKSTACK_ADMIN_PASSWORD']})
+        seed_starter_book(path, values['BOOKSTACK_ADMIN_EMAIL'])
         (path/'.initialized').touch()
     config(path); compose(path,'up','-d'); public_ready(values['APP_URL'])
     print('RUNNING '+values['APP_URL'])

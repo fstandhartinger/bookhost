@@ -1,3 +1,4 @@
+import { BillingNotice } from "@/components/billing-notice";
 import Link from "next/link";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
@@ -17,11 +18,18 @@ export default async function IntakePage() {
       [session.user.id],
     )
   ).rows;
+  const subscription = (
+    await db.query(
+      "SELECT s.*,n.desired_state FROM teams t JOIN subscriptions s ON s.team_id=t.id LEFT JOIN tenants n ON n.team_id=t.id WHERE t.owner_user_id=$1 ORDER BY s.updated_at DESC LIMIT 1",
+      [session.user.id],
+    )
+  ).rows[0];
   return (
     <section className="py-10">
       <Link href="/app" className="text-sm underline">
         ← Your workspace
       </Link>
+      <BillingNotice subscription={subscription || null} compact />
       <p className="eyebrow mt-8">DOCUMENT INTAKE · BETA</p>
       <h1 className="text-4xl">Turn documents into shared knowledge.</h1>
       <p className="mt-4 max-w-2xl text-slate-600">

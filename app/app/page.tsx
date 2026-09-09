@@ -1,3 +1,6 @@
+import { BillingNotice } from "@/components/billing-notice";
+import { markNoticeRead } from "@/lib/notifications";
+import { revalidatePath } from "next/cache";
 import { freshAuthentication } from "@/lib/security";
 import { PasswordForm } from "@/components/password-form";
 import { auth, signOut } from "@/auth";
@@ -62,6 +65,12 @@ export default async function Dashboard({
         )
       ).rows
     : [];
+  const notices = (
+    await db.query(
+      "SELECT id,payload,created_at,read_at FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 50",
+      [session.user.id],
+    )
+  ).rows;
   const status =
     tenant?.desired_state === "suspended" ? "suspended" : tenant?.status;
   const delayed =
@@ -100,6 +109,52 @@ export default async function Dashboard({
           <button className="button-secondary">Sign out</button>
         </form>
       </div>
+      <BillingNotice
+        subscription={
+          subscription
+            ? { ...subscription, desired_state: tenant?.desired_state }
+            : null
+        }
+      />
+      <section className="price-card mt-6">
+        <h2 className="text-xl">Notices</h2>
+        {notices.length ? (
+          <ul className="mt-4 space-y-4">
+            {notices.map((notice) => (
+              <li key={notice.id} className="border-t pt-4">
+                <p
+                  className={notice.read_at ? "text-slate-500" : "font-medium"}
+                >
+                  {notice.payload.text}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {date(notice.created_at)} ·{" "}
+                  {notice.read_at ? "Read" : "Unread"}
+                </p>
+                <a href="/app/billing" className="mr-4 text-sm underline">
+                  Manage billing
+                </a>
+                {!notice.read_at && (
+                  <form
+                    className="inline"
+                    action={async () => {
+                      "use server";
+                      const current = await auth();
+                      if (!current?.user?.id) redirect("/login");
+                      await markNoticeRead(db, current.user.id, notice.id);
+                      revalidatePath("/app");
+                    }}
+                  >
+                    <button className="text-sm underline">Mark as read</button>
+                  </form>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-3 text-sm text-slate-500">You’re all caught up.</p>
+        )}
+      </section>
       {!user?.email_verified_at && (
         <p className="mt-4 text-sm text-slate-500">
           Confirm your e-mail by signing in via link once e-mail sign-in is

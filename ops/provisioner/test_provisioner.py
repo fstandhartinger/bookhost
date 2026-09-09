@@ -185,7 +185,7 @@ class LifecycleTests(unittest.TestCase):
                 elif args[:2]==['tar','-cf']: Path(args[args.index('-cf')+1]).write_bytes(b'snapshot')
                 return b''
             def fake_crypt(src,dst,*args,**kwargs): Path(dst).write_bytes(b'encrypted')
-            with patch.object(tenant,'KEY',p/'key'), patch.object(tenant,'compose',side_effect=fake_compose), patch.object(tenant,'content',side_effect=[snapshot,snapshot]), patch.object(tenant,'run',side_effect=fake_run), patch.object(tenant,'crypt',side_effect=fake_crypt):
+            with patch.object(tenant,'KEY',p/'key'), patch.object(tenant,'compose',side_effect=fake_compose), patch.object(tenant,'fingerprint',return_value={'content':snapshot}), patch.object(tenant,'archive_upload_hashes',return_value=[]), patch.object(tenant,'run',side_effect=fake_run), patch.object(tenant,'crypt',side_effect=fake_crypt):
                 tenant.backup(p,hot=True)
             self.assertFalse(any(args[:2] in [('stop','bookstack'),('start','bookstack')] for args in calls))
 
@@ -193,7 +193,7 @@ class LifecycleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             p=Path(d)/'test-team'; (p/'backups').mkdir(parents=True)
             (p/'.env').write_text('x'); (p/'docker-compose.yml').write_text('{}')
-            content=[{'v':1},{'v':2},{'v':3},{'v':4}]
+            content=[{'content':{'v':1,'uploads':[]}},{'content':{'v':2,'uploads':[]}},{'content':{'v':3,'uploads':[]}},{'content':{'v':4,'uploads':[]}}]
             def fake_compose(path,*args,**kwargs):
                 if args[:2]==('ps','--status'): return b'bookstack\n'
                 if args[:2]==('exec','-T'): return b'dump'
@@ -202,7 +202,7 @@ class LifecycleTests(unittest.TestCase):
                 if args[:3]==['sudo','-n','rm']:
                     shutil.rmtree(args[-1])
                 return b''
-            with patch.object(tenant,'KEY',p/'key'), patch.object(tenant,'compose',side_effect=fake_compose), patch.object(tenant,'content',side_effect=content), patch.object(tenant,'run',side_effect=fake_run), patch.object(tenant,'crypt'):
+            with patch.object(tenant,'KEY',p/'key'), patch.object(tenant,'compose',side_effect=fake_compose), patch.object(tenant,'fingerprint',side_effect=content), patch.object(tenant,'archive_upload_hashes',return_value=[]), patch.object(tenant,'run',side_effect=fake_run), patch.object(tenant,'crypt'):
                 with self.assertRaisesRegex(RuntimeError,'hot-inconsistent'): tenant.backup(p,hot=True)
             self.assertEqual(list((p/'backups').iterdir()),[])
 
@@ -220,9 +220,9 @@ class LifecycleTests(unittest.TestCase):
             def fake_run(args, data=None):
                 if args[:3]==['sudo','-n','tar']:
                     archive=Path(args[args.index('-czf')+1])
+                    upload.write_bytes(b'during')
                     with tarfile.open(archive,'w:gz') as out:
                         out.add(uploads,arcname='bookstack/www/uploads')
-                    upload.write_bytes(b'during')
                     upload.write_bytes(b'before')
                 elif args[:2]==['tar','-cf']:
                     outer=Path(args[args.index('-cf')+1])
@@ -232,7 +232,7 @@ class LifecycleTests(unittest.TestCase):
                 elif args[:3]==['sudo','-n','rm']:
                     shutil.rmtree(args[-1])
                 return b''
-            with patch.object(tenant,'KEY',p/'key'), patch.object(tenant,'compose',side_effect=fake_compose), patch.object(tenant,'content',return_value=stable), patch.object(tenant,'fingerprint',return_value=stable), patch.object(tenant,'run',side_effect=fake_run), patch.object(tenant,'crypt',side_effect=lambda src,dst,*a,**k: shutil.copy2(src,dst)):
+            with patch.object(tenant,'KEY',p/'key'), patch.object(tenant,'compose',side_effect=fake_compose), patch.object(tenant,'content',return_value=stable), patch.object(tenant,'fingerprint',return_value={'content':stable}), patch.object(tenant,'run',side_effect=fake_run), patch.object(tenant,'crypt',side_effect=lambda src,dst,*a,**k: shutil.copy2(src,dst)):
                 with self.assertRaisesRegex(RuntimeError,'hot-inconsistent'): tenant.backup(p,hot=True)
             self.assertEqual(list((p/'backups').iterdir()),[])
 
@@ -240,8 +240,8 @@ class LifecycleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             p=Path(d)/'test-team'; (p/'backups').mkdir(parents=True)
             (p/'.env').write_text('x'); (p/'docker-compose.yml').write_text('{}')
-            same={'pages':'1','books':'1','uploads':[],'tables':{}}
-            changed=dict(same, fingerprint={'page_revisions':{'count':'2','max_id':'9'}})
+            same={'content':{'pages':'1','books':'1','uploads':[],'tables':{}}}
+            changed=dict(same, page_revisions={'count':'2','max_id':'9'})
             fingerprints=[same,changed,same,changed]
             def fake_compose(path,*args,**kwargs):
                 if args[:2]==('ps','--status'): return b'bookstack\n'
@@ -250,7 +250,7 @@ class LifecycleTests(unittest.TestCase):
             def fake_run(args, data=None):
                 if args[:3]==['sudo','-n','rm']: shutil.rmtree(args[-1])
                 return b''
-            with patch.object(tenant,'KEY',p/'key'), patch.object(tenant,'compose',side_effect=fake_compose), patch.object(tenant,'fingerprint',side_effect=fingerprints), patch.object(tenant,'run',side_effect=fake_run), patch.object(tenant,'crypt'):
+            with patch.object(tenant,'KEY',p/'key'), patch.object(tenant,'compose',side_effect=fake_compose), patch.object(tenant,'fingerprint',side_effect=fingerprints), patch.object(tenant,'archive_upload_hashes',return_value=[]), patch.object(tenant,'run',side_effect=fake_run), patch.object(tenant,'crypt'):
                 with self.assertRaisesRegex(RuntimeError,'hot-inconsistent'): tenant.backup(p,hot=True)
             self.assertEqual(list((p/'backups').iterdir()),[])
 
@@ -260,7 +260,7 @@ class LifecycleTests(unittest.TestCase):
             uploads=p/'bookstack'/'www'/'uploads'; uploads.mkdir(parents=True)
             (uploads/'document.txt').write_bytes(b'stable')
             (p/'.env').write_text('x'); (p/'docker-compose.yml').write_text('{}')
-            fp={'content':{'pages':'1'},'activities':{'count':'3','max_id':'7'},'page_revisions':{'count':'2','max_id':'4'},'entities':{'max_updated_at':'2026-01-01 00:00:00'},'attachments':{'max_updated_at':None},'images':{'max_updated_at':None}}
+            fp={'content':{'pages':'1','uploads':[{'path':'www/uploads/document.txt','bytes':6,'sha256':hashlib.sha256(b'stable').hexdigest()}]},'activities':{'count':'3','max_id':'7'},'page_revisions':{'count':'2','max_id':'4'},'entities':{'max_updated_at':'2026-01-01 00:00:00'},'attachments':{'max_updated_at':None},'images':{'max_updated_at':None}}
             def fake_compose(path,*args,**kwargs):
                 if args[:2]==('ps','--status'): return b'bookstack\n'
                 if args[:2]==('exec','-T'): return b'dump'
@@ -277,7 +277,7 @@ class LifecycleTests(unittest.TestCase):
                 return b''
             with patch.object(tenant,'KEY',p/'key'), patch.object(tenant,'compose',side_effect=fake_compose), patch.object(tenant,'fingerprint',return_value=fp), patch.object(tenant,'run',side_effect=fake_run), patch.object(tenant,'crypt',side_effect=lambda src,dst,*a,**k: shutil.copy2(src,dst)):
                 tenant.backup(p,hot=True)
-            archive=next((p/'backups').glob('*.enc'))
+            archive=next(item for item in (p/'backups').iterdir() if item.suffix in {'.age','.enc'})
             with tarfile.open(archive) as outer:
                 metadata=json.loads(outer.extractfile('content.json').read())
                 self.assertEqual(metadata['consistency'],'verified')

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Isolated BookStack tenant lifecycle. Never prints subprocess output or secrets."""
-import signal, hashlib, hmac, datetime, pty, select, termios
+import signal, hashlib, hmac, datetime, pty, select, termios, tarfile
 import base64, contextlib, fcntl, json, os, re, secrets, shlex, shutil, subprocess, sys, tempfile, time, urllib.request
 from urllib.parse import urlsplit
 from pathlib import Path
@@ -228,6 +228,50 @@ def content(path):
              'latest_page':sql(path,"SELECT name FROM entities WHERE type='page' ORDER BY updated_at DESC,id DESC LIMIT 1;"),
              'uploads':files,'tables':tables }
 
+def fingerprint(path):
+    """Return content plus database markers that change on writes."""
+    result={'content':content(path)}
+    queries={
+        'activities':"SELECT COUNT(*), COALESCE(MAX(id),'') FROM activities;",
+        'page_revisions':"SELECT COUNT(*), COALESCE(MAX(id),'') FROM page_revisions;",
+        'entities':"SELECT COALESCE(MAX(updated_at),'') FROM entities;",
+        'attachments':"SELECT COALESCE(MAX(updated_at),'') FROM attachments;",
+        'images':"SELECT COALESCE(MAX(updated_at),'') FROM images;",
+    }
+    for name,query in queries.items():
+        values=sql(path,query).split('\t')
+        if name in {'activities','page_revisions'}:
+            result[name]={'count':values[0] if values else '', 'max_id':values[1] if len(values)>1 else ''}
+        else:
+            result[name]={'max_updated_at':values[0] if values else ''}
+    return result
+
+def archive_upload_hashes(archive):
+    """Hash upload files directly from the generated gzip tar stream."""
+    files=[]
+    with tarfile.open(archive,'r:gz') as tar:
+        for member in tar.getmembers():
+            if not member.isfile():
+                continue
+            name=member.name
+            if name.startswith('bookstack/www/uploads/'):
+                relative='www/uploads/'+name[len('bookstack/www/uploads/'):]
+            elif name.startswith('bookstack/files/'):
+                relative='files/'+name[len('bookstack/files/'):]
+            else:
+                continue
+            source=tar.extractfile(member)
+            if source is None:
+                raise RuntimeError('Unable to read upload from backup archive')
+            digest=hashlib.sha256()
+            size=0
+            while True:
+                chunk=source.read(1024*1024)
+                if not chunk: break
+                digest.update(chunk); size+=len(chunk)
+            files.append({'path':relative,'bytes':size,'sha256':digest.hexdigest()})
+    return sorted(files,key=lambda item:item['path'])
+
 def restore_http_probe(path):
     """Probe the isolated app only from a short-lived container on its private network."""
     sql(path,"INSERT INTO settings (setting_key,value,type,created_at,updated_at) VALUES ('app-public','true','boolean',NOW(),NOW()) ON DUPLICATE KEY UPDATE value='true',updated_at=NOW();")
@@ -278,17 +322,20 @@ def backup(path, hot=False, keep=False):
         try:
             if not hot:
                 compose(path,'stop','bookstack'); stopped=True
-            before=content(path) if hot else None
+            before=fingerprint(path) if hot else None
             (stage/'database.sql').write_bytes(compose(path,'exec','-T','db','sh','-c','MYSQL_PWD="$MARIADB_PASSWORD" exec mariadb-dump -ubookstack --single-transaction --routines --triggers bookstack'))
             run(['sudo','-n','tar','-czf',str(stage/'bookstack.tar.gz'),'-C',str(path),'bookstack'])
-            after=content(path) if hot else None
-            if hot and after != before:
+            after=fingerprint(path) if hot else None
+            archive_hashes=archive_upload_hashes(stage/'bookstack.tar.gz') if hot else None
+            live_hashes=after['content']['uploads'] if hot else None
+            if hot and (after != before or archive_hashes != live_hashes):
                 if attempt == 0:
                     continue
                 raise RuntimeError('hot-inconsistent')
-            metadata=after if hot else content(path)
+            metadata=dict(after['content']) if hot else content(path)
             metadata['mode']='hot' if hot else 'cold'
             metadata['consistency']='verified'
+            if hot: metadata['fingerprint']=after
             (stage/'content.json').write_text(json.dumps(metadata))
             shutil.copy2(path/'.env',stage/'.env'); shutil.copy2(path/'docker-compose.yml',stage/'docker-compose.yml')
             run(['tar','-cf',str(stage/'snapshot.tar'),'-C',str(stage),'database.sql','content.json','bookstack.tar.gz','.env','docker-compose.yml'])
@@ -333,7 +380,7 @@ def restore(path, src=None):
         if 'mode' in expected or 'consistency' in expected:
             if expected.get('mode') not in {'hot','cold'} or expected.get('consistency') != 'verified':
                 raise RuntimeError('Backup metadata invalid')
-        expected_content={k:v for k,v in expected.items() if k not in {'mode','consistency'}}
+        expected_content={k:v for k,v in expected.items() if k not in {'mode','consistency','fingerprint'}}
         compare_keys=expected_content.keys()
         if {k:actual[k] for k in compare_keys}!=expected_content: raise RuntimeError('Restored content mismatch')
         compose(tmp,'up','-d'); ready_internal(tmp)

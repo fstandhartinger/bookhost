@@ -268,8 +268,8 @@ export default async function Dashboard({
       >
         <h2 className="text-2xl">Sign-in for next time</h2>
         <p className="mt-3 text-sm text-slate-600">
-          Set a password to return to this dashboard. Magic link and Google
-          sign-in are coming soon.
+          Set a password to return to this dashboard. You can also sign in
+          with Google or an e-mailed sign-in link.
         </p>
         {user?.password_set_at && (
           <p className="mt-3 text-sm">

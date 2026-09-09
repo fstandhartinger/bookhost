@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
@@ -108,6 +109,22 @@ class StateTests(unittest.TestCase):
         self.assertEqual(len(results), 7)
         for i in [2, 3, 4, 6]:
             self.assertFalse(results[w.LABELS[i]]['ok'])
+
+    def test_first_backup_deadline_and_error_are_strict(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp); tenant=root/'fb-hot-test'; (tenant/'backups').mkdir(parents=True)
+            (root/'backup.log').write_text('')
+            now=time.time()
+            (tenant/'.initialized').touch()
+            with patch.object(w,'ROOT',root), patch.object(w,'database',return_value={'running':['fb-hot-test'],'provisioning':0,'pending':0,'drafting':0}), patch.object(w,'http',return_value=True), patch.object(w.time,'time',return_value=now):
+                result=w.checks()[w.LABELS[4]]
+                self.assertTrue(result['ok']); self.assertIn('erstbackup ausstehend',result['detail'])
+                os.utime(tenant/'.initialized',(now-40*60,now-40*60))
+                result=w.checks()[w.LABELS[4]]
+                self.assertFalse(result['ok'])
+                (root/'backup.log').write_text(w.stamp(now)+' BACKUP ERROR fb-hot-test\n')
+                result=w.checks()[w.LABELS[4]]
+                self.assertFalse(result['ok']); self.assertIn('ERROR letzte 24h=True',result['detail'])
 
 
 if __name__ == '__main__':

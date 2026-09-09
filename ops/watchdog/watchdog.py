@@ -151,12 +151,24 @@ def checks():
                             f"überfällig: provisioning={db['provisioning']}, pending={db['pending']}"))
     def backups():
         failed = []
+        pending = []
         for slug in running:
-            files = list((ROOT / slug / 'backups').glob('*.age'))
-            if not files or now - max(p.stat().st_mtime for p in files) >= 26 * 3600:
+            tenant = ROOT / slug
+            files = list((tenant / 'backups').glob('*.age'))
+            if not files:
+                marker = tenant / '.initialized'
+                age = now - marker.stat().st_mtime if marker.exists() else float('inf')
+                if age <= 30 * 60:
+                    pending.append(f'{slug} (erstbackup ausstehend ({max(0, int(age // 60))} min))')
+                else:
+                    failed.append(slug)
+            elif now - max(p.stat().st_mtime for p in files) >= 26 * 3600:
                 failed.append(slug)
         errors = recent_backup_errors(ROOT / 'backup.log', now)
-        return db is not None and not failed and not errors, f'fehlend/veraltet: {", ".join(failed) or "keine"}; ERROR letzte 24h={errors}'
+        detail = f'fehlend/veraltet: {", ".join(failed) or "keine"}'
+        if pending:
+            detail += '; ausstehend: ' + ', '.join(pending)
+        return db is not None and not failed and not errors, detail + f'; ERROR letzte 24h={errors}'
     check(LABELS[4], backups)
     def host():
         disk = shutil.disk_usage('/')

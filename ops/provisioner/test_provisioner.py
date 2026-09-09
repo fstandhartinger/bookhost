@@ -286,3 +286,13 @@ class LifecycleTests(unittest.TestCase):
                     self.assertIn('bookstack/www/uploads/document.txt',inner.getnames())
 
 if __name__=='__main__':unittest.main()
+
+
+class HotUploadOrderTest(unittest.TestCase):
+    def test_archive_and_live_upload_lists_compare_order_independently(self):
+        import tenant
+        live=[{'path':'www/uploads/a.png','bytes':1,'sha256':'aa'},{'path':'files/b.txt','bytes':2,'sha256':'bb'}]
+        archived=[{'path':'files/b.txt','bytes':2,'sha256':'bb'},{'path':'www/uploads/a.png','bytes':1,'sha256':'aa'}]
+        self.assertTrue(tenant.uploads_match(archived, live))
+        self.assertFalse(tenant.uploads_match(archived[:1], live))
+        self.assertFalse(tenant.uploads_match([{'path':'files/b.txt','bytes':2,'sha256':'zz'},live[0]], live))

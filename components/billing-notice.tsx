@@ -1,4 +1,5 @@
 import { billingNotice, type BillingState } from "@/lib/trial";
+import React from "react";
 import { ActionButton } from "./action-button";
 export function BillingNotice({
   subscription,

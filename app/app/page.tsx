@@ -1,4 +1,5 @@
 import { OnboardingChecklist } from "@/components/onboarding-checklist";
+import React from "react";
 import { cookies } from "next/headers";
 import { ACTIVE_TEAM_COOKIE } from "@/lib/join-context";
 import { TeamPanel } from "@/components/team-panel";

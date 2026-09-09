@@ -103,7 +103,9 @@ if __name__=='__main__':
     p=argparse.ArgumentParser(); p.add_argument('--once',action='store_true'); p.add_argument('--cron',action='store_true'); args=p.parse_args()
     start=time.monotonic()
     while True:
-        try: once()
+        try:
+            once()
+            print(time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()) + " Worker check completed", flush=True)
         except Exception:
             print('Worker database/configuration failure; details withheld',flush=True); raise SystemExit(1)
         if args.once or (args.cron and time.monotonic()-start>=30): break

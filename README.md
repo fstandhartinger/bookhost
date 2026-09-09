@@ -296,3 +296,12 @@ python3 ops/provisioner/verify-network.py demo e2e-iso
 The app-side receiver is `POST /api/intake/inbound`. See [the inbound webhook contract](docs/inbound-email-webhook.md) for exact JSON/HMAC signing, sender authentication responsibilities, limits, retry semantics, storage and acceptance commands. Apply idempotent migration `015_inbound_email.sql`. Set `INBOUND_WEBHOOK_SECRET` from a private operator secret file; set `INBOUND_EMAIL_ENABLED=true` only after the SMTP adapter and MX are verified. Otherwise the dashboard shows the workspace address as a preview. Owners/admins can manage additional sender addresses or exact domains under **Document intake → Send documents by e-mail**; current team members are always accepted. The existing draft quota and human publication approval apply. New mail items and documents are stored transactionally, with a five-second dispatcher into the existing extraction/draft pool. Run a single app process, as for existing intake limits.
 
 Real DB integration: `INTAKE_DB_TEST=1 npx vitest run tests/inbound-db.integration.test.ts` with the same app/local DB/TLS environment as above. The opt-in `INBOUND_LIVE_CHECK=demo node scripts/inbound-live-check.mjs` uses a production build on port 3989 and real Chutes calls, temporarily assigns an unassigned demo tenant, and cleans its test records. It sends no email and publishes no page.
+
+## Operational watchdog
+
+[The Wissen watchdog](ops/watchdog/README.md) checks control-plane/database health,
+demo and running tenants, provisioning queues, encrypted backup freshness, disk,
+worker heartbeat, and stuck intake drafts every ten minutes. Telegram alerts are
+sent only after two consecutive failed checks and once on recovery. Run
+`ops/watchdog/run.sh --dry-run --simulate` to verify checks and safely preview
+transitions without sending. Install using `python3 ops/watchdog/install-cron.py`.

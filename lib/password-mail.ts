@@ -3,6 +3,9 @@ import { smtpReady } from "./config";
 export function mailTransport() {
   return createTransport({
     host: process.env.SMTP_HOST,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
     port: Number(process.env.SMTP_PORT || 587),
     secure: process.env.SMTP_PORT === "465",
     auth: process.env.SMTP_USER

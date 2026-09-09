@@ -7,9 +7,10 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run typecheck && next build",
     "start": "next start -H 0.0.0.0",
-    "lint": "eslint .",
+    "lint": "eslint . && npm run typecheck",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "stats": "node scripts/stats.mjs",
     "migrate": "node scripts/migrate.mjs"

@@ -1,12 +1,12 @@
 ---
-title: "How we test every BookStack backup restore"
+title: "How we test BookStack backup restores"
 description: "Inside Wissen’s isolated restore check: encrypted archives, HMAC authentication, book and page comparisons, and the limits of what a passing test proves."
 date: "2026-09-09"
 author: "Florian Standhartinger"
 tags: ["BookStack", "Backups", "Operations"]
 ---
 
-A backup file is evidence that something was written. It is not yet evidence that a team can recover its wiki. Wissen has an automated restore-check procedure that rebuilds a BookStack instance in a temporary, isolated stack. The title describes the checks performed whenever we run that procedure: **we do not currently restore-test every daily backup automatically**. We have tested a demo restore, and the implementation is public in our [operations documentation](https://github.com/fstandhartinger/bookstack-ops/tree/main/ops/provisioner).
+A backup file is evidence that something was written. It is not yet evidence that a team can recover its wiki. Wissen has an automated restore-check procedure that rebuilds a BookStack instance in a temporary, isolated stack. We run these checks as a separate verification step: **we do not currently restore-test every daily backup automatically**. We have tested a demo restore, and the implementation is public in our [operations documentation](https://github.com/fstandhartinger/bookstack-ops/tree/main/ops/provisioner).
 
 ## Start with a consistent backup
 

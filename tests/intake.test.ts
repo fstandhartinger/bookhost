@@ -288,7 +288,7 @@ describe("Upload destinations", () => {
   });
   it.each([
     { book_id: "new", chapter_id: "2" },
-    { book_id: "NaN" },
+    { book_id: "NaN", chapter_id: "" },
     { book_id: "1", chapter_id: "-1" },
   ])(
     "rejects invalid destinations before mutating BookStack",

@@ -7,9 +7,8 @@ export function BillingNotice({
   subscription: BillingState | null;
   compact?: boolean;
 }) {
-  const notice = subscription && billingNotice(subscription);
-  if (!notice || (compact && !notice.kind.startsWith("trial_ending")))
-    return null;
+  const notice = billingNotice(subscription);
+  if (!notice) return null;
   if (compact && !notice.urgent) return null;
   if (notice.kind === "active")
     return <p className="mt-5 text-sm text-slate-600">{notice.text}</p>;
@@ -19,9 +18,20 @@ export function BillingNotice({
       className={`mt-6 rounded-xl border p-5 ${notice.urgent ? "border-red-300 bg-red-50 text-red-900" : "border-teal-200 bg-teal-50 text-teal-900"}`}
     >
       <p className="font-medium">{notice.text}</p>
-      <ActionButton endpoint="/api/portal" className="button-secondary mt-3">
-        Add a payment method
-      </ActionButton>
+      {notice.action !== "none" && (
+        <ActionButton
+          endpoint={
+            notice.action === "checkout" ? "/api/checkout" : "/api/portal"
+          }
+          className="button-secondary mt-3"
+        >
+          {notice.action === "checkout"
+            ? "Resume workspace"
+            : notice.kind.startsWith("trial")
+              ? "Add a payment method"
+              : "Manage billing"}
+        </ActionButton>
+      )}
     </div>
   );
 }

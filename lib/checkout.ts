@@ -7,6 +7,7 @@ export function checkoutParams({
   teamId,
   utmSource,
   noAnalytics,
+  resume = false,
 }: {
   price: string;
   url: string;
@@ -15,6 +16,7 @@ export function checkoutParams({
   teamId?: string;
   utmSource?: string | null;
   noAnalytics?: boolean;
+  resume?: boolean;
 }): Stripe.Checkout.SessionCreateParams {
   return {
     mode: "subscription",
@@ -23,8 +25,14 @@ export function checkoutParams({
       ...(process.env.STRIPE_TAX_RATE_DE
         ? { default_tax_rates: [process.env.STRIPE_TAX_RATE_DE] }
         : {}),
-      trial_period_days: 14,
-      trial_settings: { end_behavior: { missing_payment_method: "cancel" } },
+      ...(!resume
+        ? {
+            trial_period_days: 14,
+            trial_settings: {
+              end_behavior: { missing_payment_method: "cancel" as const },
+            },
+          }
+        : {}),
       metadata: {
         ...(utmSource ? { utm_source: utmSource } : {}),
         ...(noAnalytics ? { no_analytics: "1" } : {}),

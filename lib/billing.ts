@@ -1,3 +1,4 @@
+import { billingEligible } from "./trial";
 import { campaign } from "./analytics/shared";
 import { normalizeEmail } from "./email";
 import type Stripe from "stripe";
@@ -83,7 +84,9 @@ export async function cancelDuplicateCheckout(
     [email, id],
   );
   if (!existing.rows[0]) return false;
-  const subscription = await stripe.subscriptions.retrieve(id);
+  const subscription = await stripe.subscriptions.retrieve(id, {
+    expand: ["customer"],
+  });
   if (subscription.status !== "canceled")
     await stripe.subscriptions.cancel(id, {
       invoice_now: false,
@@ -104,7 +107,7 @@ export async function syncSubscription(
   if (!team.rows[0]) return;
   const item = sub.items.data[0];
   await client.query(
-    `INSERT INTO subscriptions(team_id,stripe_subscription_id,status,price_id,trial_end,current_period_end,cancel_at_period_end) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(stripe_subscription_id) DO UPDATE SET status=EXCLUDED.status,price_id=EXCLUDED.price_id,trial_end=EXCLUDED.trial_end,current_period_end=EXCLUDED.current_period_end,cancel_at_period_end=EXCLUDED.cancel_at_period_end,updated_at=now()`,
+    `INSERT INTO subscriptions(team_id,stripe_subscription_id,status,price_id,trial_end,current_period_end,cancel_at_period_end,stripe_created_at,has_payment_method) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(stripe_subscription_id) DO UPDATE SET status=EXCLUDED.status,price_id=EXCLUDED.price_id,trial_end=EXCLUDED.trial_end,current_period_end=EXCLUDED.current_period_end,cancel_at_period_end=EXCLUDED.cancel_at_period_end,stripe_created_at=EXCLUDED.stripe_created_at,has_payment_method=EXCLUDED.has_payment_method,updated_at=now()`,
     [
       team.rows[0].id,
       sub.id,
@@ -115,20 +118,39 @@ export async function syncSubscription(
         ? new Date(item.current_period_end * 1000)
         : null,
       sub.cancel_at_period_end,
+      new Date(sub.created * 1000),
+      Boolean(
+        sub.default_payment_method ||
+        sub.default_source ||
+        (typeof sub.customer !== "string" &&
+          !sub.customer.deleted &&
+          (sub.customer.invoice_settings.default_payment_method ||
+            sub.customer.default_source)),
+      ),
     ],
   );
-  const desired = ["canceled", "unpaid", "incomplete_expired"].includes(
-    sub.status,
-  )
-    ? "suspended"
-    : ["trialing", "active"].includes(sub.status)
-      ? "running"
-      : null;
-  if (desired)
+  const current = (
     await client.query(
-      "UPDATE tenants SET desired_state=$2,updated_at=now() WHERE team_id=$1 AND desired_state<>$2",
-      [team.rows[0].id, desired],
-    );
+      "SELECT * FROM effective_subscriptions WHERE team_id=$1",
+      [team.rows[0].id],
+    )
+  ).rows[0];
+  const desired = billingEligible(current) ? "running" : "suspended";
+  await client.query(
+    "UPDATE tenants SET desired_state=$2,updated_at=now() WHERE team_id=$1 AND desired_state<>$2",
+    [team.rows[0].id, desired],
+  );
+  await client.query(
+    `UPDATE notifications SET resolved_at=now() WHERE user_id IN
+    (SELECT owner_user_id FROM teams WHERE id=$1) AND resolved_at IS NULL AND
+    (subscription_id IS DISTINCT FROM $2 OR $3='active' OR ($4 AND kind LIKE 'trial_ending%'))`,
+    [
+      team.rows[0].id,
+      current?.stripe_subscription_id,
+      current?.status,
+      current?.has_payment_method ?? false,
+    ],
+  );
 }
 export async function handleStripeEvent(
   client: Queryable,
@@ -152,7 +174,10 @@ export async function handleStripeEvent(
         ? session.subscription
         : session.subscription?.id;
     if (id)
-      await syncSubscription(client, await stripe.subscriptions.retrieve(id));
+      await syncSubscription(
+        client,
+        await stripe.subscriptions.retrieve(id, { expand: ["customer"] }),
+      );
   } else if (
     [
       "customer.subscription.created",
@@ -165,14 +190,31 @@ export async function handleStripeEvent(
       client,
       event.type === "customer.subscription.deleted"
         ? sub
-        : await stripe.subscriptions.retrieve(sub.id),
+        : await stripe.subscriptions.retrieve(sub.id, { expand: ["customer"] }),
     );
-  } else if (event.type === "invoice.payment_failed") {
+  } else if (event.type === "customer.updated") {
+    const customer = event.data.object as Stripe.Customer;
+    const subscriptions = await client.query(
+      `SELECT s.stripe_subscription_id FROM subscriptions s
+      JOIN teams t ON t.id=s.team_id WHERE t.stripe_customer_id=$1 AND s.status IN ('trialing','active','past_due')`,
+      [customer.id],
+    );
+    for (const row of subscriptions.rows)
+      await syncSubscription(
+        client,
+        await stripe.subscriptions.retrieve(row.stripe_subscription_id, {
+          expand: ["customer"],
+        }),
+      );
+  } else if (["invoice.payment_failed", "invoice.paid"].includes(event.type)) {
     const invoice = event.data.object as Stripe.Invoice;
     const subscription = invoice.parent?.subscription_details?.subscription;
     const id =
       typeof subscription === "string" ? subscription : subscription?.id;
     if (id)
-      await syncSubscription(client, await stripe.subscriptions.retrieve(id));
+      await syncSubscription(
+        client,
+        await stripe.subscriptions.retrieve(id, { expand: ["customer"] }),
+      );
   }
 }

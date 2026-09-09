@@ -75,6 +75,14 @@ export async function POST(request: Request) {
         { error: "Billing is being set up. Please try again shortly." },
         { status: 503 },
       );
+    const previous = team
+      ? (
+          await db.query(
+            "SELECT 1 FROM subscriptions WHERE team_id=$1 LIMIT 1",
+            [team.id],
+          )
+        ).rowCount
+      : 0;
     const noAnalytics = optedOut(request.headers);
     const utmSource = noAnalytics
       ? null
@@ -87,6 +95,7 @@ export async function POST(request: Request) {
         email,
         customer: team?.stripe_customer_id,
         teamId: team?.id,
+        resume: Boolean(previous),
         utmSource,
         noAnalytics,
       }),

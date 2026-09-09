@@ -1,11 +1,19 @@
+import type Stripe from "stripe";
 import { beforeEach, expect, it, vi } from "vitest";
 const state = vi.hoisted(() => ({
   status: "active",
+  previous: false,
   customer: "cus_existing",
-  create: vi.fn(async () => ({
-    id: "cs_fixture",
-    url: "https://checkout.stripe.com/fixture",
-  })),
+  create: vi
+    .fn<
+      (
+        params: Stripe.Checkout.SessionCreateParams,
+      ) => Promise<{ id: string; url: string }>
+    >()
+    .mockResolvedValue({
+      id: "cs_fixture",
+      url: "https://checkout.stripe.com/fixture",
+    }),
 }));
 vi.mock("@/auth", () => ({
   auth: async () => ({ user: { id: "owner", email: "owner@example.invalid" } }),
@@ -23,7 +31,11 @@ vi.mock("@/lib/db", () => ({
         return { rows: [{ id: "team", stripe_customer_id: state.customer }] };
       return {
         rows: [],
-        rowCount: sql.includes("FROM subscriptions") && state.status ? 1 : 0,
+        rowCount:
+          sql.includes("FROM subscriptions") &&
+          (sql.includes("status IN") ? state.status : state.previous)
+            ? 1
+            : 0,
       };
     },
   },
@@ -85,4 +97,15 @@ it("forwards sanitized attribution and privacy choice into Stripe metadata", asy
   const params = state.create.mock.calls.at(-1)?.[0];
   expect(params).toMatchObject({ metadata: { no_analytics: "1" } });
   expect(params).not.toHaveProperty("metadata.utm_source");
+});
+
+it("resumes with the same customer and no second trial", async () => {
+  state.status = "";
+  state.previous = true;
+  expect((await POST(request())).status).toBe(200);
+  const params = state.create.mock.calls.at(-1)![0];
+  expect(params.customer).toBe("cus_existing");
+  expect(params.subscription_data).not.toHaveProperty("trial_period_days");
+  expect(params.subscription_data).not.toHaveProperty("trial_settings");
+  state.previous = false;
 });

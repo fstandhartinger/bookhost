@@ -30,7 +30,7 @@ export async function POST(request: Request) {
           status: 403,
         };
       const subscription = await client.query(
-        "SELECT 1 FROM subscriptions WHERE team_id=$1 AND (status='active' OR (status='trialing' AND trial_end>now()))",
+        "SELECT 1 FROM effective_subscriptions WHERE team_id=$1 AND (status='active' OR (status='trialing' AND trial_end>now()))",
         [team.id],
       );
       if (!subscription.rowCount)

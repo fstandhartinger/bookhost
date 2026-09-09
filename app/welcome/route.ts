@@ -69,7 +69,9 @@ export async function GET(request: NextRequest) {
       if (subscriptionId)
         await syncSubscription(
           client,
-          await stripe.subscriptions.retrieve(subscriptionId),
+          await stripe.subscriptions.retrieve(subscriptionId, {
+            expand: ["customer"],
+          }),
         );
       for (const document of ["agb", "avv"]) {
         await client.query(

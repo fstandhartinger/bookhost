@@ -1,7 +1,7 @@
 import { generateNotifications } from "./notifications";
 import { mailTransport } from "./password-mail";
 import { baseUrl } from "./config";
-import { db } from "./db";
+import { db, transaction } from "./db";
 const state = globalThis as typeof globalThis & {
   authCleanupTimer?: NodeJS.Timeout;
 };
@@ -12,22 +12,6 @@ export function startAuthCleanup() {
     if (running) return;
     running = true;
     try {
-      await generateNotifications(
-        db,
-        new Date(),
-        process.env.SMTP_HOST
-          ? async (email, text) => {
-              await mailTransport().sendMail({
-                from:
-                  process.env.SMTP_FROM ||
-                  "Wissen <noreply@wissen.app.mintapis.com>",
-                to: email,
-                subject: "Your Wissen workspace: billing notice",
-                text: `${text}\n\nManage billing: ${baseUrl()}/app/billing`,
-              });
-            }
-          : undefined,
-      );
       await db.query(
         "DELETE FROM password_reset_tokens WHERE expires_at<now()",
       );
@@ -36,6 +20,24 @@ export function startAuthCleanup() {
         "DELETE FROM page_views WHERE ts<now()-interval '90 days'",
       );
       await db.query("DELETE FROM events WHERE ts<now()-interval '90 days'");
+      await transaction(async (client) =>
+        generateNotifications(
+          client,
+          new Date(),
+          process.env.SMTP_HOST
+            ? async (email, text) => {
+                await mailTransport().sendMail({
+                  from:
+                    process.env.SMTP_FROM ||
+                    "Wissen <noreply@wissen.app.mintapis.com>",
+                  to: email,
+                  subject: "Your Wissen workspace: billing notice",
+                  text: `${text}\n\nManage billing: ${baseUrl()}/app/billing`,
+                });
+              }
+            : undefined,
+        ),
+      );
     } catch {
       console.error("Authentication cleanup failed");
     } finally {

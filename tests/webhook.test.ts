@@ -9,6 +9,7 @@ import {
 } from "../lib/billing";
 const sub = {
   id: "sub_1",
+  created: 1790000000,
   customer: "cus_1",
   status: "trialing",
   trial_end: 1800000000,
@@ -17,7 +18,7 @@ const sub = {
     data: [{ price: { id: "price_team" }, current_period_end: 1800000000 }],
   },
 } as Stripe.Subscription;
-function mockDb(duplicate = false) {
+function mockDb(duplicate = false, status = "trialing") {
   const query = vi.fn(async (sql: string) => {
     if (sql.startsWith("INSERT INTO stripe_events"))
       return {
@@ -26,6 +27,11 @@ function mockDb(duplicate = false) {
       };
     if (sql.startsWith("SELECT id FROM teams"))
       return { rows: [{ id: "team_1" }], rowCount: 1 };
+    if (sql.startsWith("SELECT * FROM effective_subscriptions"))
+      return {
+        rows: [{ ...sub, status, trial_end: new Date(sub.trial_end! * 1000) }],
+        rowCount: 1,
+      };
     return { rows: [], rowCount: 1 };
   });
   return { query, client: { query } as unknown as Queryable };
@@ -58,6 +64,8 @@ describe("webhook processing", () => {
         "price_team",
         new Date(1800000000000),
         new Date(1800000000000),
+        false,
+        new Date(1790000000000),
         false,
       ],
     );
@@ -136,20 +144,15 @@ it.each([
   "active",
   "past_due",
 ])("reconciles tenant desired state for %s", async (status) => {
-  const { query, client } = mockDb();
+  const { query, client } = mockDb(false, status);
   await syncSubscription(client, { ...sub, status } as Stripe.Subscription);
-  const calls = query.mock.calls.filter((c) =>
-    c[0].startsWith("UPDATE tenants"),
+  expect(query).toHaveBeenCalledWith(
+    expect.stringContaining("UPDATE tenants"),
+    [
+      "team_1",
+      ["active", "trialing"].includes(status) ? "running" : "suspended",
+    ],
   );
-  if (status === "past_due") expect(calls).toHaveLength(0);
-  else
-    expect(query).toHaveBeenCalledWith(
-      expect.stringContaining("UPDATE tenants"),
-      [
-        "team_1",
-        ["active", "trialing"].includes(status) ? "running" : "suspended",
-      ],
-    );
 });
 it("cancels a duplicate anonymous subscription without attaching a second team", async () => {
   const query = vi.fn(async () => ({

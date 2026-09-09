@@ -23,48 +23,47 @@ describe("trial thresholds", () => {
     vi.setSystemTime(end.getTime() - left);
     expect(billingNotice(sub)).toMatchObject({ kind, urgent });
   });
-  it("only reports suspended once the webhook requests it", () => {
-    expect(billingNotice(sub, end)).toBeNull();
+  it("handles exact expiry, cancellation, payment and missing subscription honestly", () => {
+    expect(billingNotice(sub, end)?.kind).toBe("trial_ended");
+    expect(billingNotice({ ...sub, status: "canceled" }, end)?.kind).toBe(
+      "subscription_ended",
+    );
+    expect(billingNotice({ ...sub, status: "active" }, end)?.text).toContain(
+      "€39 + VAT",
+    );
     expect(
       billingNotice(
-        { ...sub, status: "canceled", desired_state: "suspended" },
+        { ...sub, status: "active", cancel_at_period_end: true },
         end,
+      )?.text,
+    ).toContain("no further invoice");
+    expect(
+      billingNotice({ ...sub, status: "active", invoice_amount: "€19.50" }, end)
+        ?.text,
+    ).toContain("€19.50");
+    expect(
+      billingNotice(
+        { ...sub, has_payment_method: true },
+        new Date(end.getTime() - 1000),
+      )?.action,
+    ).toBe("none");
+    expect(
+      billingNotice(
+        { ...sub, desired_state: "suspended" },
+        new Date(end.getTime() - 1000),
       )?.kind,
-    ).toBe("trial_ended");
-    expect(billingNotice({ ...sub, status: "active" }, end)?.text).toContain(
-      "€46.41 incl. VAT",
-    );
+    ).toBe("syncing");
     expect(billingNotice({ ...sub, status: "past_due" }, end)?.kind).toBe(
       "payment_failed",
     );
+    expect(billingNotice(null)?.kind).toBe("no_subscription");
   });
-  it("deduplicates each user/kind/period including concurrent runs and mail", async () => {
-    const keys = new Set();
-    const query = vi.fn(async (sql: string, args: unknown[] = []) => {
-      if (sql.startsWith("SELECT"))
-        return {
-          rows: [
-            { ...sub, owner_user_id: "user", email: "test@example.invalid" },
-          ],
-        };
-      const key = JSON.stringify(args.slice(0, 3));
-      if (keys.has(key)) return { rowCount: 0 };
-      keys.add(key);
-      return { rowCount: 1 };
-    });
-    const db = { query } as unknown as Queryable;
-    const mail = vi.fn();
-    const now = new Date(end.getTime() - 2 * 86400000);
-    expect(
-      await Promise.all([
-        generateNotifications(db, now, mail),
-        generateNotifications(db, now, mail),
-      ]),
-    ).toEqual([1, 0]);
-    expect(mail).toHaveBeenCalledTimes(1);
-    expect(
-      await generateNotifications(db, new Date(end.getTime() - 86400000), mail),
-    ).toBe(1);
+  it("skips a run when another database transaction owns the lock", async () => {
+    const query = vi.fn(async () => ({ rows: [{ acquired: false }] }));
+    expect(await generateNotifications({ query } as unknown as Queryable)).toBe(
+      0,
+    );
+    expect(query).toHaveBeenCalledTimes(1);
   });
   it("scopes read updates to authenticated owner", async () => {
     const query = vi.fn();

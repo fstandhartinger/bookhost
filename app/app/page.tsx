@@ -1,3 +1,5 @@
+import { billingEligible } from "@/lib/trial";
+import { invoicePreview } from "@/lib/invoice-preview";
 import { BillingNotice } from "@/components/billing-notice";
 import { markNoticeRead } from "@/lib/notifications";
 import { revalidatePath } from "next/cache";
@@ -37,11 +39,15 @@ export default async function Dashboard({
   const subscription = team
     ? (
         await db.query(
-          "SELECT * FROM subscriptions WHERE team_id=$1 ORDER BY updated_at DESC LIMIT 1",
+          "SELECT * FROM effective_subscriptions WHERE team_id=$1",
           [team.id],
         )
       ).rows[0]
     : null;
+  if (subscription?.status === "active" && !subscription.cancel_at_period_end)
+    subscription.invoice_amount = await invoicePreview(
+      subscription.stripe_subscription_id,
+    );
   // Never serialize or select the password into a server component payload.
   const tenant = team
     ? (
@@ -67,20 +73,22 @@ export default async function Dashboard({
     : [];
   const notices = (
     await db.query(
-      "SELECT id,payload,created_at,read_at FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 50",
+      "SELECT id,payload,created_at,read_at FROM notifications WHERE user_id=$1 AND resolved_at IS NULL ORDER BY created_at DESC LIMIT 50",
       [session.user.id],
     )
   ).rows;
   const status =
-    tenant?.desired_state === "suspended" ? "suspended" : tenant?.status;
+    !billingEligible(subscription) || tenant?.desired_state === "suspended"
+      ? "suspended"
+      : tenant?.status === "suspended"
+        ? "restoring"
+        : tenant?.status;
   const delayed =
     status === "provisioning" &&
     Date.now() - new Date(tenant.updated_at).getTime() > 20 * 60 * 1000;
-  const eligible =
-    subscription?.status === "active" ||
-    (subscription?.status === "trialing" &&
-      new Date(subscription.trial_end) > new Date());
+  const eligible = billingEligible(subscription);
   const descriptions: Record<string, string> = {
+    restoring: "Your subscription is valid. Your workspace is being restored.",
     pending: "Your workspace is in the queue. We’ll prepare it shortly.",
     provisioning:
       "Your BookStack workspace is being prepared. This page will update when it is ready.",
@@ -88,7 +96,8 @@ export default async function Dashboard({
       "Your workspace is ready. Open BookStack to start organising your team’s knowledge.",
     failed:
       "We couldn’t finish setting up your workspace. Contact support so we can help.",
-    suspended: "suspended — add a payment method to resume",
+    suspended:
+      "Workspace access is suspended. Follow the billing notice above to restore access.",
   };
   return (
     <section className="py-14">
@@ -109,13 +118,19 @@ export default async function Dashboard({
           <button className="button-secondary">Sign out</button>
         </form>
       </div>
-      <BillingNotice
-        subscription={
-          subscription
-            ? { ...subscription, desired_state: tenant?.desired_state }
-            : null
-        }
-      />
+      {(subscription || tenant) && (
+        <BillingNotice
+          subscription={
+            subscription
+              ? {
+                  ...subscription,
+                  desired_state: tenant?.desired_state,
+                  tenant_status: tenant?.status,
+                }
+              : null
+          }
+        />
+      )}
       <section className="price-card mt-6">
         <h2 className="text-xl">Notices</h2>
         {notices.length ? (
@@ -132,7 +147,7 @@ export default async function Dashboard({
                   {notice.read_at ? "Read" : "Unread"}
                 </p>
                 <a href="/app/billing" className="mr-4 text-sm underline">
-                  Manage billing
+                  Resume workspace
                 </a>
                 {!notice.read_at && (
                   <form
@@ -205,18 +220,26 @@ export default async function Dashboard({
               </p>
               {status === "suspended" && (
                 <ActionButton
-                  endpoint="/api/portal"
+                  endpoint={
+                    !subscription ||
+                    ["canceled", "incomplete_expired"].includes(
+                      subscription.status,
+                    )
+                      ? "/api/checkout"
+                      : "/api/portal"
+                  }
                   className="button-secondary mt-4"
                 >
-                  Manage billing
+                  Resume workspace
                 </ActionButton>
               )}
               <p className="mt-4 break-all text-sm font-medium">
                 {tenant.slug}.wissen.app.mintapis.com
               </p>
-              {!delayed && ["pending", "provisioning"].includes(status) && (
-                <RefreshStatus />
-              )}
+              {!delayed &&
+                ["pending", "provisioning", "restoring"].includes(status) && (
+                  <RefreshStatus />
+                )}
               {status === "running" && (
                 <>
                   <a
@@ -273,10 +296,22 @@ export default async function Dashboard({
           ) : (
             <>
               <p className="my-5 leading-7 text-slate-600">
-                Start a free trial to create your team’s workspace. No credit
-                card needed.
+                {subscription
+                  ? "Restore your subscription before creating a workspace. Follow the billing notice above; a returning subscription has no new free trial."
+                  : "Start a free trial to create your team’s workspace. No credit card needed."}
               </p>
-              <ActionButton />
+              <ActionButton
+                endpoint={
+                  !subscription ||
+                  ["canceled", "incomplete_expired"].includes(
+                    subscription.status,
+                  )
+                    ? "/api/checkout"
+                    : "/api/portal"
+                }
+              >
+                {subscription ? "Resume workspace" : "Start free trial"}
+              </ActionButton>
             </>
           )}
         </div>
@@ -303,12 +338,14 @@ export default async function Dashboard({
               .
             </p>
           )}
-          {subscription?.status === "trialing" && (
-            <p className="mb-5 text-sm leading-6 text-slate-600">
-              Add a payment method to continue after your trial. Without one,
-              the subscription ends automatically.
-            </p>
-          )}
+          {subscription?.status === "trialing" &&
+            !subscription.has_payment_method &&
+            !subscription.cancel_at_period_end && (
+              <p className="mb-5 text-sm leading-6 text-slate-600">
+                Add a payment method to continue after your trial. Without one,
+                the subscription ends automatically.
+              </p>
+            )}
           {subscription?.status === "past_due" && (
             <p className="mb-5 text-sm text-red-800">
               Your payment needs attention. Update your payment method below.

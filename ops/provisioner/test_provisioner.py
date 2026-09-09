@@ -64,6 +64,25 @@ class LifecycleTests(unittest.TestCase):
             tenant.public_ready('https://demo.example')
             request.assert_called_once()
 
+    def test_restore_http_probe_checks_login_page_and_png(self):
+        with tempfile.TemporaryDirectory() as d:
+            path=Path(d)/'restore-fixture'; path.mkdir()
+            calls=[]
+            def fake_run(args, data=None):
+                calls.append(args)
+                if args[:3]==['sudo','-n','docker'] and args[3]=='inspect':
+                    return b'{"wissen-fixture_private":{"IPAddress":"172.20.0.2"}}'
+                if 'curlimages/curl:8.10.1' in args:
+                    if any('/login' in item for item in args):
+                        return b'HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<title>BookStack</title>'
+                    if '-D' in args:
+                        return b'HTTP/1.1 200 OK\r\nContent-Type: image/png\r\n\r\n'
+                    return b'<title>Fixture Page</title><h1>Fixture Page</h1>'
+                return b'container-id'
+            with patch.object(tenant,'sql',side_effect=['','42\tFixture Page\tfixture-page\tfixture-book','/uploads/images/fixture.png']), patch.object(tenant,'compose',return_value=b'container-id'), patch.object(tenant,'run',side_effect=fake_run):
+                result=tenant.restore_http_probe(path)
+            self.assertEqual(result,{'login':'200 BookStack','page':'200 Fixture Page','image':'200 image/png'})
+
     def test_slug_contract(self):
         for slug in json.loads((tenant.HERE/'reserved-slugs.json').read_text())+['restore-x','restoreabc','ab','a--b','a'*31,'../foo','Foo','-foo','foo-']:
             self.assertFalse(tenant.valid_slug(slug),slug)

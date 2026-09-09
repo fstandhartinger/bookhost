@@ -2,6 +2,7 @@
 """Isolated BookStack tenant lifecycle. Never prints subprocess output or secrets."""
 import signal, hashlib, hmac, datetime, pty, select, termios
 import base64, contextlib, fcntl, json, os, re, secrets, shlex, shutil, subprocess, sys, tempfile, time, urllib.request
+from urllib.parse import urlsplit
 from pathlib import Path
 ROOT = Path('/home/flori/ventures2/bookstack/tenants')
 HERE = Path(__file__).resolve().parent
@@ -185,32 +186,10 @@ def ensure_key():
 def crypt(src, dst, decrypt=False):
     ensure_key()
     if (src.suffix == '.age') if decrypt else bool(shutil.which('age')):
-        # age reads passphrases from a controlling terminal, never argv/env.
-        args=['age', '-d' if decrypt else '-p', '-o',str(dst),str(src)]
-        pid, fd=pty.fork()
-        if pid == 0:
-            attrs=termios.tcgetattr(0); attrs[3] &= ~termios.ECHO; termios.tcsetattr(0,termios.TCSANOW,attrs)
-            os.execvp(args[0],args)
-        buf=b''; deadline=time.monotonic()+180
-        try:
-            while time.monotonic()<deadline:
-                if select.select([fd],[],[],1)[0]:
-                    try: chunk=os.read(fd,4096)
-                    except OSError: break
-                    if not chunk: break
-                    buf+=chunk
-                    if b':' in buf:
-                        os.write(fd,KEY.read_bytes().strip()+b'\n'); buf=b''
-                done,status=os.waitpid(pid,os.WNOHANG)
-                if done:
-                    if status: raise RuntimeError('age encryption/decryption failed')
-                    return
-            done,status=os.waitpid(pid,os.WNOHANG)
-            if not done:
-                os.kill(pid,signal.SIGKILL); os.waitpid(pid,0)
-                raise RuntimeError('age timeout')
-            if status: raise RuntimeError('age encryption/decryption failed')
-        finally: os.close(fd)
+        # script supplies /dev/tty to age while keeping the passphrase out of argv/env.
+        command='age '+('-d' if decrypt else '-p')+' -o '+shlex.quote(str(dst))+' '+shlex.quote(str(src))
+        payload=KEY.read_bytes().strip()+b'\n'+(b'' if decrypt else KEY.read_bytes().strip()+b'\n')
+        run(['script','-qec',command,'/dev/null'],data=payload)
     else:
         run(['openssl','enc','-aes-256-cbc','-pbkdf2','-salt',*(['-d'] if decrypt else []),'-pass','file:'+str(KEY),'-in',str(src),'-out',str(dst)])
 
@@ -225,10 +204,56 @@ def retention(path):
             run(['sudo','-n','rm','-rf','--',str(old)])
 
 def content(path):
+    upload_roots=[('www/uploads',path/'bookstack'/'www'/'uploads'),('files',path/'bookstack'/'files')]
+    files=[]
+    for prefix,uploads in upload_roots:
+        if uploads.exists():
+            for item in sorted(p for p in uploads.rglob('*') if p.is_file()):
+                files.append({'path':prefix+'/'+str(item.relative_to(uploads)),'bytes':item.stat().st_size,'sha256':hashlib.sha256(item.read_bytes()).hexdigest()})
+    tables={}
+    for table in ('attachments','images'):
+        rows=sql(path,f"SELECT COUNT(*) FROM {table};")
+        digest=sql(path,f"SELECT SHA2(COALESCE(GROUP_CONCAT(CONCAT_WS('|',id,name,path,uploaded_to) ORDER BY id SEPARATOR '\\n'),''),256) FROM {table};")
+        tables[table]={'count':rows,'sha256':digest}
     return { 'pages':sql(path,"SELECT COUNT(*) FROM entities WHERE type='page';"),
              'books':sql(path,"SELECT COUNT(*) FROM entities WHERE type='book';"),
              'book_titles':sql(path,"SELECT name FROM entities WHERE type='book' ORDER BY id;"),
-             'latest_page':sql(path,"SELECT name FROM entities WHERE type='page' ORDER BY updated_at DESC,id DESC LIMIT 1;") }
+             'latest_page':sql(path,"SELECT name FROM entities WHERE type='page' ORDER BY updated_at DESC,id DESC LIMIT 1;"),
+             'uploads':files,'tables':tables }
+
+def restore_http_probe(path):
+    """Probe the isolated app only from a short-lived container on its private network."""
+    sql(path,"INSERT INTO settings (setting_key,value,type,created_at,updated_at) VALUES ('app-public','true','boolean',NOW(),NOW()) ON DUPLICATE KEY UPDATE value='true',updated_at=NOW();")
+    cid=compose(path,'ps','-q','bookstack').decode().strip()
+    if not cid: raise RuntimeError('Restore HTTP probe has no BookStack container')
+    networks=json.loads(run(['sudo','-n','docker','inspect','-f','{{json .NetworkSettings.Networks}}',cid]).decode())
+    network=next(iter(networks))
+    def curl(args):
+        deadline=time.monotonic()+60
+        while True:
+            try: return run(['sudo','-n','docker','run','--rm','--network',network,'curlimages/curl:8.10.1',*args]).decode('utf-8','replace')
+            except RuntimeError:
+                if time.monotonic()>=deadline: raise
+                time.sleep(2)
+    login=curl(['-fsS','-D','-','http://bookstack/login'])
+    status=login.splitlines()[0] if login else ''
+    title=re.search(r'<title[^>]*>\s*(.*?)\s*</title>',login,re.I|re.S)
+    if not status.startswith('HTTP/') or ' 200 ' not in status or not title or not title.group(1).strip():
+        raise RuntimeError('Restore HTTP login probe failed')
+    page=sql(path,"SELECT p.id,p.name,p.slug,b.slug FROM entities p JOIN entities b ON b.id=p.book_id AND b.type='book' WHERE p.type='page' ORDER BY p.updated_at DESC,p.id DESC LIMIT 1;").splitlines()[0].split('\t')
+    page_body=curl(['-fsS','http://bookstack/books/'+page[3]+'/page/'+page[2]])
+    page_title=re.search(r'<title[^>]*>\s*(.*?)\s*</title>',page_body,re.I|re.S)
+    if not page_title or page[1] not in page_body:
+        raise RuntimeError('Restore HTTP page probe failed')
+    image_url=sql(path,"SELECT url FROM images ORDER BY id LIMIT 1;")
+    image_result='not-run'
+    if image_url:
+        image_path=urlsplit(image_url).path or image_url
+        headers=curl(['-fsS','-D','-','-o','/dev/null','http://bookstack'+image_path])
+        if ' 200 ' not in (headers.splitlines()[0] if headers else '') or not re.search(r'content-type:\s*image/png\s*$',headers,re.I|re.M):
+            raise RuntimeError('Restore HTTP image probe failed')
+        image_result='200 image/png'
+    return {'login':'200 '+title.group(1).strip(),'page':'200 '+page[1],'image':image_result}
 
 def backup(path):
     retention(path)
@@ -280,7 +305,8 @@ def restore(path, src=None):
         if actual!=expected: raise RuntimeError('Restored content mismatch')
         compose(tmp,'up','-d'); ready_internal(tmp)
         if content(tmp)!=expected: raise RuntimeError('Restored content changed after startup')
-        print('RESTORE OK '+json.dumps(actual,ensure_ascii=False))
+        probe=restore_http_probe(tmp)
+        print('RESTORE OK '+json.dumps({'content':actual,'http':probe},ensure_ascii=False))
     finally:
         try:
             if (tmp/'docker-compose.yml').exists(): compose(tmp,'down','--remove-orphans')

@@ -119,3 +119,61 @@ describe("member billing view", () => {
     expect(ownerMarkup).toContain("Your trial starts when you sign up");
   });
 });
+
+describe("own-workspace hint", () => {
+  async function renderDashboard(
+    userId: string,
+    teams: Record<string, unknown>[],
+    selected?: string,
+  ) {
+    state.auth.mockResolvedValue({
+      auth_time: Math.floor(Date.now() / 1000),
+      user: { id: userId, email: `${userId}@example.invalid` },
+    });
+    state.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("FROM teams t JOIN memberships")) return { rows: teams };
+      if (sql.includes("FROM users WHERE id"))
+        return {
+          rows: [
+            {
+              email: `${userId}@example.invalid`,
+              email_verified_at: new Date(),
+              password_set_at: new Date(),
+            },
+          ],
+        };
+      return { rows: [] };
+    });
+    return renderToStaticMarkup(
+      await Dashboard({ searchParams: Promise.resolve({ team: selected }) }),
+    );
+  }
+
+  it("shows the hint to a member of a foreign team without their own team", async () => {
+    const markup = await renderDashboard("member-1", [
+      { id: "team-f", name: "F-co", owner_user_id: "owner-9", role: "member" },
+    ]);
+    expect(markup).toContain("You are a member of this workspace.");
+    expect(markup).toContain("Want your own workspace?");
+    expect(markup).toContain('href="/pricing"');
+  });
+
+  it("shows no hint to an owner", async () => {
+    const markup = await renderDashboard("owner-1", [
+      { id: "team-o", name: "O-co", owner_user_id: "owner-1", role: "owner" },
+    ]);
+    expect(markup).not.toContain("Want your own workspace?");
+  });
+
+  it("shows no hint to a member who already owns a team", async () => {
+    const markup = await renderDashboard(
+      "member-1",
+      [
+        { id: "team-f", name: "F-co", owner_user_id: "owner-9", role: "member" },
+        { id: "team-o2", name: "Mine", owner_user_id: "member-1", role: "owner" },
+      ],
+      "team-f",
+    );
+    expect(markup).not.toContain("Want your own workspace?");
+  });
+});

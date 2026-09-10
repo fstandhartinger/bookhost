@@ -6,7 +6,11 @@ vi.mock("../lib/notifications", () => ({
 vi.mock("@/lib/db", () => ({
   transaction: async (fn: (c: object) => Promise<unknown>) => {
     inTransaction = true;
-    try { return await fn({}); } finally { inTransaction = false; }
+    try {
+      return await fn({});
+    } finally {
+      inTransaction = false;
+    }
   },
   db: { query: vi.fn(async () => ({ rows: [] })) },
 }));
@@ -16,7 +20,10 @@ vi.mock("../lib/password-mail", () => ({
 vi.mock("../lib/config", () => ({ baseUrl: () => "https://bookhost.example" }));
 let inTransaction = false;
 const { sendMail } = vi.hoisted(() => ({ sendMail: vi.fn() }));
-import { generateNotifications, deliverNotifications } from "../lib/notifications";
+import {
+  generateNotifications,
+  deliverNotifications,
+} from "../lib/notifications";
 import { startAuthCleanup } from "../lib/auth-cleanup";
 afterEach(() => {
   vi.clearAllTimers();
@@ -32,7 +39,10 @@ it("commits generation before dispatch and only supplies transactional mail copy
   vi.stubEnv("SMTP_FROM", "fixture@example.invalid");
   vi.mocked(deliverNotifications).mockImplementation(async (_db, send) => {
     expect(inTransaction).toBe(false);
-    await send("owner@example.invalid", "billing", { kind: "trial_ending_3d", href: "/app/billing" });
+    await send("owner@example.invalid", "billing", {
+      kind: "trial_ending_3d",
+      href: "/app/billing",
+    });
     return 1;
   });
   startAuthCleanup();
@@ -40,7 +50,8 @@ it("commits generation before dispatch and only supplies transactional mail copy
   expect(deliverNotifications).toHaveBeenCalledTimes(1);
   expect(vi.mocked(generateNotifications).mock.calls[0]).toHaveLength(2);
   expect(sendMail).toHaveBeenCalledWith({
-    from: "fixture@example.invalid", to: "owner@example.invalid",
+    from: "fixture@example.invalid",
+    to: "owner@example.invalid",
     subject: "Your BookHost workspace: billing notice",
     text: "billing\n\nManage billing: https://bookhost.example/app/billing",
   });

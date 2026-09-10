@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { generateNotifications } from "../lib/notifications";
+import {
+  generateNotifications,
+  deliverNotifications,
+} from "../lib/notifications";
 import type { Queryable } from "../lib/billing";
 
 const start = new Date("2026-10-01T00:00:00Z");
@@ -81,11 +84,11 @@ function fixture() {
   return { team, notices, query, db: { query } as unknown as Queryable };
 }
 describe("activation nudges", () => {
-  it("waits 24 hours, sends once to the owner and deduplicates subsequent runs", async () => {
+  it("waits 24 hours, displays in-app and deduplicates subsequent runs", async () => {
     const f = fixture();
     const send = vi.fn();
-    expect(await generateNotifications(f.db, at(23), send)).toBe(0);
-    expect(await generateNotifications(f.db, at(25), send)).toBe(1);
+    expect(await generateNotifications(f.db, at(23))).toBe(0);
+    expect(await generateNotifications(f.db, at(25))).toBe(1);
     expect(f.notices).toEqual([
       expect.objectContaining({
         kind: "activation_workspace",
@@ -93,13 +96,10 @@ describe("activation nudges", () => {
         payload: { text: workspaceText, href: "/app" },
       }),
     ]);
-    expect(send).toHaveBeenCalledWith(
-      f.team.email,
-      workspaceText,
-      expect.objectContaining({ kind: "activation_workspace", href: "/app" }),
-    );
-    expect(await generateNotifications(f.db, at(26), send)).toBe(0);
-    expect(send).toHaveBeenCalledTimes(1);
+    await deliverNotifications(f.db, send);
+    expect(send).not.toHaveBeenCalled();
+    expect(await generateNotifications(f.db, at(26))).toBe(0);
+    expect(send).not.toHaveBeenCalled();
   });
   it("resolves a failed workspace notice before retry when the step completes", async () => {
     const f = fixture();
@@ -107,7 +107,7 @@ describe("activation nudges", () => {
     f.team.workspace_done = true;
     f.team.workspace_exists = true;
     const send = vi.fn();
-    await generateNotifications(f.db, at(26), send);
+    await generateNotifications(f.db, at(26));
     expect(f.notices[0]?.resolved_at).toEqual(at(26));
     expect(send).not.toHaveBeenCalled();
   });
@@ -124,7 +124,7 @@ describe("activation nudges", () => {
     expect(await generateNotifications(f.db, at(74))).toBe(0);
     f.team.publish_done = true;
     const send = vi.fn();
-    await generateNotifications(f.db, at(75), send);
+    await generateNotifications(f.db, at(75));
     expect(f.notices[0].resolved_at).toEqual(at(75));
     expect(send).not.toHaveBeenCalled();
   });
@@ -148,7 +148,7 @@ describe("activation nudges", () => {
       if (status === "expired") f.team.trial_end = at(26);
       else f.team.status = status;
       const send = vi.fn();
-      await generateNotifications(f.db, at(27), send);
+      await generateNotifications(f.db, at(27));
       expect(
         f.notices.filter(
           (n) => n.kind.startsWith("activation") && !n.resolved_at,
@@ -164,19 +164,14 @@ describe("activation nudges", () => {
       ).toEqual(at(27));
     },
   );
-  it("uses the shared outbox retry path on mail failure", async () => {
+  it("never changes the mail status of in-app activation notices", async () => {
     const f = fixture();
     const send = vi.fn().mockRejectedValue(new Error("fixture"));
-    const error = vi.spyOn(console, "error").mockImplementation(() => {});
-    try {
-      await generateNotifications(f.db, at(25), send);
-      expect(f.notices[0]?.mail_status).toBe("mail_failed");
-      send.mockResolvedValue(undefined);
-      await generateNotifications(f.db, at(26), send);
-      expect(f.notices[0]?.mail_status).toBe("sent");
-      expect(send).toHaveBeenCalledTimes(2);
-    } finally {
-      error.mockRestore();
-    }
+    await generateNotifications(f.db, at(25));
+    await deliverNotifications(f.db, send);
+    await generateNotifications(f.db, at(26));
+    await deliverNotifications(f.db, send);
+    expect(f.notices[0]?.mail_status).toBe("pending");
+    expect(send).not.toHaveBeenCalled();
   });
 });

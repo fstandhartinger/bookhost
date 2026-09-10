@@ -1,6 +1,7 @@
 import { expect, it, vi } from "vitest";
 vi.mock("../lib/notifications", () => ({
   generateNotifications: vi.fn(async () => 0),
+  deliverNotifications: vi.fn(async () => 0),
 }));
 vi.mock("@/lib/db", () => ({
   transaction: async (fn: (client: object) => Promise<unknown>) => fn({}),

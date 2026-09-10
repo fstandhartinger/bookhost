@@ -1,5 +1,28 @@
 import type { Queryable } from "./billing";
 import { billingNotice, billingDate, type BillingState } from "./trial";
+// Every persisted kind must explicitly choose a channel. Unknown kinds fail closed.
+export type NoticeKind =
+  | "trial_ending_3d"
+  | "trial_ending_1d"
+  | "trial_ended"
+  | "payment_failed"
+  | "activation_workspace"
+  | "activation_first_page";
+export const noticeDelivery = {
+  trial_ending_3d: "in_app_and_email",
+  trial_ending_1d: "in_app_and_email",
+  trial_ended: "in_app_and_email",
+  payment_failed: "in_app_and_email",
+  activation_workspace: "in_app",
+  activation_first_page: "in_app",
+} as const satisfies Record<NoticeKind, "in_app" | "in_app_and_email">;
+export function canEmailNotice(kind: string): boolean {
+  return (
+    Object.hasOwn(noticeDelivery, kind) &&
+    noticeDelivery[kind as NoticeKind] === "in_app_and_email"
+  );
+}
+const emailKinds = Object.keys(noticeDelivery).filter(canEmailNotice);
 export type NoticeMail = (
   email: string,
   text: string,
@@ -7,11 +30,7 @@ export type NoticeMail = (
 ) => Promise<unknown>;
 // Caller owns a dedicated connection and transaction. Transaction-scoped locks
 // are safe behind PgBouncer and release automatically even after process death.
-export async function generateNotifications(
-  db: Queryable,
-  now = new Date(),
-  send?: NoticeMail,
-) {
+export async function generateNotifications(db: Queryable, now = new Date()) {
   const lock = await db.query(
     "SELECT pg_try_advisory_xact_lock(827492015) AS acquired",
   );
@@ -60,7 +79,11 @@ export async function generateNotifications(
     // Use the persisted onboarding history, including steps completed before this run.
     const age = now.getTime() - new Date(row.team_created_at).getTime();
     if (s.status === "trialing" && s.trial_end && new Date(s.trial_end) > now) {
-      const activation =
+      const activation: {
+        kind: NoticeKind;
+        href: string;
+        text: string;
+      } | null =
         !row.workspace_done && age >= 24 * 3600_000
           ? {
               kind: "activation_workspace",
@@ -111,12 +134,7 @@ export async function generateNotifications(
       };
     if (
       !notice ||
-      ![
-        "trial_ending_3d",
-        "trial_ending_1d",
-        "trial_ended",
-        "payment_failed",
-      ].includes(notice.kind) ||
+      !canEmailNotice(notice.kind) ||
       (notice.kind.startsWith("trial_ending") && s.has_payment_method)
     )
       continue;
@@ -140,37 +158,71 @@ export async function generateNotifications(
     );
     created += result.rowCount || 0;
   }
-  if (send) {
-    const pending =
-      await db.query(`SELECT n.id,n.kind,n.payload,u.email FROM notifications n JOIN users u ON u.id=n.user_id
-      WHERE n.resolved_at IS NULL AND n.mail_status<>'sent' ORDER BY n.attempts,n.created_at LIMIT 300`);
-    let index = 0;
-    const results: { id: string; status: string }[] = [];
-    await Promise.all(
-      Array.from({ length: 3 }, async () => {
-        while (index < pending.rows.length) {
-          const row = pending.rows[index++];
-          let status = "sent";
-          try {
-            await send(row.email, row.payload.text, {
-              kind: row.kind,
-              href: row.payload.href,
-            });
-          } catch {
-            status = "mail_failed";
-            console.error("Workspace notice email failed; retry next run");
-          }
-          results.push({ id: row.id, status });
-        }
-      }),
-    );
-    for (const result of results)
-      await db.query(
-        "UPDATE notifications SET mail_status=$2,attempts=attempts+1 WHERE id=$1",
-        [result.id, result.status],
-      );
-  }
   return created;
+}
+// MUST use an autocommit connection/pool, never the generation transaction.
+// Claims are permanent attempt markers, not renewable leases: SMTP acceptance is
+// ambiguous after timeout/crash. Sacrifice delivery rather than risk a duplicate.
+// Old failed/attempted rows are also deliberately excluded. No automatic retry.
+export async function deliverNotifications(db: Queryable, send: NoticeMail) {
+  const pending = await db.query(
+    `WITH candidates AS (
+      SELECT id FROM notifications
+      WHERE resolved_at IS NULL AND mail_status='pending' AND attempts=0
+        AND mail_claimed_at IS NULL AND kind=ANY($1::text[])
+      ORDER BY created_at,id LIMIT 300 FOR UPDATE SKIP LOCKED
+    )
+    UPDATE notifications n SET mail_claimed_at=clock_timestamp(),mail_status='claimed',attempts=n.attempts+1
+    FROM candidates c,users u WHERE n.id=c.id AND u.id=n.user_id
+    RETURNING n.id,n.kind,n.payload,u.email`,
+    [emailKinds],
+  );
+  let index = 0;
+  const workers = await Promise.allSettled(
+    Array.from({ length: 3 }, async () => {
+      while (index < pending.rows.length) {
+        const row = pending.rows[index++];
+        // Defense in depth: in-app and unknown kinds never reach the transport.
+        if (!canEmailNotice(row.kind)) continue;
+        let status = "sent";
+        let timedOut = false;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        try {
+          await Promise.race([
+            Promise.resolve().then(() =>
+              send(row.email, row.payload.text, {
+                kind: row.kind,
+                href: row.payload.href,
+              }),
+            ),
+            new Promise<never>((_, reject) => {
+              timer = setTimeout(() => {
+                timedOut = true;
+                reject(new Error("Notice mail timed out"));
+              }, 30_000);
+            }),
+          ]);
+        } catch {
+          status = "mail_failed";
+          console.error(
+            "Workspace notice email outcome uncertain; automatic retry disabled",
+          );
+        } finally {
+          clearTimeout(timer);
+        }
+        await db.query(
+          "UPDATE notifications SET mail_status=$2 WHERE id=$1 AND mail_status='claimed'",
+          [row.id, status],
+        );
+        // The transport may still be running. Do not start another send in
+        // this slot after its deadline; already claimed rows stay quarantined.
+        if (timedOut) return;
+      }
+    }),
+  );
+  const failure = workers.find((worker) => worker.status === "rejected");
+  if (failure?.status === "rejected") throw failure.reason;
+  return pending.rows.length;
 }
 export async function markNoticeRead(
   db: Queryable,

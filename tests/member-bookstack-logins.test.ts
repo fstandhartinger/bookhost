@@ -307,8 +307,30 @@ it("respects upstream rate limits without immediately retrying", async () => {
 
 it("preserves an unrevealed password when retry relinks the same account after an error", async () => {
   existing = true;
-  login = { bookstack_user_id: 42, initial_password: "fixture-unrevealed", last_error: "temporary error" };
+  login = {
+    bookstack_user_id: 42,
+    initial_password: "fixture-unrevealed",
+    last_error: "temporary error",
+  };
   await ensureBookStackLogin(team, user);
   expect(login?.initial_password).toBe("fixture-unrevealed");
   expect(login?.last_error).toBeNull();
 });
+
+it.each([
+  [42, null, null],
+  [99, "old-account-password", null],
+])(
+  "never restores revealed or different-account credentials (saved account %s)",
+  async (accountId, stored, expected) => {
+    existing = true;
+    login = {
+      bookstack_user_id: accountId,
+      initial_password: stored,
+      last_error: "temporary error",
+    };
+    await ensureBookStackLogin(team, user);
+    expect(login?.initial_password).toBe(expected);
+    expect(login?.last_error).toBeNull();
+  },
+);

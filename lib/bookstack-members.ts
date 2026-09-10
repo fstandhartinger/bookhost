@@ -46,7 +46,7 @@ export async function ensureBookStackLogin(teamId: string, userId: string) {
         );
       const saved = (
         await c.query(
-          "SELECT bookstack_user_id,last_error,managed_by_bookhost,revocation_requested_at,revoked_at FROM member_bookstack_logins WHERE team_id=$1 AND user_id=$2 FOR UPDATE",
+          "SELECT bookstack_user_id,initial_password,last_error,managed_by_bookhost,revocation_requested_at,revoked_at FROM member_bookstack_logins WHERE team_id=$1 AND user_id=$2 FOR UPDATE",
           [teamId, userId],
         )
       ).rows[0];
@@ -108,7 +108,16 @@ export async function ensureBookStackLogin(teamId: string, userId: string) {
       if (!validId(accountId)) throw new Error("Invalid BookStack response");
       await c.query(
         "UPDATE member_bookstack_logins SET bookstack_user_id=$3,bookstack_role=$4,initial_password=$5,last_error=NULL,updated_at=now() WHERE team_id=$1 AND user_id=$2",
-        [teamId, userId, accountId, roleName, password],
+        [
+          teamId,
+          userId,
+          accountId,
+          roleName,
+          password ??
+            (saved?.bookstack_user_id === accountId && !saved?.revoked_at
+              ? (saved.initial_password ?? null)
+              : null),
+        ],
       );
       await c.query(
         "UPDATE member_bookstack_logins SET managed_by_bookhost=$3,revocation_requested_at=NULL,revoked_at=NULL,revocation_error=NULL WHERE team_id=$1 AND user_id=$2",

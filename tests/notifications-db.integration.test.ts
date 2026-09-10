@@ -3,10 +3,14 @@ import { Pool, type PoolClient } from "pg";
 import type Stripe from "stripe";
 import { readFile } from "node:fs/promises";
 import { databaseConfig } from "../scripts/db-config.mjs";
-import { generateNotifications, markNoticeRead } from "../lib/notifications";
+import {
+  generateNotifications,
+  deliverNotifications,
+  markNoticeRead,
+} from "../lib/notifications";
 import { syncSubscription } from "../lib/billing";
 it.skipIf(process.env.NOTIFICATIONS_DB_TEST !== "1")(
-  "014 twice, delayed predecessor, expiry, retry, resolution, locking and bounded mail concurrency on real Postgres",
+  "014 twice, delayed predecessor, expiry, no retry after ambiguous failure, resolution, locking and bounded mail concurrency on real Postgres",
   async () => {
     const pool = new Pool(databaseConfig());
     const schema = `trial_test_${crypto.randomUUID().replaceAll("-", "")}`;
@@ -29,14 +33,21 @@ it.skipIf(process.env.NOTIFICATIONS_DB_TEST !== "1")(
     try {
       await client.query(`CREATE SCHEMA ${schema}`);
       await client.query(`SET search_path TO ${schema},public`);
-      for (const name of ["users", "teams", "subscriptions", "tenants"])
+      for (const name of [
+        "users",
+        "teams",
+        "subscriptions",
+        "tenants",
+        "team_onboarding",
+      ])
         await client.query(
           `CREATE TABLE ${name} (LIKE public.${name} INCLUDING ALL)`,
         );
       for (const file of [
         "013_notifications.sql",
         "014_billing_lifecycle.sql",
-        "014_billing_lifecycle.sql",
+        "025_activation_notices.sql",
+        "027_notice_mail_claims.sql",
       ])
         await client.query(
           await readFile(
@@ -79,20 +90,23 @@ it.skipIf(process.env.NOTIFICATIONS_DB_TEST !== "1")(
       const send = vi.fn(async (): Promise<void> => {
         throw new Error("fixture transport failure");
       });
-      expect(await run((c) => generateNotifications(c, now, send))).toBe(1);
+      expect(await run((c) => generateNotifications(c, now))).toBe(1);
+      await deliverNotifications(client, send);
       expect(
         (await client.query("SELECT mail_status,attempts FROM notifications"))
           .rows[0],
       ).toMatchObject({ mail_status: "mail_failed", attempts: 1 });
       send.mockImplementation(async () => undefined);
-      await run((c) => generateNotifications(c, now, send));
-      expect(send).toHaveBeenCalledTimes(2);
+      await run((c) => generateNotifications(c, now));
+      await deliverNotifications(client, send);
+      expect(send).toHaveBeenCalledTimes(1);
       expect(
         (await client.query("SELECT mail_status,attempts FROM notifications"))
           .rows[0],
-      ).toMatchObject({ mail_status: "sent", attempts: 2 });
-      await run((c) => generateNotifications(c, now, send));
-      expect(send).toHaveBeenCalledTimes(2);
+      ).toMatchObject({ mail_status: "mail_failed", attempts: 1 });
+      await run((c) => generateNotifications(c, now));
+      await deliverNotifications(client, send);
+      expect(send).toHaveBeenCalledTimes(1);
       const notice = (await client.query("SELECT id FROM notifications"))
         .rows[0].id;
       await markNoticeRead(client, crypto.randomUUID(), notice);
@@ -171,7 +185,7 @@ it.skipIf(process.env.NOTIFICATIONS_DB_TEST !== "1")(
       ).toHaveLength(0);
       await client.query("BEGIN");
       await client.query("SELECT pg_advisory_xact_lock(827492015)");
-      expect(await run((c) => generateNotifications(c, now, send))).toBe(0);
+      expect(await run((c) => generateNotifications(c, now))).toBe(0);
       await client.query("COMMIT");
       // Several eligible owners exercise the outbox concurrency limit.
       for (let i = 0; i < 7; i++) {
@@ -201,9 +215,10 @@ it.skipIf(process.env.NOTIFICATIONS_DB_TEST !== "1")(
         active--;
       });
       await Promise.all([
-        run((c) => generateNotifications(c, now, batchMail)),
-        run((c) => generateNotifications(c, now, batchMail)),
+        run((c) => generateNotifications(c, now)),
+        run((c) => generateNotifications(c, now)),
       ]);
+      await deliverNotifications(client, batchMail);
       expect(batchMail).toHaveBeenCalledTimes(7);
       expect(peak).toBe(3);
     } finally {

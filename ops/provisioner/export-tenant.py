@@ -89,6 +89,35 @@ def pack_storage(path, target):
     tenant.run(command + members)
 
 
+ARTIFACTS = ('bookstack.sql', 'storage.tar.gz', 'backups', 'MANIFEST.json')
+
+
+def check_target(out, slug, overwrite):
+    # Runs before anything is written into the output directory. An export of a
+    # different tenant is never touched, even when overwrite is requested.
+    manifest = out/'MANIFEST.json'
+    if os.path.lexists(manifest):
+        try:
+            other = json.loads(manifest.read_text()).get('slug')
+        except (OSError, ValueError, AttributeError):
+            raise ValueError('Existing MANIFEST.json in the output directory is unreadable; refusing to write') from None
+        if other != slug:
+            raise ValueError('Output directory contains an export of a different tenant ('+str(other)+')')
+    present = [name for name in ARTIFACTS if os.path.lexists(out/name)]
+    if present and not overwrite:
+        raise ValueError('Output directory already contains an export ('+', '.join(present)
+                         +'); pass overwrite/--overwrite to replace it')
+    return present
+
+
+def remove_entry(entry):
+    # Never follow symlinks when deleting.
+    if entry.is_symlink() or not entry.is_dir():
+        entry.unlink(missing_ok=True)
+    else:
+        shutil.rmtree(entry)
+
+
 def copy_backups(path, staging):
     # Archives plus their authentication tags; the key never leaves the host.
     source = path/'backups'
@@ -102,7 +131,7 @@ def copy_backups(path, staging):
     return [archive.name for archive in archives]
 
 
-def export_tenant(slug, out, include_backups=False):
+def export_tenant(slug, out, include_backups=False, overwrite=False):
     path = require_tenant(slug)
     out = Path(out)
     if out.exists() and not out.is_dir():
@@ -110,6 +139,7 @@ def export_tenant(slug, out, include_backups=False):
     tenant_root = path.resolve(); resolved = out.resolve()
     if resolved == tenant_root or tenant_root in resolved.parents:
         raise ValueError('Output directory must not be inside the tenant')
+    replace = check_target(out, slug, overwrite)
     try:
         out.mkdir(parents=True, exist_ok=True)
         staging = Path(tempfile.mkdtemp(prefix='.export-', dir=out))
@@ -131,6 +161,9 @@ def export_tenant(slug, out, include_backups=False):
         if include_backups: manifest['backups'] = archives
         (staging/'MANIFEST.json').write_text(json.dumps(manifest, indent=2)+'\n')
         names = ['bookstack.sql', 'storage.tar.gz'] + (['backups'] if archives else []) + ['MANIFEST.json']
+        # Old entries are dropped only after the new export has been fully staged.
+        for name in replace:
+            remove_entry(out/name)
         for name in names:
             os.replace(staging/name, out/name); created.append(out/name)
         result = {'slug': slug, 'out': str(out), 'counts': stats}
@@ -156,11 +189,13 @@ def main(argv=None):
     parser.add_argument('slug'); parser.add_argument('--out', required=True, type=Path)
     parser.add_argument('--include-backups', action='store_true',
                         help='Also copy encrypted backup archives (keys are never exported)')
+    parser.add_argument('--overwrite', action='store_true',
+                        help='Replace an existing export of the same tenant in the output directory')
     args = parser.parse_args(argv)
     def interrupted(*_): raise RuntimeError('Export interrupted')
     signal.signal(signal.SIGTERM, interrupted)
     try:
-        result = export_tenant(args.slug, args.out, args.include_backups)
+        result = export_tenant(args.slug, args.out, args.include_backups, overwrite=args.overwrite)
     except BaseException as exc:
         print('ERROR '+(str(exc) if isinstance(exc, (RuntimeError, ValueError))
                         else 'Export failed; inspect tenant and output locally.'), file=sys.stderr)

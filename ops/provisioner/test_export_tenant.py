@@ -75,6 +75,21 @@ class ExportTests(unittest.TestCase):
                     tar.add(base/name, arcname=arc)
         return b''
 
+    def make_existing_export(self, slug='acme-ltd'):
+        self.out.mkdir(parents=True, exist_ok=True)
+        (self.out/'bookstack.sql').write_bytes(b'ORIGINAL-DUMP')
+        (self.out/'storage.tar.gz').write_bytes(b'ORIGINAL-STORAGE')
+        (self.out/'backups').mkdir()
+        (self.out/'backups'/'20260101T000000Z.age').write_bytes(b'ORIGINAL-ARCHIVE')
+        (self.out/'backups'/'20260101T000000Z.age.hmac').write_text('original-tag')
+        manifest = {'tool': 'bookhost-export-tenant', 'format': 1, 'slug': slug,
+                    'backups': ['20260101T000000Z.age']}
+        (self.out/'MANIFEST.json').write_text(json.dumps(manifest))
+
+    def snapshot_out(self):
+        return {str(p.relative_to(self.out)): p.read_bytes()
+                for p in sorted(self.out.rglob('*')) if p.is_file() and not p.is_symlink()}
+
     def go(self, out=None, **kwargs):
         return ex.export_tenant('acme-ltd', out or self.out, **kwargs)
 
@@ -164,6 +179,144 @@ class ExportTests(unittest.TestCase):
         ex.export_tenant('acme-ltd', plain)
         self.assertFalse((plain/'backups').exists())
         self.assertNotIn('backups', self.manifest(plain))
+
+    def test_foreign_slug_manifest_never_overwritten(self):
+        # An export of a different tenant already lives in the output directory:
+        # exporting acme-ltd there must abort, never replace the foreign export.
+        self.make_existing_export(slug='other-tenant')
+        before = self.snapshot_out()
+        error = None
+        try:
+            self.go()
+        except (ValueError, OSError) as exc:
+            error = exc
+        self.assertEqual(self.snapshot_out(), before)
+        self.assertIsInstance(error, ValueError)
+        self.assertIn('different tenant', str(error))
+        self.compose.assert_not_called()
+        self.run.assert_not_called()
+
+    def test_existing_backups_export_stays_untouched_without_overwrite(self):
+        # Old export with a non-empty backups dir: without an explicit overwrite
+        # the run must fail cleanly and leave every old byte in place (today
+        # os.replace errors on the directory after the old files are lost).
+        self.make_backups()
+        self.make_existing_export(slug='acme-ltd')
+        before = self.snapshot_out()
+        error = None
+        try:
+            self.go(include_backups=True)
+        except (ValueError, OSError) as exc:
+            error = exc
+        self.assertEqual(self.snapshot_out(), before)
+        self.assertIsInstance(error, ValueError)
+        self.assertIn('overwrite', str(error))
+        self.compose.assert_not_called()
+        self.run.assert_not_called()
+        self.assertEqual(sorted(p.name for p in (self.out/'backups').iterdir()),
+                         ['20260101T000000Z.age', '20260101T000000Z.age.hmac'])
+
+    def test_empty_target_runs_with_and_without_overwrite(self):
+        first = self.root/'fresh-one'
+        ex.export_tenant('acme-ltd', first)
+        self.assertTrue((first/'MANIFEST.json').is_file())
+        second = self.root/'fresh-two'
+        ex.export_tenant('acme-ltd', second, overwrite=True)
+        self.assertEqual((second/'bookstack.sql').read_bytes(), DUMP)
+
+    def test_each_existing_artifact_blocks_export(self):
+        for name in ex.ARTIFACTS:
+            with self.subTest(name=name):
+                out = self.root/('only-' + name)
+                out.mkdir()
+                artifact = out/name
+                if name == 'MANIFEST.json':
+                    artifact.write_text(json.dumps({'slug': 'acme-ltd'}))
+                elif name == 'backups':
+                    artifact.mkdir()
+                else:
+                    artifact.write_bytes(b'keep')
+                with self.assertRaisesRegex(ValueError, 'overwrite'):
+                    self.go(out=out)
+                self.assertEqual(list(out.iterdir()), [artifact])
+        self.compose.assert_not_called()
+        self.run.assert_not_called()
+
+    def test_failed_publication_cleans_only_new_artifacts(self):
+        self.out.mkdir()
+        keep = self.out/'operator-note.txt'
+        keep.write_bytes(b'keep')
+        real_replace = ex.os.replace
+
+        def fail_on_manifest(source, target):
+            if Path(target).name == 'MANIFEST.json':
+                raise OSError('publication failed')
+            return real_replace(source, target)
+
+        self.make_backups()
+        with patch.object(ex.os, 'replace', side_effect=fail_on_manifest):
+            with self.assertRaisesRegex(OSError, 'publication failed'):
+                self.go(include_backups=True)
+        self.assertEqual(list(self.out.iterdir()), [keep])
+        self.assertEqual(keep.read_bytes(), b'keep')
+
+    def test_overwrite_replaces_existing_export_including_backups(self):
+        self.make_backups()
+        self.make_existing_export(slug='acme-ltd')
+        result = self.go(include_backups=True, overwrite=True)
+        self.assertEqual((self.out/'bookstack.sql').read_bytes(), DUMP)
+        self.assertNotIn(b'ORIGINAL', (self.out/'storage.tar.gz').read_bytes())
+        self.assertEqual(sorted(p.name for p in (self.out/'backups').iterdir()),
+                         ['20260901T000000Z.age', '20260901T000000Z.age.hmac',
+                          '20260902T000000Z.enc', '20260902T000000Z.enc.hmac'])
+        self.assertEqual(result['backups'], 2)
+        manifest = self.manifest()
+        self.assertEqual(manifest['backups'], ['20260901T000000Z.age', '20260902T000000Z.enc'])
+        self.assertEqual([p for p in self.out.glob('.export-*')], [])
+
+    def test_foreign_slug_rejected_even_with_overwrite(self):
+        self.make_existing_export(slug='other-tenant')
+        before = self.snapshot_out()
+        with self.assertRaisesRegex(ValueError, 'different tenant'):
+            self.go(overwrite=True)
+        self.assertEqual(self.snapshot_out(), before)
+
+    def test_failed_overwrite_leaves_existing_export_untouched(self):
+        # Cleanup may only remove entries created by this run, never the old export.
+        self.make_existing_export(slug='acme-ltd')
+        before = self.snapshot_out()
+        self.compose.side_effect = RuntimeError('db gone')
+        with self.assertRaisesRegex(RuntimeError, 'db gone'):
+            self.go(overwrite=True)
+        self.assertEqual(self.snapshot_out(), before)
+        self.assertEqual([p for p in self.out.glob('.export-*')], [])
+
+    def test_overwrite_unlinks_symlinked_backups_without_following(self):
+        outside = self.root/'outside'; outside.mkdir()
+        (outside/'keep.txt').write_text('precious')
+        self.make_existing_export(slug='acme-ltd')
+        shutil.rmtree(self.out/'backups')
+        (self.out/'backups').symlink_to(outside, target_is_directory=True)
+        self.make_backups()
+        self.go(include_backups=True, overwrite=True)
+        self.assertTrue((outside/'keep.txt').is_file())
+        backups = self.out/'backups'
+        self.assertTrue(backups.is_dir())
+        self.assertFalse(backups.is_symlink())
+
+    def test_cli_overwrite_flag(self):
+        self.make_existing_export(slug='acme-ltd')
+        argv = ['export-tenant.py', 'acme-ltd', '--out', str(self.out)]
+        with patch('sys.argv', argv):
+            with patch('sys.stderr', new_callable=io.StringIO) as err:
+                self.assertEqual(ex.main(), 1)
+        self.assertIn('overwrite', err.getvalue())
+        self.assertEqual((self.out/'bookstack.sql').read_bytes(), b'ORIGINAL-DUMP')
+        with patch('sys.argv', argv + ['--overwrite']):
+            with patch('sys.stdout', new_callable=io.StringIO) as out:
+                self.assertEqual(ex.main(), 0)
+        self.assertIn('EXPORTED', out.getvalue())
+        self.assertEqual((self.out/'bookstack.sql').read_bytes(), DUMP)
 
     def test_failed_dump_leaves_no_partial_result(self):
         self.compose.side_effect = RuntimeError('db gone')

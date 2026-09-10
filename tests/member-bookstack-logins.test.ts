@@ -304,3 +304,11 @@ it("respects upstream rate limits without immediately retrying", async () => {
   expect(mocks.fetch).toHaveBeenCalledTimes(1);
   expect(login?.last_error).toContain("rate limit");
 });
+
+it("preserves an unrevealed password when retry relinks the same account after an error", async () => {
+  existing = true;
+  login = { bookstack_user_id: 42, initial_password: "fixture-unrevealed", last_error: "temporary error" };
+  await ensureBookStackLogin(team, user);
+  expect(login?.initial_password).toBe("fixture-unrevealed");
+  expect(login?.last_error).toBeNull();
+});

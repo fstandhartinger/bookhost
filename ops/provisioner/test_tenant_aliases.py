@@ -102,3 +102,30 @@ class TenantAliasTests(unittest.TestCase):
         (self.path / '.env').unlink()
         with self.assertRaises(ValueError):
             self.cli('rehost', 'alias-test', 'new.org')
+
+    def test_rehost_preserves_custom_compose_and_volumes(self):
+        target = self.path / 'docker-compose.yml'
+        before = json.loads(target.read_text())
+        before['services']['db']['image'] = 'custom-db-image'
+        before['services']['bookstack']['image'] = 'custom-app-image'
+        before['services']['bookstack']['environment']['CUSTOM'] = 'preserved'
+        target.write_text(json.dumps(before))
+        self.cli('rehost', 'alias-test', 'new.example.org')
+        after = json.loads(target.read_text())
+        for scheme in ('http', 'https'):
+            before['services']['bookstack']['labels'][f'traefik.http.routers.wissen-alias-test-{scheme}.rule'] = 'Host(`new.example.org`)'
+        self.assertEqual(after, before)
+
+    def test_regeneration_failure_rolls_back_files_without_restart(self):
+        before = {p.name: p.read_bytes() for p in self.path.iterdir()}
+        with patch.object(tenant, 'config', side_effect=RuntimeError('fixture failure')), patch.object(tenant, 'compose') as compose:
+            with self.assertRaisesRegex(RuntimeError, 'fixture failure'):
+                tenant.host_command(self.path, 'rehost', ['new.example.org', '--keep-old-as-alias'])
+            compose.assert_not_called()
+        self.assertEqual({p.name: p.read_bytes() for p in self.path.iterdir()}, before)
+
+    def test_missing_alias_file_and_dns_length_limits(self):
+        self.assertEqual(tenant.read_aliases(self.path), [])
+        for host in ['a' * 64 + '.org', '.'.join(['a' * 63] * 4)]:
+            with self.assertRaises(ValueError):
+                self.cli('rehost', 'alias-test', host)

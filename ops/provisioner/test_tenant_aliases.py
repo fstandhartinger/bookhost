@@ -13,6 +13,9 @@ class TenantAliasTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
+        root_patch = patch.object(tenant, 'ROOT', self.root)
+        root_patch.start()
+        self.addCleanup(root_patch.stop)
         self.path = self.root / 'alias-test'
         self.path.mkdir()
         (self.path / '.initialized').touch()
@@ -129,3 +132,80 @@ class TenantAliasTests(unittest.TestCase):
         for host in ['a' * 64 + '.org', '.'.join(['a' * 63] * 4)]:
             with self.assertRaises(ValueError):
                 self.cli('rehost', 'alias-test', host)
+
+
+class TenantHostOwnershipTests(unittest.TestCase):
+    setUp = TenantAliasTests.setUp
+    cli = TenantAliasTests.cli
+    def other_tenant(self, alias=None, canonical='other.example.org'):
+        other = self.root / 'owner-test'
+        other.mkdir()
+        if canonical is not None:
+            (other / '.env').write_text('APP_URL=https://' + canonical + '\n')
+        if alias is not None:
+            (other / 'aliases').write_text('# existing owner\n' + alias + ' # alias\n')
+        return other
+
+    def snapshot(self):
+        return {str(p.relative_to(self.root)): p.read_bytes()
+                for p in self.root.rglob('*') if p.is_file()}
+
+    def assert_collision(self, *args):
+        before = self.snapshot()
+        with patch.object(tenant, 'compose') as compose, patch.object(tenant, 'config') as config:
+            with self.assertRaisesRegex(ValueError, 'wiki.example.com.*owner-test'):
+                tenant.host_command(self.path, *args)
+            compose.assert_not_called()
+            config.assert_not_called()
+        self.assertEqual(self.snapshot(), before)
+
+    def test_add_rejects_other_tenant_alias_without_writes(self):
+        self.other_tenant(alias='wiki.example.com')
+        self.assert_collision('aliases', ['--add', 'wiki.example.com'])
+
+    def test_add_rejects_other_tenant_canonical_without_writes(self):
+        self.other_tenant(canonical='wiki.example.com')
+        self.assert_collision('aliases', ['--add', 'wiki.example.com'])
+
+    def test_add_rejects_other_tenant_default_canonical(self):
+        self.other_tenant(canonical=None)
+        before = self.snapshot()
+        host = 'owner-test.' + tenant.TENANT_DOMAIN
+        with patch.object(tenant, 'compose') as compose:
+            with self.assertRaisesRegex(ValueError, 'owner-test'):
+                tenant.host_command(self.path, 'aliases', ['--add', host])
+            compose.assert_not_called()
+        self.assertEqual(self.snapshot(), before)
+
+    def test_set_and_rehost_reject_other_tenant_hosts(self):
+        self.other_tenant(alias='wiki.example.com')
+        for action, args in [('aliases', ['--set', 'free.example.com,wiki.example.com']),
+                             ('rehost', ['wiki.example.com'])]:
+            with self.subTest(action=action):
+                self.assert_collision(action, args)
+
+    def test_add_same_tenant_alias_and_canonical_is_idempotent(self):
+        self.other_tenant()
+        (self.path / 'aliases').write_text('wiki.example.com\n')
+        tenant.config(self.path)
+        self.cli('aliases', 'alias-test', '--list')
+        before = self.snapshot()
+        for host in ('wiki.example.com', 'old.example.org'):
+            with self.subTest(host=host):
+                self.cli('aliases', 'alias-test', '--add', host)
+                self.assertEqual(self.snapshot(), before)
+
+    def test_remove_still_works_with_existing_collisions(self):
+        self.other_tenant(alias='wiki.example.com', canonical='old.example.org')
+        (self.path / 'aliases').write_text('wiki.example.com\n')
+        self.cli('aliases', 'alias-test', '--remove', 'wiki.example.com')
+        self.assertEqual(tenant.read_aliases(self.path), [])
+
+    def test_uppercase_and_trailing_dot_still_rejected(self):
+        before = self.snapshot()
+        for host in ('Wiki.example.com', 'wiki.example.com.'):
+            with self.subTest(host=host), patch.object(tenant, 'compose') as compose:
+                with self.assertRaisesRegex(ValueError, 'Invalid host'):
+                    tenant.host_command(self.path, 'aliases', ['--add', host])
+                compose.assert_not_called()
+                self.assertEqual(self.snapshot(), before)

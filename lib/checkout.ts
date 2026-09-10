@@ -40,6 +40,15 @@ export function checkoutParams({
         ...(teamId ? { team_id: teamId } : {}),
       },
     },
+    // The Stripe account is shared with our other products, so its name in the
+    // Checkout header is not the one the visitor just read on our site. Saying
+    // who operates BookHost removes that surprise at the moment of payment.
+    custom_text: {
+      submit: {
+        message:
+          "BookHost is operated by productivity-boost.com Betriebs UG (haftungsbeschränkt) & Co. KG, Passau, Germany.",
+      },
+    },
     payment_method_collection: "if_required",
     allow_promotion_codes: true,
     billing_address_collection: "required",

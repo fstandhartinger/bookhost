@@ -60,3 +60,13 @@ describe("Checkout parameters", () => {
         .customer_email,
     ).toBe("a@b.com"));
 });
+
+it("names the operating company on the payment page", () => {
+  // The Stripe account is shared with other products, so its name in the
+  // Checkout header differs from the site the buyer came from.
+  const params = checkoutParams({ price: "price_x", url: "https://bookhost.co" });
+  const submit = params.custom_text?.submit;
+  expect(typeof submit === "object" && submit?.message).toContain(
+    "productivity-boost.com Betriebs UG",
+  );
+});

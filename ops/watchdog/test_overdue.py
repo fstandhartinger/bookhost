@@ -1,4 +1,5 @@
 """W5: a row we cannot time is a row we cannot call healthy."""
+import pathlib
 import unittest
 
 import watchdog as w
@@ -24,7 +25,9 @@ class OverdueTests(unittest.TestCase):
         self.assertNotIn('AND', sql)
 
     def test_every_overdue_check_in_the_query_carries_all_three(self):
-        source = open('watchdog.py', encoding='utf-8').read()
+        # Resolve next to this file: the release self-test runs discover from
+        # the checkout root, not from this directory.
+        source = pathlib.Path(__file__).with_name('watchdog.py').read_text(encoding='utf-8')
         for token in ('@OVERDUE_PROVISIONING@', '@OVERDUE_PENDING@', '@OVERDUE_DRAFTING@'):
             self.assertIn(token, source)
             self.assertIn(f"replace('{token}'", source)

@@ -166,3 +166,12 @@ it("answers the self-hoster's first question near the top of the home page", asy
   const hero = source.slice(0, source.indexOf("<PaymentNote />"));
   expect(hero).toContain('href="/migrate"');
 });
+
+it("says what a restore cannot bring back", async () => {
+  // We sell tested restores. Then we owe the reader the other half: a daily
+  // backup means a recovery can cost the changes made since the last run.
+  const fs = await import("node:fs/promises");
+  const source = await fs.readFile("app/reliability/page.tsx", "utf8");
+  expect(source).toMatch(/last nightly\s+backup/);
+  expect(source).toMatch(/up to a day of changes/);
+});

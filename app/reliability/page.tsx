@@ -51,6 +51,15 @@ export default function Reliability() {
               directly after a workspace is provisioned.
             </p>
             <p>
+              {/* A page that sells tested restores has to say what a restore
+                  cannot bring back. */}
+              A restore returns the workspace to the state of its last nightly
+              backup. Work saved after that run is not in the backup, so a
+              recovery can cost up to a day of changes. If you are about to make
+              a large change and want a fresh restore point beforehand, ask us
+              and we will take one.
+            </p>
+            <p>
               Since 10 September 2026, the nightly backup runs while the service
               stays running. We check database and file consistency around the
               backup. If consistency cannot be confirmed after three attempts,

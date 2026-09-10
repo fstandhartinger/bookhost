@@ -21,12 +21,14 @@ export function TeamPanel({
   role,
   members,
   invites,
+  revocations = [],
 }: {
   teamId: string;
   userId: string;
   role: string;
   members: Member[];
   invites: Invite[];
+  revocations?: { user_id: string; email: string; revocation_error: string }[];
 }) {
   const router = useRouter();
   const [link, setLink] = useState("");
@@ -109,6 +111,21 @@ export function TeamPanel({
           </li>
         ))}
       </ul>
+      {revocations.map((r) => (
+        <div key={r.user_id} role="alert" className="mt-4">
+          <p>
+            BookStack access removal incomplete: {r.email}. {r.revocation_error}
+          </p>
+          <button
+            disabled={busy}
+            onClick={() =>
+              void action({ action: "retry-revocation", userId: r.user_id })
+            }
+          >
+            Retry access removal
+          </button>
+        </div>
+      ))}
       <form
         className="mt-6 flex flex-wrap items-end gap-3"
         onSubmit={(e) => {

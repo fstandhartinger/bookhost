@@ -1,4 +1,7 @@
-import { ensureBookStackLogin } from "./bookstack-members";
+import {
+  ensureBookStackLogin,
+  revokeBookStackLogin,
+} from "./bookstack-members";
 import { randomBytes } from "node:crypto";
 import { db, transaction } from "./db";
 import { digest } from "./security";
@@ -93,17 +96,24 @@ export async function manageTeam(
       throw new IntakeError("You cannot change yourself or the owner.", 403);
     const target = (
       await c.query(
-        "SELECT role FROM memberships WHERE team_id=$1 AND user_id=$2",
+        "SELECT role FROM memberships WHERE team_id=$1 AND user_id=$2 FOR UPDATE",
         [team.id, data.userId],
       )
     ).rows[0];
+    if (data.action === "retry-revocation") {
+      if (target)
+        throw new IntakeError("Member still belongs to the team.", 409);
+      await revokeBookStackLogin(c, team.id, data.userId);
+      return { ok: true };
+    }
     if (!target) throw new IntakeError("Member not found.", 404);
-    if (data.action === "remove")
+    if (data.action === "remove") {
+      await revokeBookStackLogin(c, team.id, data.userId);
       await c.query("DELETE FROM memberships WHERE team_id=$1 AND user_id=$2", [
         team.id,
         data.userId,
       ]);
-    else if (data.action === "role") {
+    } else if (data.action === "role") {
       if (team.owner_user_id !== userId)
         throw new IntakeError("Only the owner can change roles.", 403);
       if (!["admin", "member"].includes(String(data.role)))

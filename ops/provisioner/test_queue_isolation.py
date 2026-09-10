@@ -41,7 +41,7 @@ class QueueIsolationTests(unittest.TestCase):
         command.assert_not_called()
         updates = [call for call in db.execute.call_args_list if "SET status='failed'" in call.args[0]]
         self.assertEqual(len(updates), 1)
-        self.assertEqual(updates[0].args[1], ("id",))
+        self.assertEqual(updates[0].args[1], ("production", "id",))
         self.assertIn("Reserved test slug; provision manually in an isolated checkout", updates[0].args[0])
 
     def test_foreign_instance_is_skipped_without_update(self):
@@ -83,3 +83,24 @@ class CriticalIsolationTests(QueueIsolationTests):
             if sql.startswith(('SELECT','UPDATE tenants')):
                 self.assertIn("COALESCE(provisioner_instance,'production')",sql)
                 self.assertIn('production',call.args[1])
+
+class StaleIsolationTests(unittest.TestCase):
+    def test_acceptance_stale_cleanup_never_receives_foreign_or_legacy_rows(self):
+        db=MagicMock()
+        stale=[('acceptance-id','own-tenant','acceptance'),('production-id','other-tenant','production'),('legacy-id','legacy-tenant',None)]
+        def execute(sql,params=None):
+            result=MagicMock()
+            if sql.startswith('SELECT id,slug FROM tenants'):
+                scoped="COALESCE(provisioner_instance,'production')=%s" in sql
+                result.fetchall.return_value=[r[:2] for r in stale if not scoped or (r[2] or 'production')==params[0]]
+            else: result.fetchall.return_value=[]
+            return result
+        db.execute.side_effect=execute
+        with tempfile.TemporaryDirectory() as d, patch.object(worker,'ROOT',Path(d)), patch.dict(worker.os.environ,{'PROVISIONER_INSTANCE':'acceptance'}), patch.object(worker,'env_read',return_value={'DATABASE_URL_LOCAL':'mock'}), patch.object(worker.psycopg,'connect') as connect, patch.object(worker,'command') as command:
+            connect.return_value.__enter__.return_value=db
+            worker.once()
+        updates=[c for c in db.execute.call_args_list if c.args[0].startswith('UPDATE tenants')]
+        self.assertEqual(len(updates),1)
+        self.assertIn('acceptance-id',updates[0].args[1])
+        self.assertNotIn('production-id',updates[0].args[1])
+        command.assert_not_called()

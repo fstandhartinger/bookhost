@@ -25,6 +25,8 @@ vi.mock("@/lib/security", () => ({
   digest: () => "hash",
 }));
 vi.mock("@/lib/db", () => ({
+  transaction: async (fn: (c: unknown) => unknown) =>
+    fn({ query: async () => ({ rows: [], rowCount: 0 }) }),
   db: {
     query: async (sql: string) => {
       if (sql.includes("FROM tenants WHERE team_id"))
@@ -68,11 +70,13 @@ it("uses the signed-in customer's identity for an empty CTA body", async () => {
   expect((await POST(request())).status).toBe(200);
   expect(state.create).toHaveBeenCalledWith(
     expect.objectContaining({ customer: "cus_existing" }),
+    expect.any(Object),
   );
   state.customer = "";
   expect((await POST(request())).status).toBe(200);
   expect(state.create).toHaveBeenLastCalledWith(
     expect.objectContaining({ customer_email: "owner@example.invalid" }),
+    expect.any(Object),
   );
 });
 it("forwards sanitized attribution and privacy choice into Stripe metadata", async () => {
@@ -88,6 +92,7 @@ it("forwards sanitized attribution and privacy choice into Stripe metadata", asy
     expect.objectContaining({
       metadata: expect.objectContaining({ utm_source: "reddit" }),
     }),
+    expect.any(Object),
   );
   await POST(
     new Request("http://localhost/api/checkout", {
@@ -112,8 +117,10 @@ it("resumes with the same customer and no second trial", async () => {
   state.previous = false;
 });
 
-it('persists a team reservation and sends a durable Stripe idempotency key', async () => {
- state.status='';
- await POST(request());
- expect(state.create).toHaveBeenLastCalledWith(expect.any(Object),{idempotencyKey:expect.stringContaining('bookhost:team:')});
+it("persists a team reservation and sends a durable Stripe idempotency key", async () => {
+  state.status = "";
+  await POST(request());
+  expect(state.create).toHaveBeenLastCalledWith(expect.any(Object), {
+    idempotencyKey: expect.stringContaining("bookhost:team:"),
+  });
 });

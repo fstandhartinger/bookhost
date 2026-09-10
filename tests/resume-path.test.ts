@@ -213,6 +213,13 @@ async function query(sql: string, values: unknown[] = []) {
           ]
         : [],
     );
+  if (
+    sql.includes("FROM member_bookstack_logins") ||
+    sql.includes("FROM member_bookstack_revocations") ||
+    sql.includes("FROM team_checkout_reservations") ||
+    sql.startsWith("UPDATE team_checkout_reservations")
+  )
+    return result();
   if (sql.startsWith("SELECT m.user_id")) return result();
   if (sql.includes("FROM teams")) return result([team]);
   if (sql.includes("FROM effective_subscriptions"))
@@ -326,12 +333,10 @@ beforeEach(() => {
   };
   notices = [];
   mock.query.mockReset().mockImplementation(query);
-  mock.create
-    .mockReset()
-    .mockResolvedValue({
-      id: checkout.id,
-      url: "https://checkout.stripe.com/fixture",
-    });
+  mock.create.mockReset().mockResolvedValue({
+    id: checkout.id,
+    url: "https://checkout.stripe.com/fixture",
+  });
 });
 afterEach(() => {
   vi.useRealTimers();
@@ -396,6 +401,7 @@ it.each(["checkout.session.completed", "customer.subscription.updated"])(
           "/welcome?session_id={CHECKOUT_SESSION_ID}",
         ),
       }),
+      expect.any(Object),
     );
     const params = mock.create.mock.calls[0][0];
     expect(params.subscription_data).not.toHaveProperty("trial_period_days");

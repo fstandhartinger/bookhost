@@ -120,6 +120,50 @@ def install_files(path, source):
     tenant.run(['sudo','-n','ln','-s','../files',str(runtime)])
 
 
+def verify_local_files(path, allow_missing_files=False):
+    # Execute in the container as the application UID: host root permissions and
+    # symlink layout must not hide files unreadable by the actual application.
+    raw = tenant.php(path, r'''
+$count=0; $examples=[];
+$missing=function($path) use (&$count,&$examples) {
+ $count++; if(count($examples)<10) $examples[]=preg_replace('/[\x00-\x1f\x7f]/','?',substr($path,0,250));
+};
+$files=app(BookStack\Uploads\FileStorage::class);
+$images=app(BookStack\Uploads\ImageStorage::class);
+if (!in_array(config('filesystems.attachments'),['local','local_secure','local_secure_restricted']) ||
+ !in_array(config('filesystems.images'),['local','local_secure','local_secure_restricted'])) {
+ throw new RuntimeException('Local import validation requires local file storage');
+}
+Illuminate\Support\Facades\DB::table('attachments')->orderBy('id')->chunk(200,function($rows) use($files,$missing) {
+ foreach($rows as $row) {
+  if($row->external) continue; // Explicit link attachments are not local files.
+  $path=$files->getSystemPath($row->path);
+  if(!$path || !is_file($path) || !is_readable($path)) $missing($row->path);
+ }
+});
+Illuminate\Support\Facades\DB::table('images')->orderBy('id')->chunk(200,function($rows) use($images,$missing) {
+ foreach($rows as $row) {
+  $disk=$images->getDisk($row->type);
+  $relative=ltrim(BookStack\Util\FilePathNormalizer::normalize(str_replace('uploads/images/','',$row->path)),'/');
+  $path=$disk->usingSecureImages() ? storage_path('uploads/images/'.$relative) : public_path('uploads/images/'.$relative);
+  if(!$row->path || !is_file($path) || !is_readable($path)) $missing($row->path);
+ }
+});
+echo json_encode(['missing_count'=>$count,'examples'=>$examples]);
+''')
+    result=json.loads(raw)
+    count=result['missing_count']
+    if not isinstance(count,int) or count<0 or not isinstance(result['examples'],list):
+        raise ValueError('Invalid file verification result')
+    if count:
+        message='Missing local files: '+str(count)+'; examples: '+json.dumps(result['examples'])
+        if not allow_missing_files: raise ValueError(message)
+        print('WARNING --allow-missing-files: '+message+'; incomplete import explicitly accepted.',flush=True)
+    elif allow_missing_files:
+        print('WARNING --allow-missing-files enabled; no missing local files found.',flush=True)
+    return result
+
+
 def rewrite_links(path, old_url, new_url):
     return int(tenant.php(path, r'''
 $v=json_decode(stream_get_contents(STDIN),true); $count=0;
@@ -164,7 +208,7 @@ def rollback(path, archive):
         tenant.service_recovered(path)
 
 
-def import_bookstack(slug, dump, files, old_url=None, dry_run=False):
+def import_bookstack(slug, dump, files, old_url=None, dry_run=False, allow_missing_files=False):
     if not tenant.valid_slug(slug): raise ValueError('Invalid or reserved tenant slug')
     if slug in ('demo','qa-bookhost-0909'): raise ValueError('Protected tenant')
     path=tenant.ROOT/slug
@@ -224,9 +268,12 @@ def import_bookstack(slug, dump, files, old_url=None, dry_run=False):
             artisan(path,['cache:clear'])
             artisan(path,['view:clear'])
             after=counts(path)
+            phase='local file verification'
+            file_check=verify_local_files(path,allow_missing_files)
             artisan(path,['up'])
             tenant.service_recovered(path)
-        except BaseException:
+        except BaseException as error:
+            detail = str(error) if phase=='local file verification' and isinstance(error,ValueError) else ''
             try:
                 if changed:
                     rollback(path,archive)
@@ -240,8 +287,8 @@ def import_bookstack(slug, dump, files, old_url=None, dry_run=False):
                 try: tenant.compose(path,'stop','bookstack')
                 except Exception: pass
                 state='Recovery failed; BookStack stopped. Operator restore required.'
-            raise RuntimeError('Import failed during '+phase+'. '+state+' Recovery archive: '+str(archive)) from None
-        result={'before':before,'after':after,'rewritten_links':links,'backup':str(archive)}
+            raise RuntimeError('Import failed during '+phase+'. '+detail+' '+state+' Recovery archive: '+str(archive)) from None
+        result={'before':before,'after':after,'rewritten_links':links,'backup':str(archive),'file_check':file_check,'allow_missing_files':allow_missing_files}
         print('IMPORTED '+json.dumps(result),flush=True)
         print('ADMIN LOGIN: use the CUSTOMER credentials from the imported instance; the initial BookHost password no longer applies. MFA/encrypted settings may require customer recovery. Intake token reinstalled; existing credentials retained when present, encrypted values stored in tenant .env.',flush=True)
         return result
@@ -258,10 +305,11 @@ def main():
     parser.add_argument('slug'); parser.add_argument('--sql',required=True,type=Path)
     parser.add_argument('--files',required=True,type=Path)
     parser.add_argument('--old-url'); parser.add_argument('--dry-run',action='store_true')
+    parser.add_argument('--allow-missing-files',action='store_true',help='Explicitly accept missing local attachments/images; logged in result')
     args=parser.parse_args()
     def interrupted(*_): raise RuntimeError('Import interrupted')
     signal.signal(signal.SIGTERM,interrupted)
-    try: import_bookstack(args.slug,args.sql,args.files,args.old_url,args.dry_run)
+    try: import_bookstack(args.slug,args.sql,args.files,args.old_url,args.dry_run,args.allow_missing_files)
     except BaseException as exc:
         print('ERROR '+(str(exc) if isinstance(exc,(RuntimeError,ValueError)) else 'Import failed; inspect inputs and tenant locally. Credentials withheld.'),file=sys.stderr)
         return 1

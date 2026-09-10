@@ -16,9 +16,13 @@ export class BookStack {
       throw new Error("Invalid workspace.");
     this.base = `https://${host}`;
   }
-  async request<T>(path: string, body?: unknown): Promise<T> {
+  async request<T>(
+    path: string,
+    body?: unknown,
+    method?: "DELETE" | "PUT",
+  ): Promise<T> {
     const response = await fetch(`${this.base}/api/${path}`, {
-      method: body ? "POST" : "GET",
+      method: method || (body ? "POST" : "GET"),
       headers: {
         Authorization: `Token ${this.id}:${this.secret}`,
         "Content-Type": "application/json",
@@ -30,6 +34,7 @@ export class BookStack {
     }).catch(() => {
       throw new IntakeError("Tenant not reachable. Try again shortly.", 503);
     });
+    if (method === "DELETE" && response.status === 404) return undefined as T;
     if (!response.ok)
       throw new IntakeError(
         [401, 403].includes(response.status)
@@ -45,6 +50,7 @@ export class BookStack {
               : "Tenant not reachable. Try again shortly.",
         response.status === 429 ? 429 : 502,
       );
+    if (response.status === 204) return undefined as T;
     return response.json();
   }
   async uploadTarget(fields: Record<string, string>, filename: string) {

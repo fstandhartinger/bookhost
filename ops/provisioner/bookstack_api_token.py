@@ -112,8 +112,11 @@ app(BookStack\Permissions\JointPermissionBuilder::class)->rebuildForAll();
         return ident, values['BOOKSTACK_API_SECRET']
 
 
-def store_token(db, tenant_id, slug, rotate=False):
+def store_token(db, tenant_id, slug, rotate=False, instance=None):
     ident, encrypted = ensure_token(slug, rotate)
+    if instance is not None:
+        db.execute("INSERT INTO tenant_secrets(tenant_id,api_id,api_secret_enc) SELECT id,%s,%s FROM tenants WHERE id=%s AND COALESCE(provisioner_instance,'production')=%s ON CONFLICT(tenant_id) DO UPDATE SET api_id=EXCLUDED.api_id,api_secret_enc=EXCLUDED.api_secret_enc,updated_at=now()", (ident,encrypted,tenant_id,instance))
+        return
     db.execute('INSERT INTO tenant_secrets(tenant_id,api_id,api_secret_enc) VALUES(%s,%s,%s) ON CONFLICT(tenant_id) DO UPDATE SET api_id=EXCLUDED.api_id,api_secret_enc=EXCLUDED.api_secret_enc,updated_at=now()', (tenant_id, ident, encrypted))
 
 

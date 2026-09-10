@@ -50,6 +50,14 @@ export default async function Dashboard({
     teams.find((t) => t.id === (selectedTeam || activeTeam)) || teams[0];
   const isOwner = !team || team.owner_user_id === session.user.id;
   const canManage = team && ["owner", "admin"].includes(team.role);
+  const revocations = canManage
+    ? (
+        await db.query(
+          "SELECT l.user_id,u.email,l.revocation_error FROM member_bookstack_revocations l JOIN users u ON u.id=l.user_id WHERE l.team_id=$1 AND l.revocation_requested_at IS NOT NULL AND l.revoked_at IS NULL",
+          [team.id],
+        )
+      ).rows
+    : [];
   const members = canManage
     ? (
         await db.query(
@@ -192,6 +200,7 @@ export default async function Dashboard({
             teamId={team.id}
             userId={session.user.id}
             role={team.role}
+            revocations={revocations}
             members={members.map((m) => ({
               ...m,
               created_at: m.created_at.toISOString(),

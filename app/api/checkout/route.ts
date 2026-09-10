@@ -8,6 +8,8 @@ import { db } from "@/lib/db";
 import { baseUrl } from "@/lib/config";
 import { stripeClient } from "@/lib/stripe";
 import { WORKSPACE_UNAVAILABLE_MESSAGE } from "@/lib/trial";
+import { teamCheckout } from "@/lib/team-checkout";
+import { IntakeError } from "@/lib/intake/access";
 import { checkoutParams } from "@/lib/checkout";
 import { clientIp, digest, rateLimit, sameOrigin } from "@/lib/security";
 export async function POST(request: Request) {
@@ -114,21 +116,26 @@ export async function POST(request: Request) {
       ? null
       : campaign(request.headers.get("x-wissen-utm-source") || body.utm_source);
     const stripe = stripeClient();
-    const checkout = await stripe.checkout.sessions.create(
-      checkoutParams({
-        price: process.env.STRIPE_PRICE_TEAM,
-        url: baseUrl(),
-        email,
-        customer: team?.stripe_customer_id,
-        teamId: team?.id,
-        resume: Boolean(previous),
-        utmSource,
-        noAnalytics,
-      }),
-    );
+    const params = checkoutParams({
+      price: process.env.STRIPE_PRICE_TEAM,
+      url: baseUrl(),
+      email,
+      customer: team?.stripe_customer_id,
+      teamId: team?.id,
+      resume: Boolean(previous),
+      utmSource,
+      noAnalytics,
+    });
+    const checkout = team
+      ? await teamCheckout(team.id, params, stripe)
+      : await stripe.checkout.sessions.create(params);
     const nonce = randomBytes(32).toString("hex");
     await db.query(
-      "INSERT INTO checkout_attempts(session_id,nonce_hash,user_id) VALUES($1,$2,$3)",
+      "INSERT INTO checkout_attempts(session_id,nonce_hash,user_id) VALUES($1,$2,$3) ON CONFLICT(session_id) DO NOTHING",
+      [checkout.id, digest(nonce), session?.user?.id || null],
+    );
+    await db.query(
+      "INSERT INTO checkout_attempt_nonces(session_id,nonce_hash) SELECT session_id,$2 FROM checkout_attempts WHERE session_id=$1 AND user_id IS NOT DISTINCT FROM $3 ON CONFLICT DO NOTHING",
       [checkout.id, digest(nonce), session?.user?.id || null],
     );
     if (!noAnalytics)
@@ -147,7 +154,9 @@ export async function POST(request: Request) {
       maxAge: 86400,
     });
     return response;
-  } catch {
+  } catch (error) {
+    if (error instanceof IntakeError && error.status === 409)
+      return Response.json({ error: error.message }, { status: 409 });
     return Response.json(
       { error: "We could not open checkout. Please try again shortly." },
       { status: 503 },

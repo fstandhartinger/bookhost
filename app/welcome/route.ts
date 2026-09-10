@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       await client.query("SELECT pg_advisory_xact_lock(827492015)");
       const attempt = (
         await client.query(
-          "SELECT * FROM checkout_attempts WHERE session_id=$1 AND nonce_hash=$2 AND created_at>now()-interval '24 hours' FOR UPDATE",
+          "SELECT * FROM checkout_attempts WHERE session_id=$1 AND (nonce_hash=$2 OR EXISTS(SELECT 1 FROM checkout_attempt_nonces n WHERE n.session_id=checkout_attempts.session_id AND n.nonce_hash=$2)) AND created_at>now()-interval '24 hours' FOR UPDATE",
           [id, digest(nonce)],
         )
       ).rows[0];

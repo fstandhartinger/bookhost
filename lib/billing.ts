@@ -76,12 +76,18 @@ export async function cancelDuplicateCheckout(
     typeof session.subscription === "string"
       ? session.subscription
       : session.subscription?.id;
-  if (!email || !id) return false;
+  const customer =
+    typeof session.customer === "string"
+      ? session.customer
+      : session.customer?.id;
+  if ((!customer && !email) || !id) return false;
+  // Email is only a fallback for an unbound anonymous customer, never an
+  // alternative identity for a customer already attached to a team.
   const existing = await client.query(
     `SELECT s.stripe_subscription_id FROM users u JOIN teams t ON t.owner_user_id=u.id
-     JOIN subscriptions s ON s.team_id=t.id WHERE lower(u.email)=$1
-     AND s.status IN ('trialing','active','past_due') AND s.stripe_subscription_id<>$2 LIMIT 1`,
-    [email, id],
+     JOIN subscriptions s ON s.team_id=t.id WHERE ${customer ? "(t.stripe_customer_id=$1 OR (NOT EXISTS(SELECT 1 FROM teams bound WHERE bound.stripe_customer_id=$1) AND lower(u.email)=$3))" : "lower(u.email)=$1"}
+     AND s.status IN ('trialing','active','past_due','unpaid','incomplete','paused') AND s.stripe_subscription_id<>$2 LIMIT 1`,
+    customer ? [customer, id, email || null] : [email, id],
   );
   if (!existing.rows[0]) return false;
   const subscription = await stripe.subscriptions.retrieve(id, {
@@ -92,6 +98,11 @@ export async function cancelDuplicateCheckout(
       invoice_now: false,
       prorate: false,
     });
+  console.warn("Duplicate team subscription canceled", {
+    customer: customer || "anonymous",
+    duplicate_subscription: id,
+    retained_subscription: existing.rows[0].stripe_subscription_id,
+  });
   return true;
 }
 export async function syncSubscription(
@@ -157,6 +168,21 @@ export async function handleStripeEvent(
   event: Stripe.Event,
   stripe: Pick<Stripe, "subscriptions">,
 ) {
+  const sync = async (sub: Stripe.Subscription) => {
+    if (
+      !["canceled", "incomplete_expired"].includes(sub.status) &&
+      (await cancelDuplicateCheckout(
+        client,
+        {
+          customer: sub.customer,
+          subscription: sub.id,
+        } as Stripe.Checkout.Session,
+        stripe,
+      ))
+    )
+      return;
+    await syncSubscription(client, sub);
+  };
   // The caller holds a transaction and a global transaction lock. Fetch current
   // subscriptions rather than trusting delivery order of Stripe snapshots.
   const seen = await client.query(
@@ -174,8 +200,7 @@ export async function handleStripeEvent(
         ? session.subscription
         : session.subscription?.id;
     if (id)
-      await syncSubscription(
-        client,
+      await sync(
         await stripe.subscriptions.retrieve(id, { expand: ["customer"] }),
       );
   } else if (
@@ -186,8 +211,7 @@ export async function handleStripeEvent(
     ].includes(event.type)
   ) {
     const sub = event.data.object as Stripe.Subscription;
-    await syncSubscription(
-      client,
+    await sync(
       event.type === "customer.subscription.deleted"
         ? sub
         : await stripe.subscriptions.retrieve(sub.id, { expand: ["customer"] }),
@@ -200,8 +224,7 @@ export async function handleStripeEvent(
       [customer.id],
     );
     for (const row of subscriptions.rows)
-      await syncSubscription(
-        client,
+      await sync(
         await stripe.subscriptions.retrieve(row.stripe_subscription_id, {
           expand: ["customer"],
         }),
@@ -212,8 +235,7 @@ export async function handleStripeEvent(
     const id =
       typeof subscription === "string" ? subscription : subscription?.id;
     if (id)
-      await syncSubscription(
-        client,
+      await sync(
         await stripe.subscriptions.retrieve(id, { expand: ["customer"] }),
       );
   }

@@ -117,6 +117,8 @@ let notices: {
   payload: { text: string };
   created_at: Date;
   resolved_at: Date | null;
+  notice_team_id?: string;
+  notice_team_name?: string;
 }[];
 const result = (rows: unknown[] = []) => ({ rows, rowCount: rows.length });
 const db = { query: mock.query } as unknown as Queryable;
@@ -504,4 +506,29 @@ it("shows an actionable error when payment arrives after workspace destruction",
   await deliver("checkout.session.completed");
   expect(await dashboard()).toMatch(/workspace.*unavailable.*support/i);
   expect(await dashboard()).not.toContain('data-endpoint="/api/checkout"');
+});
+
+it("names the team a notice belongs to and still offers the way to fix it", async () => {
+  // The person is looking at a team they only belong to, while the payment
+  // warning concerns the team they own. Without the label and the link the
+  // warning is urgent and unactionable.
+  notices.push({
+    id: "notice-other-team",
+    kind: "payment_failed",
+    payload: { text: "Your payment failed." },
+    created_at: new Date(),
+    resolved_at: null,
+    notice_team_id: "other-team",
+    notice_team_name: "Second Workspace",
+  });
+  const markup = await dashboard();
+  expect(markup).toContain("Second Workspace");
+  expect(markup).toContain("/app/billing");
+  // The link must not depend on owning the team currently on screen. Billing
+  // resolves the viewer's own team, and teams_owner_unique guarantees there is
+  // at most one, so owning any team is the right condition.
+  const source = await import("node:fs/promises").then((fs) =>
+    fs.readFile("app/app/page.tsx", "utf8"),
+  );
+  expect(source).toMatch(/\{ownsTeam && \(\s*<a href="\/app\/billing"/);
 });

@@ -138,7 +138,14 @@ export default async function Dashboard({
     : [];
   const notices = (
     await db.query(
-      "SELECT id,payload,created_at,read_at FROM notifications WHERE user_id=$1 AND resolved_at IS NULL ORDER BY created_at DESC LIMIT 50",
+      // Carry the team each notice belongs to. A person can be a member of one
+      // team and own another; a payment warning for the team they own must not
+      // read as if it concerned the team currently on screen.
+      `SELECT n.id,n.payload,n.created_at,n.read_at,t.id AS notice_team_id,t.name AS notice_team_name
+       FROM notifications n
+       LEFT JOIN subscriptions s ON s.stripe_subscription_id=n.subscription_id
+       LEFT JOIN teams t ON t.id=s.team_id
+       WHERE n.user_id=$1 AND n.resolved_at IS NULL ORDER BY n.created_at DESC LIMIT 50`,
       [session.user.id],
     )
   ).rows;
@@ -266,8 +273,14 @@ export default async function Dashboard({
                 <p className="mt-1 text-xs text-slate-500">
                   {date(notice.created_at)} ·{" "}
                   {notice.read_at ? "Read" : "Unread"}
+                  {notice.notice_team_name &&
+                    notice.notice_team_id !== team?.id &&
+                    ` · ${notice.notice_team_name}`}
                 </p>
-                {isOwner && (
+                {/* Billing always resolves the team this person owns, so the
+                    link belongs to anyone who owns one — not only to the owner
+                    of the team that happens to be on screen. */}
+                {ownsTeam && (
                   <a href="/app/billing" className="mr-4 text-sm underline">
                     Resume workspace
                   </a>

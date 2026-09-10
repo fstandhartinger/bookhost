@@ -291,6 +291,69 @@ def once():
             return
 
 
+# The watchdog checks how old the worker's log is. Nothing did the reverse: if
+# the watchdog stopped — crashed cron entry, stuck lock, maintenance left on —
+# its last green lines stayed in the log and kept reading like evidence. The
+# worker runs every minute anyway, so it writes the silence into that same log.
+WATCHDOG_SILENCE_MARK = 'WAECHTER STUMM'
+WATCHDOG_SILENCE_SECONDS = 30 * 60
+WATCHDOG_REPEAT_SECONDS = 10 * 60
+
+
+def watchdog_last_run(log):
+    """UTC timestamp of the last watchdog line, or None if it cannot be read."""
+    try:
+        with open(log, 'rb') as handle:
+            handle.seek(0, os.SEEK_END)
+            size = handle.tell()
+            handle.seek(max(0, size - 4096))
+            tail = handle.read().decode('utf-8', 'replace').strip().splitlines()
+    except OSError:
+        return None
+    for line in reversed(tail):
+        # Our own warning also starts with a timestamp. Counting it would make
+        # the log look fresh again and hide the very silence it reports.
+        if WATCHDOG_SILENCE_MARK in line:
+            continue
+        stamp = line.split(' ', 1)[0]
+        try:
+            return time.mktime(time.strptime(stamp[:19], '%Y-%m-%dT%H:%M:%S')) - time.timezone
+        except ValueError:
+            continue
+    return None
+
+
+def report_watchdog_silence(now=None, root=ROOT):
+    """Append a warning to the watchdog log while the watchdog is silent."""
+    now = time.time() if now is None else now
+    log = root / 'watchdog.log'
+    marker = root / '.watchdog-silence'
+    last = watchdog_last_run(log)
+    if last is not None and now - last <= WATCHDOG_SILENCE_SECONDS:
+        marker.unlink(missing_ok=True)
+        return False
+    try:
+        warned = marker.stat().st_mtime
+    except OSError:
+        warned = None
+    if warned is not None and now - warned < WATCHDOG_REPEAT_SECONDS:
+        return False
+    minutes = 'unbekannt' if last is None else f'{int((now - last) // 60)}'
+    stamp = time.strftime('%Y-%m-%dT%H:%M:%S+00:00', time.gmtime(now))
+    try:
+        with open(log, 'a', encoding='utf-8') as handle:
+            handle.write(
+                f'{stamp} {WATCHDOG_SILENCE_MARK} — keine Waechterzeile seit {minutes} Minuten; '
+                f'gruene Zeilen darueber sind KEIN Beleg mehr (gemeldet vom Worker)\n')
+        marker.touch()
+        # Stamp the marker with the same clock the check uses, so the repeat
+        # guard cannot drift apart from it.
+        os.utime(marker, (now, now))
+    except OSError:
+        return False
+    return True
+
+
 if __name__=='__main__':
     p=argparse.ArgumentParser(); p.add_argument('--once',action='store_true'); p.add_argument('--cron',action='store_true'); args=p.parse_args()
     start=time.monotonic()
@@ -298,6 +361,10 @@ if __name__=='__main__':
         try:
             once()
             print(time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()) + " Worker check completed", flush=True)
+            try:
+                report_watchdog_silence()
+            except Exception:
+                print('Watchdog silence check failed; details withheld', flush=True)
         except Exception:
             print('Worker database/configuration failure; details withheld',flush=True); raise SystemExit(1)
         if args.once or (args.cron and time.monotonic()-start>=30): break

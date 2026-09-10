@@ -13,3 +13,6 @@ CREATE TABLE IF NOT EXISTS tenants (
 ALTER TABLE tenants ADD COLUMN IF NOT EXISTS provisioner_instance text;
 ALTER TABLE tenants ADD COLUMN IF NOT EXISTS desired_state text NOT NULL DEFAULT 'running'
     CHECK (desired_state IN ('running','suspended'));
+
+ALTER TABLE tenants ADD COLUMN IF NOT EXISTS storage_used_bytes bigint CHECK (storage_used_bytes >= 0);
+ALTER TABLE tenants ADD COLUMN IF NOT EXISTS storage_measured_at timestamptz;

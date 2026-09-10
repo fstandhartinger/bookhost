@@ -2,15 +2,19 @@ import { afterEach, expect, it, vi } from "vitest";
 vi.mock("@/auth", () => ({
   auth: vi.fn(async () => ({ user: { id: "user" } })),
 }));
-vi.mock("@/lib/db", () => ({
-  db: { query: vi.fn(async () => ({ rows: [{ id: "item" }] })) },
-}));
+vi.mock("@/lib/db", () => {
+  const query = vi.fn(async () => ({ rows: [{ id: "item" }] }));
+  return {
+    db: { query },
+    transaction: (fn: (c: unknown) => unknown) => fn({ query }),
+  };
+});
 vi.mock("@/lib/security", () => ({
   sameOrigin: () => true,
   rateLimit: async () => true,
 }));
 vi.mock("@/lib/intake/quota", () => ({
-  quota: vi.fn(async () => ({ remaining: 10 })),
+  quota: vi.fn(async () => ({ remaining: 10, period: "trial" })),
 }));
 vi.mock("@/lib/intake/jobs", () => ({ enqueue: vi.fn() }));
 vi.mock("@/lib/intake/access", async (original) => ({
@@ -20,7 +24,8 @@ vi.mock("@/lib/intake/access", async (original) => ({
     team_id: "team",
     subscription_status: "trialing",
   }),
-  clientFor: async () => new BookStack("demo.wissen.app.mintapis.com", "id", "secret"),
+  clientFor: async () =>
+    new BookStack("demo.wissen.app.mintapis.com", "id", "secret"),
 }));
 import { BookStack } from "@/lib/intake/bookstack";
 import { POST } from "@/app/api/intake/route";
@@ -38,10 +43,10 @@ function request() {
   form.set("new_book_name", "");
   form.set("chapter_id", "");
   form.set("file", new Blob(["Team notes"]), "Handbook.md");
-  return new Request(
-    "https://bookhost.co/api/intake?tenant=tenant",
-    { method: "POST", body: form },
-  );
+  return new Request("https://bookhost.co/api/intake?tenant=tenant", {
+    method: "POST",
+    body: form,
+  });
 }
 it("accepts a multipart upload into a new book even without existing destinations", async () => {
   const fetcher = vi
@@ -57,7 +62,17 @@ it("accepts a multipart upload into a new book even without existing destination
     });
     expect(db.query).toHaveBeenCalledWith(
       expect.stringContaining("INSERT INTO intake_items"),
-      ["team", "tenant", "Handbook.md", 23, null, "user", "Handbook", null],
+      [
+        "team",
+        "tenant",
+        "Handbook.md",
+        23,
+        null,
+        "user",
+        "Handbook",
+        null,
+        "trial",
+      ],
     );
     expect(enqueue).toHaveBeenCalledTimes(1);
   } finally {

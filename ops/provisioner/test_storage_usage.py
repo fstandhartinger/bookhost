@@ -23,3 +23,25 @@ class StorageTests(unittest.TestCase):
             record_storage(db, 'id', Path(d), 'acceptance')
             self.assertIn('provisioner_instance', db.execute.call_args.args[0])
             self.assertEqual(db.execute.call_args.args[1][-2:], ('acceptance', 'id'))
+    def test_scan_does_not_modify_workspace_and_counts_hardlinks_once(self):
+        from storage_usage import record_storage, upload_bytes
+        import os
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            files = root/'bookstack/www/files'; files.mkdir(parents=True)
+            original = files/'a'; original.write_bytes(b'1234')
+            os.link(original, files/'b')
+            before = sorted(str(p.relative_to(root)) for p in root.rglob('*'))
+            record_storage(MagicMock(), 'id', root, 'production')
+            self.assertEqual(upload_bytes(root), 4)
+            self.assertEqual(before, sorted(str(p.relative_to(root)) for p in root.rglob('*')))
+    def test_read_error_is_unknown_and_recent_read_is_not_repeated(self):
+        from storage_usage import record_storage
+        from datetime import datetime, timezone
+        from unittest.mock import patch
+        db = MagicMock()
+        with patch('storage_usage.upload_bytes', side_effect=PermissionError) as scan:
+            record_storage(db, 'id', Path('/unused'), 'acceptance', datetime.now(timezone.utc))
+            scan.assert_not_called()
+            record_storage(db, 'id', Path('/unused'), 'acceptance')
+            self.assertIsNone(db.execute.call_args.args[1][0])

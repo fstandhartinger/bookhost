@@ -13,7 +13,8 @@ import {
 } from "./password";
 import { IntakeError, uuid } from "./intake/access";
 import { PUBLIC_BASE_URL } from "./config";
-export const MEMBER_LIMIT = 25;
+import { QUOTAS } from "./quotas";
+export const MEMBER_LIMIT = QUOTAS.members;
 export function inviteProblem(
   invite:
     | {
@@ -73,7 +74,10 @@ export async function manageTeam(
         ).rows[0].count,
       );
       if (count >= MEMBER_LIMIT)
-        throw new IntakeError("Your plan allows up to 25 team members.", 409);
+        throw new IntakeError(
+          `Your plan allows up to ${MEMBER_LIMIT} dashboard members, including the owner.`,
+          409,
+        );
       const token = randomBytes(32).toString("hex");
       await c.query(
         "INSERT INTO team_invites(team_id,token_hash,role,created_by,max_uses) VALUES($1,$2,$3,$4,$5)",
@@ -224,7 +228,7 @@ export async function joinTeam(
     );
     if (count >= MEMBER_LIMIT)
       throw new IntakeError(
-        "This team has reached its limit of 25 members. Ask an admin to free a place.",
+        `This team has reached its limit of ${MEMBER_LIMIT} dashboard members. Ask an admin to free a place.`,
         409,
       );
     if (!user && userId) throw new IntakeError("Please sign in first.", 401);

@@ -180,15 +180,33 @@ DOCX entries, actual decompression (20 MB) and XML entities are checked, and PDF
 are limited to 200 pages. Temporary files are removed when work ends; stale crash
 files are removed after 30 minutes by the startup/hourly cleanup.
 
-Migration `011_intake_limits.sql` adds atomic per-team quotas: **20 lifetime trial
-attempts**, or **300 attempts per UTC calendar month** while active. Reservations,
-including failed processing and model fallback, consume one draft; there is no
-automatic refund. Remaining allowance appears in the UI; exhaustion returns 402
-with billing-portal guidance. Teams must have a running tenant, running desired
-state and active or unexpired trial subscription. Permissions are checked again
-before model work and publication claim. At most two models run sequentially per
-attempt, each with a 90-second timeout and at most 6,000 output tokens. Revocation
-cannot recall a model request already sent; later stages recheck authorization.
+Migrations `011_intake_limits.sql` and `029_quota_truth.sql` enforce the limits in
+`lib/quotas.ts`: **20 drafts across the trial**, **300 drafts per UTC calendar
+month** on Team, shared by all workspace members. Processing reserves quota and
+creates the item in one transaction. A database trigger refunds failed generation
+exactly once into the original period, including hourly interrupted-job recovery.
+Produced drafts remain charged after rejection or publication failure. Unused
+allowance does not roll over. Legacy records have no reliable reservation period;
+the migration does not guess or retrospectively alter their counters.
+
+The **25 dashboard member** limit includes the owner and is checked under the
+team lock on invitation creation and join. Native/imported BookStack accounts
+are outside that count. The owner/admin team panel shows current occupancy.
+
+**5 GB of upload files** (decimal GB) is an included allowance, with no automatic
+write block. The provisioner measures `bookstack/www/uploads`,
+`bookstack/www/files`, and legacy `bookstack/files` every 15 minutes when its
+normal reconciliation runs. It excludes symlinks, duplicates by inode, databases,
+backups, and non-upload application files. Measurement errors produce an unknown
+value; the dashboard also flags readings older than two hours. Only in-app
+warnings are generated, at 80% by default; `STORAGE_WARNING_RATIO` on the control
+plane can set a fraction in (0, 1]. No storage mail, overage charge, deletion or
+BookStack write restriction is triggered. Apply migration 029 before the updated
+application/worker; no production migration was performed by this change.
+
+Isolated quota integration verification: apply migrations to a disposable local
+Postgres database, then set `QUOTA_DB_TEST=1` and run
+`npx vitest run tests/quota-truth-db.integration.test.ts`. Never use the live DB.
 
 Review shows the first 2,000 source characters, stored book/chapter names, editable
 destination, formatted content, HTML and tags. BookStack errors leave the local

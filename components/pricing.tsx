@@ -1,3 +1,4 @@
+import { MEMBER_COPY, STORAGE_COPY, DRAFT_COPY } from "@/lib/quotas";
 import { PaymentNote } from "@/components/payment-note";
 import Link from "next/link";
 import { ActionButton } from "./action-button";
@@ -37,7 +38,8 @@ export function Pricing() {
           </div>
           <ul className="checklist">
             <li>Your own hosted BookStack workspace</li>
-            <li>Up to 25 users per workspace and 5 GB of uploads</li>
+            <li>{MEMBER_COPY}</li>
+            <li>{STORAGE_COPY}</li>
             <li>
               Fair use for CPU and database resources; contact us for more
             </li>
@@ -58,7 +60,7 @@ export function Pricing() {
             </li>
             <li>Seven-day backup retention and restore help</li>
             <li>Reviewed document intake — available now (beta)</li>
-            <li>20 drafts during the trial; 300 drafts/month on Team</li>
+            <li>{DRAFT_COPY}</li>
             <li>Summary, tags and reviewer checklist for each draft</li>
             <li>Owner/admin approval before publication to BookStack</li>
           </ul>

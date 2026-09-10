@@ -62,6 +62,10 @@ function setup(role: "owner" | "member", currentSubscription: Record<string, unk
     user: { id: role === "owner" ? "owner-1" : "member-1", email: `${role}@example.invalid` },
   });
   state.query.mockImplementation(async (sql: string) => {
+    if (sql.includes("FROM memberships m WHERE m.user_id"))
+      return { rows: [{ team_id: "team-1", role }] };
+    if (sql.includes("FROM tenants t WHERE t.team_id"))
+      return { rows: [{ id: "tenant-1", team_id: "team-1", slug: "fixture" }] };
     if (sql.includes("FROM tenants t JOIN memberships"))
       return { rows: [{ id: "tenant-1", team_id: "team-1", slug: "fixture", role }] };
     if (sql.includes("FROM teams t JOIN memberships"))

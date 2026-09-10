@@ -245,3 +245,13 @@ it("clears the retry backoff when the customer checks again", async () => {
   );
   expect(source).toMatch(/attempts=0,last_attempt_at=NULL/);
 });
+
+it("keeps document intake on the active team", async () => {
+  const source = await import("node:fs/promises").then((fs) =>
+    fs.readFile("app/app/intake/page.tsx", "utf8"),
+  );
+  // The page must select the tenant of the team the dashboard shows.
+  expect(source).toContain("ACTIVE_TEAM_COOKIE");
+  expect(source).toMatch(/memberships\.find\(\(m\) => m\.team_id === activeTeam\)/);
+  expect(source).toMatch(/FROM tenants t WHERE t\.team_id=\$1/);
+});

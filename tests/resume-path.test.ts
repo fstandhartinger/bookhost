@@ -178,6 +178,20 @@ async function query(sql: string, values: unknown[] = []) {
     return result();
   }
   if (sql.includes("FROM users u JOIN teams t")) return result(); // no competing subscription
+  if (sql.includes("FROM memberships m WHERE m.user_id"))
+    return { rows: [{ team_id: "team-1", role: "owner" }] };
+  if (sql.includes("FROM tenants t WHERE t.team_id")) {
+    // Same eligibility the page enforces: running tenant and a live subscription.
+    expect(sql).toContain("t.status='running' AND t.desired_state='running'");
+    return result(
+      tenant &&
+        tenant.status === "running" &&
+        tenant.desired_state === "running" &&
+        eligible()
+        ? [{ ...tenant }]
+        : [],
+    );
+  }
   if (sql.includes("FROM tenants t JOIN memberships")) {
     if (sql.includes("WHERE m.user_id=$1")) {
       expect(sql).toContain("t.status='running' AND t.desired_state='running'");

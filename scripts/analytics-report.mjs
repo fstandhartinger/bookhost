@@ -23,6 +23,15 @@ export async function analyticsReport(db) {
       COALESCE(workspace_created,0) AS workspace_created, COALESCE(intake_draft,0) AS intake_draft,
       COALESCE(intake_published,0) AS intake_published
     FROM visits v FULL JOIN funnel f USING(day,source) ORDER BY 1,2`);
+  // Which sites send people here? Kept separate from the funnel table because
+  // events carry no referrer, so joining the two would pair visits from one
+  // channel with conversions attributed to "(direct)".
+  const { rows: referrerRows } = await db.query(`
+    SELECT referrer_host AS host, count(DISTINCT visitor_hash)::int AS visits
+    FROM page_views
+    WHERE referrer_host IS NOT NULL
+      AND ts >= (date_trunc('day',now() AT TIME ZONE 'UTC')-interval '13 days') AT TIME ZONE 'UTC'
+    GROUP BY 1 ORDER BY 2 DESC, 1 LIMIT 25`);
   const metrics = [
     "visits",
     "demo_click",
@@ -49,6 +58,10 @@ export async function analyticsReport(db) {
     }
   }
   return {
+    referrers: referrerRows.map((row) => ({
+      host: row.host,
+      visits: row.visits,
+    })),
     sources: [...sources]
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([source, counts]) => ({ source, ...counts })),

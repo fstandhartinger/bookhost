@@ -1,3 +1,9 @@
+import {
+  DEFENSIVE_HOSTS,
+  LEGACY_HOSTS,
+  PUBLIC_BASE_URL,
+  TENANT_DOMAINS,
+} from "@/lib/config";
 // Campaign labels only: reject URLs, email addresses and arbitrary free text.
 export function campaign(value: unknown): string | null {
   return typeof value === "string" &&
@@ -21,12 +27,30 @@ export function publicPath(value: unknown): string | null {
     ? value
     : null;
 }
+// Our own hosts are navigation, not a channel. Counting them would bury the
+// referrers we actually want to see, such as the listing in the BookStack
+// installation docs, under our own page-to-page traffic.
+export function ownHost(host: string): boolean {
+  const mine = [
+    (() => {
+      try {
+        return new URL(PUBLIC_BASE_URL).hostname;
+      } catch {
+        return "";
+      }
+    })(),
+    ...LEGACY_HOSTS,
+    ...DEFENSIVE_HOSTS,
+    ...TENANT_DOMAINS,
+  ].filter(Boolean);
+  return mine.some((own) => host === own || host.endsWith(`.${own}`));
+}
 export function referrerHost(value: unknown): string | null {
   try {
     const url = new URL(typeof value === "string" ? value : "");
-    return ["http:", "https:"].includes(url.protocol)
-      ? url.hostname.slice(0, 253)
-      : null;
+    if (!["http:", "https:"].includes(url.protocol)) return null;
+    const host = url.hostname.slice(0, 253).toLowerCase();
+    return ownHost(host) ? null : host;
   } catch {
     return null;
   }

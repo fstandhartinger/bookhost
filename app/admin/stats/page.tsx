@@ -67,6 +67,14 @@ export default async function StatsPage() {
       </p>
       <h2 className="my-6 text-xl">By source</h2>
       {table(report.sources, "source")}
+      <h2 className="my-6 text-xl">Referring sites</h2>
+      {report.referrers.length ? (
+        table(report.referrers, "host")
+      ) : (
+        <p className="text-sm">
+          No external referrers in the last 14 days. Our own hosts do not count.
+        </p>
+      )}
       <h2 className="my-6 text-xl">Daily totals</h2>
       {table(report.days, "day")}
     </div>

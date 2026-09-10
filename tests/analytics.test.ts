@@ -8,7 +8,12 @@ vi.mock("next/navigation", () => ({
   },
 }));
 import { dailyHasher, isAdmin } from "@/lib/analytics/server";
-import { parseUtm, referrerHost, publicPath } from "@/lib/analytics/shared";
+import {
+  parseUtm,
+  referrerHost,
+  publicPath,
+  ownHost,
+} from "@/lib/analytics/shared";
 import { POST } from "@/app/api/track/route";
 import StatsPage from "@/app/admin/stats/page";
 import { analyticsReport } from "@/scripts/analytics-report.mjs";
@@ -158,4 +163,21 @@ it("shares consistent source/day totals with zero-filled daily series", async ()
   });
   expect(report.days).toHaveLength(14);
   expect(report.days.at(-1)).toMatchObject({ day, visits: 2 });
+});
+
+it("does not count our own pages as a referring site", () => {
+  // Page-to-page navigation would otherwise bury the channels we care about,
+  // such as the listing in the BookStack installation docs.
+  expect(referrerHost("https://bookhost.co/pricing")).toBeNull();
+  expect(referrerHost("https://demo.bookhost.co/")).toBeNull();
+  expect(referrerHost("https://qa-third-0910.bookhost.co/")).toBeNull();
+  expect(referrerHost("https://wissen.app.mintapis.com/")).toBeNull();
+  expect(ownHost("bookhost.co")).toBe(true);
+  expect(ownHost("notbookhost.co")).toBe(false);
+});
+
+it("keeps a genuine external referrer", () => {
+  expect(referrerHost("https://www.bookstackapp.com/docs/admin/installation/")).toBe(
+    "www.bookstackapp.com",
+  );
 });

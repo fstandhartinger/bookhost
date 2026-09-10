@@ -208,3 +208,34 @@ Live verification (read-only checks, both tenants must already exist):
 ```sh
 python3 ops/provisioner/verify-network.py demo e2e-iso
 ```
+
+### Tenant host aliases and rehosting
+
+The canonical host comes from the tenant's `.env` `APP_URL`; `TENANT_DOMAIN`
+only supplies the default for a new tenant. `<tenantdir>/aliases` contains one
+lowercase DNS hostname per line. Blank lines and `#` comments are ignored;
+duplicates are deduplicated in first-seen order. Wildcards, URLs, invalid DNS
+labels and names without a dot are rejected before configuration is written.
+Both Traefik routers use the canonical host first, then aliases. Traefik's
+existing Let's Encrypt resolver handles certificates; DNS must point at the proxy.
+
+```sh
+python3 ops/provisioner/tenant.py aliases <slug> --list
+python3 ops/provisioner/tenant.py aliases <slug> --set first.example.org,second.example.org
+python3 ops/provisioner/tenant.py aliases <slug> --add another.example.org
+python3 ops/provisioner/tenant.py aliases <slug> --remove another.example.org
+python3 ops/provisioner/tenant.py aliases <slug> --set ''
+python3 ops/provisioner/tenant.py rehost <slug> new.example.org --keep-old-as-alias
+```
+
+No aliases option means `--list`. Omitting `--keep-old-as-alias` does not add
+the previous canonical host. Alias changes preserve APP_URL; rehost sets it to
+`https://<new-host>`. Existing Compose settings, images and volumes are preserved.
+Mutations require an initialized tenant, use the tenant lifecycle lock, and run
+only `docker compose ... up -d --no-deps bookstack`. Alias mutation prints
+`ALIASES restart required: bookstack` before this operation. The database service
+is never restarted and neither command executes SQL/PHP or `down`. BookStack's
+own normal startup still runs; this command does not rewrite stored content URLs.
+The owner separately updates the control-plane tenant host/bookstack_url and
+DEMO_URL when switching the public demo. If Compose fails, files retain the
+requested state and the command fails: fix the cause and repeat the command.

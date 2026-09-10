@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Isolated BookStack tenant lifecycle. Never prints subprocess output or secrets."""
-import signal, hashlib, hmac, datetime, pty, select, termios, tarfile
+import argparse, signal, hashlib, hmac, datetime, pty, select, termios, tarfile
 import base64, contextlib, fcntl, json, os, re, secrets, shlex, shutil, subprocess, sys, tempfile, time, urllib.request
 from urllib.parse import urlsplit
 from pathlib import Path
@@ -45,8 +45,40 @@ TENANT_DOMAIN = os.environ.get('TENANT_DOMAIN') or LIMITS.get('TENANT_DOMAIN', '
 def compose(path, *args, data=None):
     return run(['sudo','-n','docker','compose','--project-directory',str(path),'-p','wissen-'+path.name,'-f',str(path/'docker-compose.yml'),*args], data)
 
-def config(path, public=True):
-    slug = path.name; host = slug+'.'+TENANT_DOMAIN; router='wissen-'+slug
+def valid_host(host):
+    return (len(host) <= 253 and '.' in host and
+            bool(re.fullmatch(r'[a-z0-9.-]+', host)) and
+            all(re.fullmatch(r'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?', label)
+                for label in host.split('.')))
+
+
+def checked_hosts(hosts):
+    result = []
+    for host in hosts:
+        if not valid_host(host): raise ValueError('Invalid host')
+        if host not in result: result.append(host)
+    return result
+
+
+def read_aliases(path):
+    source = path/'aliases'
+    if not source.exists(): return []
+    lines = [line.split('#', 1)[0].strip() for line in source.read_text().splitlines()]
+    return checked_hosts([line for line in lines if line])
+
+
+def canonical_host(path):
+    if not (path/'.env').exists(): return checked_hosts([path.name+'.'+TENANT_DOMAIN])[0]
+    url = env_read(path/'.env').get('APP_URL', '')
+    # Accept only a bare HTTPS origin; never interpolate URL syntax into Traefik.
+    if not url.startswith('https://'): raise ValueError('Invalid canonical APP_URL')
+    return checked_hosts([url[len('https://'):]])[0]
+
+
+def config(path, public=True, preserve=False):
+    slug = path.name; host = canonical_host(path); router='wissen-'+slug
+    hosts = checked_hosts([host, *read_aliases(path)])
+    rule = ' || '.join('Host(`'+name+'`)' for name in hosts)
     app = dict(image=IMAGE, restart='unless-stopped', mem_limit='512m', environment={'PUID':'1000','PGID':'1000','TZ':'UTC','APP_URL':'${APP_URL}','APP_KEY':'${APP_KEY}','DB_HOST':'db','DB_PORT':'3306','DB_USERNAME':'bookstack','DB_PASSWORD':'${DB_PASSWORD}','DB_DATABASE':'bookstack'}, volumes=['./bookstack:/config'], depends_on={'db':{'condition':'service_healthy'}}, networks=['private'])
     db = dict(image=DB_IMAGE, restart='unless-stopped',mem_limit='512m', environment={'MARIADB_DATABASE':'bookstack','MARIADB_USER':'bookstack','MARIADB_PASSWORD':'${DB_PASSWORD}','MARIADB_ROOT_PASSWORD':'${DB_ROOT_PASSWORD}'},volumes=['./database:/var/lib/mysql'],networks=['private'],healthcheck={'test':['CMD','healthcheck.sh','--connect','--innodb_initialized'],'interval':'5s','timeout':'5s','retries':60}, command=['--innodb-buffer-pool-size=128M','--max-connections=50'])
     networks = {'private':{'name':router+'-internal','internal':True}}
@@ -55,14 +87,73 @@ def config(path, public=True):
         labels={'traefik.enable':'true','traefik.docker.network':'coolify',f'traefik.http.services.{router}.loadbalancer.server.port':'80',f'traefik.http.middlewares.{router}-redirect.redirectscheme.scheme':'https'}
         for scheme in ['http','https']:
             prefix=f'traefik.http.routers.{router}-{scheme}'
-            labels.update({prefix+'.rule':f'Host(`{host}`)',prefix+'.entrypoints':scheme,prefix+'.service':router})
+            labels.update({prefix+'.rule':rule,prefix+'.entrypoints':scheme,prefix+'.service':router})
             if scheme=='https': labels.update({prefix+'.tls':'true',prefix+'.tls.certresolver':'letsencrypt'})
             else: labels[prefix+'.middlewares']=router+'-redirect'
         app['labels']=labels
     else: app['labels']={'traefik.enable':'false'}
     document={'services':{'bookstack':app,'db':db},'networks':networks}
     harden_network(document, slug, public)
+    if preserve:
+        # Host maintenance must not upgrade images, reset settings or change volumes/DB.
+        document = json.loads((path/'docker-compose.yml').read_text())
+        labels = document['services']['bookstack']['labels']
+        for scheme in ('http', 'https'):
+            labels[f'traefik.http.routers.{router}-{scheme}.rule'] = rule
     (path/'docker-compose.yml').write_text(json.dumps(document,indent=2)+'\n')
+
+def host_command(path, action, args):
+    parser = argparse.ArgumentParser(prog='tenant.py '+action+' '+path.name)
+    if action == 'aliases':
+        group = parser.add_mutually_exclusive_group()
+        group.add_argument('--set')
+        group.add_argument('--add')
+        group.add_argument('--remove')
+        group.add_argument('--list', action='store_true')
+    else:
+        parser.add_argument('host')
+        parser.add_argument('--keep-old-as-alias', action='store_true')
+    options = parser.parse_args(args)
+    if not all((path/name).is_file() for name in ('.initialized', '.env', 'docker-compose.yml')):
+        raise ValueError('Host maintenance requires an initialized tenant with env and Compose')
+    host = canonical_host(path)
+    aliases = read_aliases(path)
+    if action == 'aliases':
+        if options.set is None and options.add is None and options.remove is None:
+            for alias in aliases: print(alias)
+            return
+        if options.set is not None:
+            aliases = checked_hosts(options.set.split(',') if options.set else [])
+        elif options.add is not None:
+            aliases = checked_hosts([*aliases, options.add])
+        else:
+            checked_hosts([options.remove])
+            aliases = [alias for alias in aliases if alias != options.remove]
+    else:
+        new_host = checked_hosts([options.host])[0]
+        if options.keep_old_as_alias: aliases = checked_hosts([*aliases, host])
+        host = new_host
+    aliases = [alias for alias in aliases if alias != host]
+    # Keep originals if local regeneration fails; never run down or a DB command.
+    originals = {name: (path/name).read_bytes() if (path/name).exists() else None
+                 for name in ('aliases', '.env', 'docker-compose.yml')}
+    try:
+        (path/'aliases').write_text(''.join(alias+'\n' for alias in aliases))
+        if action == 'rehost':
+            lines = (path/'.env').read_text().splitlines(keepends=True)
+            lines = ['APP_URL=https://'+host+'\n' if re.match(r'^\s*(?:export\s+)?APP_URL=', line) else line for line in lines]
+            (path/'.env').write_text(''.join(lines))
+        config(path, preserve=True)
+    except BaseException:
+        for name, original in originals.items():
+            if original is None: (path/name).unlink(missing_ok=True)
+            else: (path/name).write_bytes(original)
+        raise
+    if action == 'aliases': print('ALIASES restart required: bookstack', flush=True)
+    # --no-deps is essential: bookstack depends_on db, which must stay untouched.
+    compose(path, 'up', '-d', '--no-deps', 'bookstack')
+    print(('REHOSTED ' if action == 'rehost' else 'ALIASES updated ')+host)
+
 
 def harden_network(document, slug, public=True):
     """Only the app joins the proxy bridge; never modify the shared bridge."""
@@ -472,6 +563,7 @@ def main():
                 signal.signal(signal.SIGTERM,signal.SIG_IGN)
                 if (path/'docker-compose.yml').exists(): compose(path,'down','--remove-orphans')
                 raise
+        elif action in ('aliases', 'rehost'): host_command(path, action, sys.argv[3:])
         elif action=='migrate-network': migrate_network(path)
         elif action=='deprovision': compose(path,'down')
         elif action=='destroy':

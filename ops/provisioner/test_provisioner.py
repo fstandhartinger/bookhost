@@ -126,7 +126,7 @@ class LifecycleTests(unittest.TestCase):
 
     def test_fresh_tenant_seeds_before_initialization_and_resume_skips_seed(self):
         with tempfile.TemporaryDirectory() as d:
-            p=Path(d)
+            p=Path(d)/'test-team'; p.mkdir()
             def seeded(path, email):
                 self.assertEqual(email, 'valid@example.invalid')
                 self.assertFalse((path/'.initialized').exists())
@@ -139,7 +139,7 @@ class LifecycleTests(unittest.TestCase):
 
     def test_failed_seed_does_not_mark_initialized(self):
         with tempfile.TemporaryDirectory() as d:
-            p=Path(d)
+            p=Path(d)/'test-team'; p.mkdir()
             with patch.object(tenant,'compose'), patch.object(tenant,'ready_internal'), patch.object(tenant,'php'), patch.object(tenant,'seed_starter_book',side_effect=RuntimeError('seed failed')):
                 with self.assertRaisesRegex(RuntimeError,'seed failed'):
                     tenant.provision(p,'valid@example.invalid')

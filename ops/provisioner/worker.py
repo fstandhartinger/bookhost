@@ -91,7 +91,18 @@ def once():
                     db.execute("UPDATE tenants SET status='failed',error='Invalid or reserved slug: use 3-30 lowercase letters/digits, single hyphens, no restore prefix',updated_at=now() WHERE id=%s AND status='pending'",(ident,))
                 continue
             path=ROOT/slug
-            if desired=='suspended' or (path/'.destroy_requested_at').exists() or (ROOT/'.destroy-requests'/slug).exists():
+            # A paid resume must never silently create an empty replacement or
+            # loop forever against a durable destruction tombstone.
+            destroyed=(path/'.destroy_requested_at').exists() or (ROOT/'.destroy-requests'/slug).exists()
+            missing_resume=status=='suspended' and desired=='running' and (
+                not existing or not (path/'.env').exists() or not (path/'docker-compose.yml').exists())
+            if destroyed or missing_resume:
+                try:
+                    if (path/'docker-compose.yml').exists(): command('deprovision',slug)
+                    db.execute("UPDATE tenants SET status='failed',error='workspace_unavailable',updated_at=now() WHERE id=%s",(ident,))
+                except Exception: print('Unavailable workspace cleanup failed; retry next run',flush=True)
+                continue
+            if desired=='suspended':
                 try:
                     if (path/'docker-compose.yml').exists(): command('deprovision',slug)
                     db.execute("UPDATE tenants SET status='suspended',error=NULL,updated_at=now() WHERE id=%s AND status IN ('running','pending','suspended')",(ident,))

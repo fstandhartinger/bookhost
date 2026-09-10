@@ -7,6 +7,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { baseUrl } from "@/lib/config";
 import { stripeClient } from "@/lib/stripe";
+import { WORKSPACE_UNAVAILABLE_MESSAGE } from "@/lib/trial";
 import { checkoutParams } from "@/lib/checkout";
 import { clientIp, digest, rateLimit, sameOrigin } from "@/lib/security";
 export async function POST(request: Request) {
@@ -96,6 +97,18 @@ export async function POST(request: Request) {
           )
         ).rowCount
       : 0;
+    if (previous) {
+      const tenant = (
+        await db.query("SELECT status,error FROM tenants WHERE team_id=$1", [
+          team.id,
+        ])
+      ).rows[0];
+      if (!tenant || tenant.error === "workspace_unavailable")
+        return Response.json(
+          { error: WORKSPACE_UNAVAILABLE_MESSAGE },
+          { status: 409 },
+        );
+    }
     const noAnalytics = optedOut(request.headers);
     const utmSource = noAnalytics
       ? null

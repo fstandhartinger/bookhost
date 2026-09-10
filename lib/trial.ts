@@ -1,3 +1,5 @@
+export const WORKSPACE_UNAVAILABLE_MESSAGE =
+  "Your previous workspace is unavailable. Contact support at info@productivity-boost.com before starting another subscription; payment cannot restore deleted data.";
 export type BillingState = {
   status: string;
   trial_end: Date | string | null;
@@ -6,6 +8,7 @@ export type BillingState = {
   has_payment_method?: boolean;
   desired_state?: string;
   tenant_status?: string;
+  tenant_error?: string | null;
   stripe_subscription_id?: string;
   invoice_amount?: string | null;
 };
@@ -37,6 +40,13 @@ export function billingNotice(
       kind: "member",
       action: "none" as const,
       text: "Billing is managed by the team owner.",
+    };
+  if (s?.tenant_error === "workspace_unavailable")
+    return {
+      urgent: true,
+      kind: "workspace_unavailable",
+      action: "none",
+      text: WORKSPACE_UNAVAILABLE_MESSAGE,
     };
   if (!s)
     return {

@@ -34,6 +34,17 @@ from `work/.app.env`. Billing sets `desired_state` to `running` or `suspended`;
 worker stops suspended targets without clearing URL/data and resumes suspended or
 existing pending tenants with `compose up -d`. Resume does not repopulate a consumed
 initial password. A change during provisioning is reconciled on the next pass.
+A destruction marker/tombstone, or missing initialization/configuration on a
+suspended tenant being resumed, sets `status='failed'` and
+`error='workspace_unavailable'`. No empty replacement is provisioned. The dashboard
+shows a support contact; checkout refuses a known unavailable previous workspace
+(or a missing tenant row) before creating a Stripe session. Detection on the worker
+is asynchronous: a payment already in flight can still complete, but then receives
+the same dashboard error. An operator must inspect backups and restore the original
+workspace before clearing the error and requeuing it; payment never clears a
+destruction tombstone. A team whose first trial ended before it created a workspace
+also gets the support message instead of being charged without a workspace.
+
 New pending slugs use `reserved-slugs.json`, the 3–30 character expression
 `^[a-z0-9](?:[a-z0-9-]{1,28}[a-z0-9])$`, no double hyphens, no `restore` prefix.
 The initialized operator demo is grandfathered only for lifecycle management.

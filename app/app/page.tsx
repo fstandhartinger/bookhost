@@ -52,6 +52,8 @@ export default async function Dashboard({
   const team =
     teams.find((t) => t.id === (selectedTeam || activeTeam)) || teams[0];
   const isOwner = !team || team.owner_user_id === session.user.id;
+  const userId = session.user.id;
+  const ownsTeam = teams.some((t) => t.owner_user_id === userId);
   const canManage = team && ["owner", "admin"].includes(team.role);
   const revocations = canManage
     ? (
@@ -312,6 +314,15 @@ export default async function Dashboard({
           ? "Your trial starts when you sign up; your workspace is usually ready within 5 minutes."
           : "You are a member of this workspace. Billing is managed by the owner."}
       </p>
+      {!isOwner && !ownsTeam && (
+        <p className="mt-4 text-sm text-slate-600">
+          Want your own workspace?{" "}
+          <a className="underline" href="/pricing">
+            Start a separate 14-day trial for your own team
+          </a>
+          .
+        </p>
+      )}
       <section
         id="password-setup"
         className={`price-card mt-8 ${setup === "password" ? "ring-2 ring-teal-600" : ""}`}

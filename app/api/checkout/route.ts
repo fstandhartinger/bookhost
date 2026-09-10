@@ -51,15 +51,12 @@ export async function POST(request: Request) {
         ).rows[0]
       : null;
     teamId = team?.id;
-    if (
-      !team &&
-      session?.user?.id &&
-      (
-        await db.query("SELECT 1 FROM memberships WHERE user_id=$1 LIMIT 1", [
-          session.user.id,
-        ])
-      ).rowCount
-    )
+    // A member of another team starts a trial for a new team of their own.
+    // Only an explicit reference to a team the caller does not own is refused:
+    // managing a foreign team's billing remains restricted to its owner.
+    const requestedTeam =
+      typeof body.team === "string" && body.team.trim() ? body.team.trim() : "";
+    if (requestedTeam && requestedTeam !== team?.id)
       return Response.json(
         { error: "Only the team owner can manage billing." },
         { status: 403 },

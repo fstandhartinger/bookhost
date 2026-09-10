@@ -1,6 +1,9 @@
 import { beforeEach, expect, it, vi } from "vitest";
 
-const state = vi.hoisted(() => ({ auth: vi.fn() }));
+const state = vi.hoisted(() => ({
+  auth: vi.fn(),
+  create: vi.fn(),
+}));
 vi.mock("@/auth", () => ({ auth: state.auth }));
 vi.mock("@/lib/security", () => ({
   sameOrigin: () => true,
@@ -16,24 +19,52 @@ vi.mock("@/lib/db", () => ({
     },
   },
 }));
-vi.mock("@/lib/stripe", () => ({ stripeClient: vi.fn() }));
+vi.mock("@/lib/stripe", () => ({
+  stripeClient: () => ({
+    checkout: { sessions: { create: state.create } },
+  }),
+}));
 
 import { POST as checkout } from "@/app/api/checkout/route";
 import { POST as portal } from "@/app/api/portal/route";
 
-const request = () =>
+const request = (body = "{}") =>
   new Request("http://localhost/api/billing", {
     method: "POST",
-    body: "{}",
+    body,
   });
 
 beforeEach(() => {
   state.auth.mockResolvedValue({
     user: { id: "member-1", email: "member@example.invalid" },
   });
+  state.create.mockReset().mockResolvedValue({
+    id: "cs_member",
+    url: "https://checkout.stripe.com/member",
+  });
+  process.env.STRIPE_PRICE_TEAM = "price_fixture";
 });
 
-it("returns 403 for a member on checkout and portal", async () => {
-  expect((await checkout(request())).status).toBe(403);
+it("lets a member without their own team open checkout for a new team of their own", async () => {
+  const response = await checkout(request());
+
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({
+    url: "https://checkout.stripe.com/member",
+  });
+  expect(state.create).toHaveBeenCalledTimes(1);
+});
+
+it("keeps billing for a foreign team off-limits for members", async () => {
+  const response = await checkout(
+    request(JSON.stringify({ team: "team-foreign" })),
+  );
+
+  expect(response.status).toBe(403);
+  expect(await response.json()).toMatchObject({
+    error: "Only the team owner can manage billing.",
+  });
+  expect(state.create).not.toHaveBeenCalled();
+
   expect((await portal(request())).status).toBe(403);
 });

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { isAdmin } from "@/lib/analytics/server";
+import { ownHost } from "@/lib/analytics/shared";
 import { analyticsReport } from "@/scripts/analytics-report.mjs";
 export const dynamic = "force-dynamic";
 export const metadata = {
@@ -18,6 +19,11 @@ export default async function StatsPage() {
   ).rows[0];
   if (!operator?.email_verified_at || !isAdmin(operator.email)) notFound();
   const report = await analyticsReport(db);
+  // Rows recorded before our own hosts stopped counting as referrers are still
+  // in the table, so filter them out on the way to the screen as well.
+  const referrers = (
+    report.referrers as { host: string; visits: number }[]
+  ).filter((row) => !ownHost(row.host));
   function table(rows: Record<string, string | number>[], label: string) {
     const keys = [
       label,
@@ -68,8 +74,8 @@ export default async function StatsPage() {
       <h2 className="my-6 text-xl">By source</h2>
       {table(report.sources, "source")}
       <h2 className="my-6 text-xl">Referring sites</h2>
-      {report.referrers.length ? (
-        table(report.referrers, "host")
+      {referrers.length ? (
+        table(referrers, "host")
       ) : (
         <p className="text-sm">
           No external referrers in the last 14 days. Our own hosts do not count.

@@ -71,7 +71,10 @@ export async function POST(request: Request) {
     release = acquireSlot(tenant.team_id);
     if (!release)
       throw new IntakeError(
-        "Two documents are already processing. Try again shortly.",
+        // Refusal now has two causes: this team already has a document in
+        // flight, or the host is at its overall limit. The wording has to be
+        // true in both cases.
+        "Document intake is busy right now. Try again in a moment.",
         429,
       );
     if (

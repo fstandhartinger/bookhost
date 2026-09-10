@@ -24,7 +24,9 @@ export function acquireSlot(teamId: string): (() => void) | null {
     if (!released) {
       released = true;
       state.intakeSlots!--;
-      slotsByTeam[teamId]!--;
+      // Drop the entry at zero so the map cannot grow with every team we ever
+      // served in this process.
+      if (--slotsByTeam[teamId]! <= 0) delete slotsByTeam[teamId];
     }
   };
 }

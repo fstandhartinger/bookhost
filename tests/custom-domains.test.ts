@@ -227,3 +227,14 @@ it("withdrawal queues durable removal instead of releasing the hostname", async 
     ),
   ).toBe(false);
 });
+
+it("reports a missing workspace reference separately from an invalid domain", async () => {
+  const source = await import("node:fs/promises").then((fs) =>
+    fs.readFile("lib/domain-api.ts", "utf8"),
+  );
+  expect(source).toContain("Missing workspace reference");
+  const missingIndex = source.indexOf("Missing workspace reference");
+  const domainIndex = source.indexOf("Enter a lowercase public domain");
+  expect(missingIndex).toBeGreaterThan(-1);
+  expect(domainIndex).toBeGreaterThan(missingIndex);
+});

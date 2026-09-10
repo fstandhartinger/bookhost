@@ -18,7 +18,10 @@ export async function domainRequest(
   } catch {
     return json("Invalid request", 400);
   }
-  if (!body || typeof body.team !== "string" || !validDomain(body.host))
+  // Separate causes: a missing workspace reference is not a domain problem.
+  if (!body || typeof body.team !== "string")
+    return json("Missing workspace reference", 400);
+  if (!validDomain(body.host))
     return json(
       "Enter a lowercase public domain such as wiki.example.org. BookHost domains and internationalized names are reserved or unsupported.",
       400,

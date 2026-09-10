@@ -34,7 +34,7 @@ class CapacityGuardTests(unittest.TestCase):
             return db, command, log.getvalue()
 
     def test_below_limits_provisions(self):
-        db, command, _ = self.reconcile()
+        db, command, _ = self.reconcile(free=20)
         command.assert_called_once_with('provision','customer-team','owner@example.invalid')
         self.assertTrue(any("SET status='running'" in c.args[0] for c in db.execute.call_args_list))
 
@@ -68,6 +68,17 @@ class CapacityGuardTests(unittest.TestCase):
                 with patch.object(tenant,'ROOT',root), patch('shutil.disk_usage',return_value=Disk(100*GiB,99*GiB,GiB)), patch.object(tenant,function) as operation, patch('sys.argv',['tenant.py',action,'customer-team']):
                     tenant.main()
                 operation.assert_called_once()
+
+    def test_unavailable_measurement_and_invalid_config_fail_closed(self):
+        with patch.object(worker,'disk_state',side_effect=OSError), contextlib.redirect_stdout(io.StringIO()):
+            self.assertFalse(worker.capacity())
+        with patch.object(worker,'limits',return_value={'MAX_DISK_PERCENT':'nan'}), contextlib.redirect_stdout(io.StringIO()):
+            self.assertFalse(worker.capacity())
+
+    def test_count_excludes_restore_and_unrelated_containers(self):
+        capacity = importlib.import_module('capacity')
+        with patch.object(capacity.subprocess,'check_output',return_value='wissen-demo-bookstack-1\nwissen-team-bookstack-1\nwissen-restore-team-bookstack-1\nother-bookstack-1\n'):
+            self.assertEqual(capacity.running_tenants(),2)
 
     def test_report_sizes_and_reserves(self):
         capacity = importlib.import_module('capacity')

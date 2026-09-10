@@ -134,6 +134,16 @@ def host_command(path, action, args):
         if options.keep_old_as_alias: aliases = checked_hosts([*aliases, host])
         host = new_host
     aliases = [alias for alias in aliases if alias != host]
+    if action != 'aliases' or options.remove is None:
+        requested = checked_hosts([host, *aliases])
+        for other in sorted(ROOT.iterdir()):
+            # Hidden directories hold operator metadata (locks, destroy requests).
+            if other.name.startswith('.') or not other.is_dir() or other.resolve() == path.resolve():
+                continue
+            occupied = checked_hosts([canonical_host(other), *read_aliases(other)])
+            for candidate in requested:
+                if candidate in occupied:
+                    raise ValueError(f'Host {candidate} already belongs to tenant {other.name}')
     # Keep originals if local regeneration fails; never run down or a DB command.
     originals = {name: (path/name).read_bytes() if (path/name).exists() else None
                  for name in ('aliases', '.env', 'docker-compose.yml')}

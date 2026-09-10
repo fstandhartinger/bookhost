@@ -75,7 +75,7 @@ def once():
                 print('Tenant skipped; provisioner instance mismatch: '+slug,flush=True)
                 continue
             if status == 'pending' and is_reserved_test_slug(slug):
-                db.execute("UPDATE tenants SET status='error',error='Reserved test slug; provision manually in an isolated checkout',updated_at=now() WHERE id=%s AND status='pending'",(ident,))
+                db.execute("UPDATE tenants SET status='failed',error='Reserved test slug; provision manually in an isolated checkout',updated_at=now() WHERE id=%s AND status='pending'",(ident,))
                 print('Tenant rejected; reserved test slug: '+slug,flush=True)
                 continue
             existing=(ROOT/slug/'.initialized').exists() if valid_slug(slug) or slug=='demo' else False

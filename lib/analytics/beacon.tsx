@@ -3,6 +3,11 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { parseUtm, publicPath } from "./shared";
 const storageKey = "wissen-attribution";
+// Any workspace domain: the public demo is always the "demo." subdomain.
+const isDemoHost = (host: string) =>
+  host === demoLegacyHost || host.startsWith("demo.");
+const demoLegacyHost = "demo.wissen.app.mintapis.com";
+
 function disabled() {
   return (
     navigator.doNotTrack === "1" ||
@@ -53,7 +58,7 @@ export default function AnalyticsBeacon() {
         event.target instanceof Element ? event.target.closest("a") : null;
       if (
         anchor &&
-        new URL(anchor.href).hostname === "demo.wissen.app.mintapis.com"
+        isDemoHost(new URL(anchor.href).hostname)
       )
         send("demo_click");
     };

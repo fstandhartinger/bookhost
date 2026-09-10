@@ -39,7 +39,7 @@ class QueueIsolationTests(unittest.TestCase):
     def test_reserved_test_slug_is_failed_without_provisioning(self):
         db, command = self.run_worker_for(("id", "rc-review", "admin@example.org", "pending", "running", None))
         command.assert_not_called()
-        updates = [call for call in db.execute.call_args_list if "SET status='error'" in call.args[0]]
+        updates = [call for call in db.execute.call_args_list if "SET status='failed'" in call.args[0]]
         self.assertEqual(len(updates), 1)
         self.assertEqual(updates[0].args[1], ("id",))
         self.assertIn("Reserved test slug; provision manually in an isolated checkout", updates[0].args[0])

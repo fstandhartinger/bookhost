@@ -11,6 +11,10 @@ export type BillingState = {
   tenant_error?: string | null;
   stripe_subscription_id?: string;
   invoice_amount?: string | null;
+  contract_ended_at?: Date | string | null;
+  payment_grace_started_at?: Date | string | null;
+  payment_grace_until?: Date | string | null;
+  payment_failure_notified_at?: Date | string | null;
 };
 export const billingDate = (value: Date | string) =>
   new Date(value).toLocaleDateString("en-GB", {
@@ -26,7 +30,11 @@ export function billingEligible(
   return Boolean(
     s &&
     (s.status === "active" ||
-      (s.status === "trialing" && s.trial_end && new Date(s.trial_end) > now)),
+      (s.status === "trialing" && s.trial_end && new Date(s.trial_end) > now) ||
+      (["past_due", "unpaid"].includes(s.status) &&
+        ((!s.payment_grace_until || new Date(s.payment_grace_until) > now) ||
+          !s.payment_failure_notified_at ||
+          new Date(s.payment_failure_notified_at) >= now))),
   );
 }
 export function billingNotice(
@@ -56,7 +64,14 @@ export function billingNotice(
       action: "checkout",
     };
   if (s.status === "past_due" || s.status === "unpaid")
-    return {
+    return s.payment_grace_until && new Date(s.payment_grace_until) > now
+      ? {
+          urgent: true,
+          kind: "payment_failed",
+          action: "portal",
+          text: `Your payment failed. Update your payment method and pay the outstanding invoice within ${Math.max(1, Math.ceil((new Date(s.payment_grace_until).getTime() - now.getTime()) / 86400000))} days to keep workspace access.`,
+        }
+      : {
       urgent: true,
       kind: "payment_failed",
       action: "portal",

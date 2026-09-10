@@ -1,3 +1,4 @@
+import { requireInboundEmail } from "@/lib/intake/inbound-enabled";
 import { boundedBody, errorResponse, IntakeError } from "@/lib/intake/access";
 import { EMAIL_LIMIT, parseEmail, verifySignature } from "@/lib/intake/email";
 import { acceptEmail } from "@/lib/intake/inbound";
@@ -6,6 +7,7 @@ import { clientIp, digest, rateLimit } from "@/lib/security";
 export const runtime = "nodejs";
 export async function POST(request: Request) {
   try {
+    requireInboundEmail("webhook");
     if (!process.env.INBOUND_WEBHOOK_SECRET)
       throw new IntakeError("Inbound intake is not configured.", 503);
     if (

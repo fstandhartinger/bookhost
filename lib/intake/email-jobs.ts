@@ -1,3 +1,4 @@
+import { inboundEmailEnabled, requireInboundEmail } from "./inbound-enabled";
 import { db, transaction } from "@/lib/db";
 import { acquireSlot } from "./slots";
 import { enqueue } from "./jobs";
@@ -7,7 +8,9 @@ import { join } from "node:path";
 // Serialize the short scheduler decision across processes so two claims cannot
 // both observe no running item for the same team. No file or network I/O here.
 export async function claimEmail() {
+  if (!inboundEmailEnabled()) return;
   return transaction(async (c) => {
+    requireInboundEmail("claim");
     await c.query("SELECT pg_advisory_xact_lock(782341, 1)");
     return (
       await c.query(`WITH candidate AS MATERIALIZED (
@@ -26,10 +29,10 @@ export async function claimEmail() {
 }
 let draining = false;
 export async function drainEmail() {
-  if (draining) return;
+  if (!inboundEmailEnabled() || draining) return;
   draining = true;
   try {
-    for (let n = 0; n < 2; n++) {
+    for (let n = 0; n < 2 && inboundEmailEnabled(); n++) {
       const release = acquireSlot();
       if (!release) break;
       let row;
@@ -48,6 +51,7 @@ export async function drainEmail() {
         dir = await mkdtemp(join(tmpdir(), "wissen-intake-"));
         const path = join(dir, "source");
         await writeFile(path, row.content, { mode: 0o600 });
+        requireInboundEmail("dispatch");
         const folder = dir;
         enqueue(
           row.id,
@@ -64,6 +68,7 @@ export async function drainEmail() {
           },
           release,
           true,
+          () => requireInboundEmail("processing"),
         );
       } catch {
         try {
@@ -85,7 +90,7 @@ const state = globalThis as unknown as {
   emailTimer?: ReturnType<typeof setInterval>;
 };
 export function startEmailQueue() {
-  if (state.emailTimer) return;
+  if (!inboundEmailEnabled() || state.emailTimer) return;
   state.emailTimer = setInterval(() => {
     void drainEmail().catch(() =>
       console.error("Email intake dispatch failed"),

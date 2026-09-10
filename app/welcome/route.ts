@@ -10,6 +10,7 @@ import {
 } from "@/lib/billing";
 import { baseUrl } from "@/lib/config";
 import { clientIp, digest } from "@/lib/security";
+import { correlationId, reportError } from "@/lib/error-diagnostics";
 export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   const id = request.nextUrl.searchParams.get("session_id");
@@ -17,10 +18,16 @@ export async function GET(request: NextRequest) {
   const login = () =>
     NextResponse.redirect(new URL("/login?checkout=retry", baseUrl()));
   if (!id?.startsWith("cs_") || !nonce) return login();
+  let phase = "stripe_retrieve";
+  let trustedSessionId: string | undefined;
+  let teamId: string | undefined;
   try {
     const current = await auth();
     const stripe = stripeClient();
     const checkout = await stripe.checkout.sessions.retrieve(id);
+    trustedSessionId = /^cs_[A-Za-z0-9_]{1,72}$/.test(checkout.id)
+      ? checkout.id
+      : undefined;
     if (
       checkout.status !== "complete" ||
       checkout.metadata?.venture !== "wissen"
@@ -30,6 +37,7 @@ export async function GET(request: NextRequest) {
       typeof checkout.subscription === "string"
         ? checkout.subscription
         : checkout.subscription?.id;
+    phase = "attempt_validation";
     const result = await transaction(async (client) => {
       await client.query("SELECT pg_advisory_xact_lock(827492015)");
       const attempt = (
@@ -54,8 +62,11 @@ export async function GET(request: NextRequest) {
         return null;
       if (await cancelDuplicateCheckout(client, checkout, stripe))
         return { duplicate: true } as const;
+      phase = "checkout_sync";
       const team = await syncCheckout(client, checkout);
       if (!team) return null;
+      teamId = team.id;
+      phase = "account_lookup";
       const user = (
         await client.query("SELECT * FROM users WHERE id=$1", [
           team.owner_user_id,
@@ -66,6 +77,7 @@ export async function GET(request: NextRequest) {
         return null;
       // Fetch only after acquiring the same lock used by the webhook. Stripe
       // subscriptions have no updated timestamp; serialized fresh reads prevent stale writes.
+      if (subscriptionId) phase = "subscription_sync";
       if (subscriptionId)
         await syncSubscription(
           client,
@@ -73,6 +85,7 @@ export async function GET(request: NextRequest) {
             expand: ["customer"],
           }),
         );
+      phase = "consent_persist";
       for (const document of ["agb", "avv"]) {
         await client.query(
           `INSERT INTO consents(user_id,team_id,document,version,ip,user_agent)
@@ -89,6 +102,7 @@ export async function GET(request: NextRequest) {
       }
       const cookie = sessionCookie();
       // Encode before consuming: a configuration error must not burn the login.
+      phase = "jwt_encode";
       const token = await encode({
         token: {
           auth_time: Math.floor(Date.now() / 1000),
@@ -101,9 +115,11 @@ export async function GET(request: NextRequest) {
         salt: cookie.name,
         maxAge: 7 * 86400,
       });
+      phase = "login_consume";
       await client.query("INSERT INTO checkout_logins(session_id) VALUES($1)", [
         id,
       ]);
+      phase = "analytics_insert";
       if (checkout.metadata?.no_analytics !== "1")
         await client.query(
           "INSERT INTO events(name,team_id,utm_source) SELECT 'trial_started',id,utm_source FROM teams WHERE id=$1 AND EXISTS(SELECT 1 FROM subscriptions WHERE team_id=$1 AND status='trialing')",
@@ -129,7 +145,18 @@ export async function GET(request: NextRequest) {
     });
     response.headers.set("Cache-Control", "no-store");
     return response;
-  } catch {
-    return login();
+  } catch (error) {
+    const reference = correlationId();
+    reportError({
+      event: "welcome_error",
+      phase,
+      team_id: teamId,
+      session_id: trustedSessionId,
+      correlation_id: reference,
+      error,
+    });
+    return NextResponse.redirect(
+      new URL(`/login?checkout=retry&reference=${reference}`, baseUrl()),
+    );
   }
 }

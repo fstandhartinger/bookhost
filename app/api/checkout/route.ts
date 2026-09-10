@@ -12,9 +12,13 @@ import { teamCheckout } from "@/lib/team-checkout";
 import { IntakeError } from "@/lib/intake/access";
 import { checkoutParams } from "@/lib/checkout";
 import { clientIp, digest, rateLimit, sameOrigin } from "@/lib/security";
+import { correlationId, reportError } from "@/lib/error-diagnostics";
 export async function POST(request: Request) {
   if (!sameOrigin(request))
     return Response.json({ error: "Invalid origin" }, { status: 403 });
+  let phase = "request_setup";
+  let teamId: string | undefined;
+  let checkoutSessionId: string | undefined;
   try {
     const session = await auth();
     const body = await request.json().catch(() => ({}));
@@ -46,6 +50,7 @@ export async function POST(request: Request) {
           ])
         ).rows[0]
       : null;
+    teamId = team?.id;
     if (
       !team &&
       session?.user?.id &&
@@ -126,25 +131,40 @@ export async function POST(request: Request) {
       utmSource,
       noAnalytics,
     });
+    phase = "checkout_create";
     const checkout = team
       ? await teamCheckout(team.id, params, stripe)
       : await stripe.checkout.sessions.create(params);
+    checkoutSessionId = checkout.id;
     const nonce = randomBytes(32).toString("hex");
+    phase = "attempt_persist";
     await db.query(
       "INSERT INTO checkout_attempts(session_id,nonce_hash,user_id) VALUES($1,$2,$3) ON CONFLICT(session_id) DO NOTHING",
       [checkout.id, digest(nonce), session?.user?.id || null],
     );
+    phase = "nonce_persist";
     await db.query(
       "INSERT INTO checkout_attempt_nonces(session_id,nonce_hash) SELECT session_id,$2 FROM checkout_attempts WHERE session_id=$1 AND user_id IS NOT DISTINCT FROM $3 ON CONFLICT DO NOTHING",
       [checkout.id, digest(nonce), session?.user?.id || null],
     );
-    if (!noAnalytics)
+    if (!noAnalytics) {
+      const analyticsCorrelation = correlationId();
       await db
         .query(
           "INSERT INTO events(name,team_id,utm_source,visitor_hash) VALUES('checkout_start',$1,$2,$3)",
           [team?.id || null, utmSource, requestHash(request)],
         )
-        .catch(() => {});
+        .catch((error) =>
+          reportError({
+            event: "checkout_error",
+            phase: "analytics_insert",
+            team_id: teamId,
+            session_id: checkoutSessionId,
+            correlation_id: analyticsCorrelation,
+            error,
+          }),
+        );
+    }
     const response = NextResponse.json({ url: checkout.url });
     response.cookies.set("wissen-checkout", nonce, {
       httpOnly: true,
@@ -157,8 +177,20 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof IntakeError && error.status === 409)
       return Response.json({ error: error.message }, { status: 409 });
+    const reference = correlationId();
+    reportError({
+      event: "checkout_error",
+      phase,
+      team_id: teamId,
+      session_id: checkoutSessionId,
+      correlation_id: reference,
+      error,
+    });
     return Response.json(
-      { error: "We could not open checkout. Please try again shortly." },
+      {
+        error: `We could not open checkout. Please try again shortly. Reference: ${reference}`,
+        reference,
+      },
       { status: 503 },
     );
   }

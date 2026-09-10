@@ -1,9 +1,10 @@
+import { requireInboundEmail } from "./inbound-enabled";
 import type { Pool, PoolClient } from "pg";
 import { db, transaction } from "@/lib/db";
 import { clientFor, IntakeError } from "./access";
 import { parseEmail, senderAllowed } from "./email";
 import { rateLimit } from "@/lib/security";
-const tenantSql = `SELECT t.*,s.status AS subscription_status FROM tenants t JOIN effective_subscriptions s ON s.team_id=t.team_id WHERE t.slug=$1 AND t.status='running' AND t.desired_state='running' AND s.status IN ('active','trialing') AND (s.status!='trialing' OR s.trial_end>now())`;
+const tenantSql = `SELECT t.*,s.status AS subscription_status FROM tenants t JOIN effective_subscriptions s ON s.team_id=t.team_id WHERE t.slug=$1 AND t.status='running' AND t.desired_state='running' AND (s.status='active' OR (s.status='trialing' AND s.trial_end>now()) OR (s.status IN ('past_due','unpaid') AND (s.payment_grace_until>now() OR s.payment_failure_notified_at IS NULL OR s.payment_failure_notified_at>=now())))`;
 // The caller supplies the connection; this helper never acquires a pool connection.
 async function replay(c: Pool | PoolClient, messageId: string, teamId: string) {
   const previous = (
@@ -27,6 +28,7 @@ async function replay(c: Pool | PoolClient, messageId: string, teamId: string) {
   return previous.item_ids as string[];
 }
 export async function acceptEmail(mail: ReturnType<typeof parseEmail>) {
+  requireInboundEmail("admission");
   const tenant = (await db.query(tenantSql, [mail.slug])).rows[0];
   if (!tenant)
     throw new IntakeError("Workspace not found or not running.", 404);
@@ -78,6 +80,7 @@ export async function acceptEmail(mail: ReturnType<typeof parseEmail>) {
     }));
   try {
     return await transaction(async (c) => {
+      requireInboundEmail("admission_commit");
       // Only this connection is used while holding the workspace lock. No HTTP here.
       const current = (
         await c.query(tenantSql + " FOR UPDATE OF t", [mail.slug])

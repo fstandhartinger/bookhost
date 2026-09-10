@@ -16,10 +16,32 @@ export async function generateNotifications(
     "SELECT pg_try_advisory_xact_lock(827492015) AS acquired",
   );
   if (!lock.rows[0]?.acquired) return 0;
+  const graceDays = Math.max(
+    1,
+    Number.parseInt(process.env.PAYMENT_GRACE_DAYS || "7", 10) || 7,
+  );
+  await db.query(
+    `UPDATE subscriptions SET payment_grace_started_at=COALESCE(payment_grace_started_at,$1),
+     payment_grace_until=COALESCE(payment_grace_until,$1::timestamptz+($2||' days')::interval)
+     WHERE status IN ('past_due','unpaid') AND (payment_grace_started_at IS NULL OR payment_grace_until IS NULL)`,
+    [now, graceDays],
+  );
+  await db.query(
+    `UPDATE subscriptions SET contract_ended_at=COALESCE(contract_ended_at,trial_end)
+     WHERE status='trialing' AND trial_end<=$1 AND NOT has_payment_method`,
+    [now],
+  );
   await db.query(
     `UPDATE tenants n SET desired_state='suspended',updated_at=$1
     FROM effective_subscriptions s WHERE s.team_id=n.team_id AND s.status='trialing'
     AND s.trial_end <= $1 AND n.desired_state<>'suspended'`,
+    [now],
+  );
+  await db.query(
+    `UPDATE tenants n SET desired_state='suspended',updated_at=$1
+     FROM effective_subscriptions s WHERE s.team_id=n.team_id
+     AND s.status IN ('past_due','unpaid') AND s.payment_grace_until<=$1
+     AND s.payment_failure_notified_at<$1 AND n.desired_state<>'suspended'`,
     [now],
   );
   await db.query(
@@ -120,9 +142,10 @@ export async function generateNotifications(
       (notice.kind.startsWith("trial_ending") && s.has_payment_method)
     )
       continue;
-    const end =
-      notice.kind === "payment_failed" ? s.current_period_end : s.trial_end;
-    const period = `${s.stripe_subscription_id}:${end ? new Date(end).toISOString() : "unknown"}`;
+    const end = s.trial_end;
+    const period = notice.kind === "payment_failed"
+      ? `${s.stripe_subscription_id}:payment_failed:${new Date(s.payment_grace_started_at || now).toISOString()}`
+      : `${s.stripe_subscription_id}:${end ? new Date(end).toISOString() : "unknown"}`;
     const text = notice.kind.startsWith("trial_ending")
       ? `Your free trial ends on ${billingDate(s.trial_end!)} UTC. Add a payment method to keep your workspace.`
       : notice.text;
@@ -139,7 +162,20 @@ export async function generateNotifications(
       ],
     );
     created += result.rowCount || 0;
+    if (notice.kind === "payment_failed")
+      await db.query(
+        `UPDATE subscriptions SET payment_failure_notified_at=COALESCE(payment_failure_notified_at,$2)
+         WHERE stripe_subscription_id=$1 AND EXISTS (SELECT 1 FROM notifications WHERE subscription_id=$1 AND kind='payment_failed' AND period=$3)`,
+        [s.stripe_subscription_id, now, period],
+      );
   }
+  await db.query(
+    `UPDATE tenants n SET desired_state='suspended',updated_at=$1
+     FROM effective_subscriptions s WHERE s.team_id=n.team_id
+     AND s.status IN ('past_due','unpaid') AND s.payment_grace_until<=$1
+     AND s.payment_failure_notified_at<$1 AND n.desired_state<>'suspended'`,
+    [now],
+  );
   if (send) {
     const pending =
       await db.query(`SELECT n.id,n.kind,n.payload,u.email FROM notifications n JOIN users u ON u.id=n.user_id

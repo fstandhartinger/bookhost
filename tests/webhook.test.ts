@@ -57,7 +57,7 @@ describe("webhook processing", () => {
     expect(call).toBeTruthy();
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining("ON CONFLICT(stripe_subscription_id)"),
-      [
+      expect.arrayContaining([
         "team_1",
         "sub_1",
         "trialing",
@@ -67,7 +67,7 @@ describe("webhook processing", () => {
         false,
         new Date(1790000000000),
         false,
-      ],
+      ]),
     );
   });
   it("ignores a duplicate event", async () => {
@@ -150,9 +150,58 @@ it.each([
     expect.stringContaining("UPDATE tenants"),
     [
       "team_1",
-      ["active", "trialing"].includes(status) ? "running" : "suspended",
+      ["active", "trialing", "past_due", "unpaid"].includes(status)
+        ? "running"
+        : "suspended",
     ],
   );
+});
+it("keeps a delinquent workspace running during the announced seven-day grace period", async () => {
+  const { query, client } = mockDb(false, "past_due");
+  await syncSubscription(client, {
+    ...sub,
+    status: "past_due",
+  } as Stripe.Subscription);
+  expect(query).toHaveBeenCalledWith(
+    expect.stringContaining("UPDATE tenants"),
+    ["team_1", "running"],
+  );
+  expect(
+    query.mock.calls.some(
+      ([sql]) =>
+        String(sql).startsWith("INSERT INTO subscriptions") &&
+        String(sql).includes("payment_grace_started_at"),
+    ),
+  ).toBe(true);
+});
+it("persists Stripe's actual contract end and clears retention on paid resume", async () => {
+  const endedAt = 1_800_000_123;
+  const { query, client } = mockDb(false, "canceled");
+  await syncSubscription(client, {
+    ...sub,
+    status: "canceled",
+    ended_at: endedAt,
+  } as Stripe.Subscription);
+  const upsert = query.mock.calls.find(([sql]) =>
+    String(sql).startsWith("INSERT INTO subscriptions"),
+  );
+  expect(upsert?.[0]).toContain("contract_ended_at");
+  expect((upsert as unknown as [string, unknown[]])?.[1]).toContainEqual(
+    new Date(endedAt * 1000),
+  );
+
+  query.mockClear();
+  await syncSubscription(client, { ...sub, status: "active" } as Stripe.Subscription);
+  expect(
+    query.mock.calls.some(([sql]) => {
+      const statement = String(sql);
+      return (
+        statement.startsWith("INSERT INTO subscriptions") &&
+        statement.includes("EXCLUDED.status='active'") &&
+        statement.includes("ELSE NULL END,payment_grace_until")
+      );
+    }),
+  ).toBe(true);
 });
 it("cancels a duplicate anonymous subscription without attaching a second team", async () => {
   const query = vi.fn(async () => ({

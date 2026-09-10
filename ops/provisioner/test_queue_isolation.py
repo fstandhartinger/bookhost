@@ -13,8 +13,8 @@ class QueueIsolationTests(unittest.TestCase):
 
         def execute(sql, params=None):
             result = MagicMock()
-            if sql.startswith("SELECT id,slug,admin_email"):
-                result.fetchall.return_value = [row]
+            if sql.startswith("SELECT n.id,n.slug,n.admin_email"):
+                result.fetchall.return_value = [(*row, None)]
             else:
                 result.fetchall.return_value = []
             result.fetchone.return_value = (row[0],)

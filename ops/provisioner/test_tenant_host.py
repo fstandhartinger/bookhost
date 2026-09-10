@@ -20,7 +20,7 @@ class TenantHostTests(unittest.TestCase):
                 db = MagicMock()
                 def execute(sql, params=None):
                     result = MagicMock()
-                    result.fetchall.return_value = [('id', 'host-test', 'admin@example.org', 'suspended' if existing else 'pending', 'running')] if sql.startswith('SELECT id,slug,admin_email') else []
+                    result.fetchall.return_value = [('id', 'host-test', 'admin@example.org', 'suspended' if existing else 'pending', 'running', None, None)] if sql.startswith('SELECT n.id,n.slug,n.admin_email') else []
                     result.fetchone.return_value = ('id',)
                     return result
                 db.execute.side_effect = execute

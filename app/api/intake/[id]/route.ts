@@ -130,7 +130,7 @@ export async function POST(request: Request, context: Context) {
     // Durable compare-and-swap before network I/O prevents double publication.
     const claimed = await db.query(
       `UPDATE intake_items i SET status='approved',draft_title=$2,draft_html=$3,draft_tags=$9,target_book_id=$5,target_chapter_id=$6,target_book_name=$7,target_chapter_name=$8,updated_at=now()
-       WHERE i.id=$1 AND i.status IN ('draft','failed') AND EXISTS(SELECT 1 FROM tenants t JOIN memberships m ON m.team_id=t.team_id WHERE t.id=i.tenant_id AND t.status='running' AND t.desired_state='running' AND m.user_id=$4 AND m.role IN ('owner','admin') AND (SELECT CASE WHEN status='trialing' AND (trial_end IS NULL OR trial_end<=now()) THEN 'expired' ELSE status END FROM effective_subscriptions WHERE team_id=t.team_id) IN ('trialing','active')) RETURNING id`,
+       WHERE i.id=$1 AND i.status IN ('draft','failed') AND EXISTS(SELECT 1 FROM tenants t JOIN memberships m ON m.team_id=t.team_id WHERE t.id=i.tenant_id AND t.status='running' AND t.desired_state='running' AND m.user_id=$4 AND m.role IN ('owner','admin') AND (SELECT CASE WHEN status='trialing' AND (trial_end IS NULL OR trial_end<=now()) THEN 'expired' WHEN status IN ('past_due','unpaid') AND payment_grace_until<=now() AND payment_failure_notified_at<now() THEN 'expired' ELSE status END FROM effective_subscriptions WHERE team_id=t.team_id) IN ('trialing','active','past_due','unpaid')) RETURNING id`,
       [
         item.id,
         body.title.trim(),

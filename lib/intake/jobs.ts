@@ -1,3 +1,4 @@
+import { InboundEmailDisabledError } from "./inbound-enabled";
 import { db } from "@/lib/db";
 import { workspace } from "./access";
 import { extractFile } from "./extract";
@@ -11,10 +12,12 @@ export function enqueue(
   cleanup: () => Promise<void>,
   release: () => void,
   alreadyClaimed = false,
+  beforeProcessing?: () => void,
 ) {
   setImmediate(() => {
     void (async () => {
       try {
+        beforeProcessing?.();
         await workspace(user, tenant);
         const claimed = alreadyClaimed
           ? { rowCount: 1 }
@@ -28,14 +31,24 @@ export function enqueue(
           "UPDATE intake_items SET extracted_text=$2,mime=$3 WHERE id=$1",
           [id, source.text, source.mime],
         );
+        beforeProcessing?.();
         await workspace(user, tenant);
         const draft = await generateDraft(source.text);
+        beforeProcessing?.();
         await workspace(user, tenant);
         await db.query(
           "UPDATE intake_items SET status='draft',draft_title=CASE WHEN source='email' AND length(trim(draft_title))>0 THEN draft_title ELSE $2 END,draft_html=$3,draft_tags=$4,updated_at=now() WHERE id=$1 AND status='drafting'",
           [id, draft.title, draft.html, JSON.stringify(draft.tags)],
         );
-      } catch {
+      } catch (error) {
+        if (error instanceof InboundEmailDisabledError) {
+          // Pausing the receiver must retain the durable email source for resume.
+          await db.query(
+            "UPDATE intake_items SET status='queued',updated_at=now() WHERE id=$1 AND source='email' AND status='drafting'",
+            [id],
+          );
+          return;
+        }
         await db
           .query(
             "UPDATE intake_items SET status='failed',error='Draft could not be created. Check the file and workspace subscription, then try again.',updated_at=now() WHERE id=$1 AND status IN ('queued','drafting')",

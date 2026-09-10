@@ -127,7 +127,9 @@ async function query(sql: string, values: unknown[] = []) {
   if (sql.includes("pg_try_advisory_xact_lock"))
     return result([{ acquired: true }]);
   if (sql.includes("pg_advisory_xact_lock")) return result();
+  if (sql.startsWith("UPDATE subscriptions SET")) return result();
   if (sql.startsWith("UPDATE tenants n SET")) {
+    if (sql.includes("s.status IN ('past_due','unpaid')")) return result();
     expect(sql).toContain("s.trial_end <= $1");
     expect(sql).toContain("s.status='trialing'");
     if (tenant && subscription.status === "trialing" && !eligible())

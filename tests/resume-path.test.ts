@@ -33,6 +33,7 @@ vi.mock("@/lib/stripe", () => ({
 }));
 vi.mock("next-auth/jwt", () => ({ encode: async () => "fixture-token" }));
 vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
   redirect: (path: string) => {
     throw new Error(path);
   },
@@ -267,6 +268,7 @@ async function query(sql: string, values: unknown[] = []) {
     return result([{ id: "event" }]);
   if (sql.startsWith("INSERT INTO") || sql.startsWith("UPDATE teams"))
     return result();
+  if (sql.includes("FROM tenant_domains")) return result();
   throw new Error(`Unhandled mock SQL: ${sql}`);
 }
 const request = () =>

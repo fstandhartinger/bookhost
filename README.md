@@ -500,3 +500,5 @@ normal migration exclusion and explicit CLI contract application. The source-dri
 `tests/event-names.test.ts` preserves historical names and checks all literal event
 INSERTs in lib/ and app/; dynamic/reordered event INSERTs fail closed until the
 extractor is extended.
+
+Customer-owned domains: see [setup, DNS verification and activation](ops/provisioner/CUSTOM-DOMAINS.md).

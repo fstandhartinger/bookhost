@@ -81,7 +81,7 @@ class CriticalIsolationTests(QueueIsolationTests):
         for call in db.execute.call_args_list:
             sql=call.args[0]
             if sql.startswith(('SELECT','UPDATE tenants')):
-                self.assertIn("COALESCE(provisioner_instance,'production')",sql)
+                self.assertRegex(sql, r"COALESCE\((?:n\.)?provisioner_instance,'production'\)")
                 self.assertIn('production',call.args[1])
 
 class StaleIsolationTests(unittest.TestCase):

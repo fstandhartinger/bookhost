@@ -1,3 +1,5 @@
+import { DomainPanel } from "@/components/domain-panel";
+import { isIP } from "node:net";
 import { storageNotice } from "@/lib/storage-usage";
 import { tenantHost } from "@/lib/tenant-host";
 import { NEW_TENANT_DOMAIN } from "@/lib/config";
@@ -100,6 +102,15 @@ export default async function Dashboard({
         )
       ).rows[0]
     : null;
+  const domains =
+    canManage && tenant
+      ? (
+          await db.query(
+            "SELECT host,status,verification_token,last_error,(removal_requested_at IS NOT NULL) AS removing FROM tenant_domains WHERE team_id=$1 ORDER BY requested_at",
+            [team.id],
+          )
+        ).rows
+      : [];
   const memberLogin =
     team && !isOwner
       ? (
@@ -212,6 +223,18 @@ export default async function Dashboard({
             }))}
           />
         </div>
+      )}
+      {canManage && tenant && (
+        <DomainPanel
+          team={team.id}
+          tenantHost={tenant.host || `${tenant.slug}.${NEW_TENANT_DOMAIN}`}
+          domains={domains}
+          ipv4={
+            isIP(process.env.CUSTOM_DOMAIN_IPV4 || "") === 4
+              ? process.env.CUSTOM_DOMAIN_IPV4!
+              : ""
+          }
+        />
       )}
       {isOwner && (subscription || tenant) && (
         <BillingNotice

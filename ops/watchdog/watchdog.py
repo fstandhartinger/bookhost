@@ -96,9 +96,9 @@ def database():
 SET LOCAL statement_timeout = '15s';
 SELECT json_build_object(
  'running', COALESCE((SELECT json_agg(json_build_object('slug',slug,'host',COALESCE(to_jsonb(tenants)->>'host',slug||'.wissen.app.mintapis.com'),'created',extract(epoch from created_at)) ORDER BY slug) FROM tenants WHERE status='running'), '[]'::json),
- 'provisioning', (SELECT count(*) FROM tenants WHERE status='provisioning' AND updated_at < now()-interval '20 minutes'),
- 'pending', (SELECT count(*) FROM tenants WHERE status='pending' AND created_at < now()-interval '15 minutes'),
- 'drafting', (SELECT count(*) FROM intake_items WHERE status='drafting' AND updated_at < now()-interval '30 minutes'),
+ 'provisioning', (SELECT count(*) FROM tenants WHERE status='provisioning' AND @OVERDUE_PROVISIONING@),
+ 'pending', (SELECT count(*) FROM tenants WHERE status='pending' AND @OVERDUE_PENDING@),
+ 'drafting', (SELECT count(*) FROM intake_items WHERE status='drafting' AND @OVERDUE_DRAFTING@),
  'stranded', COALESCE((SELECT json_agg(slug ORDER BY slug) FROM tenants
    WHERE desired_state='running' AND status NOT IN ('running','pending','provisioning')), '[]'::json),
  'unsuspended', COALESCE((SELECT json_agg(slug ORDER BY slug) FROM tenants
@@ -106,6 +106,10 @@ SELECT json_build_object(
      AND updated_at < now()-interval '30 minutes'), '[]'::json));
 ROLLBACK;
 """
+    query = (query
+             .replace('@OVERDUE_PROVISIONING@', overdue('updated_at', 20))
+             .replace('@OVERDUE_PENDING@', overdue('created_at', 15))
+             .replace('@OVERDUE_DRAFTING@', overdue('updated_at', 30)))
     with tempfile.TemporaryDirectory(prefix='wissen-watchdog-tls-') as tmp:
         ca = Path(tmp) / 'ca.pem'
         ca.write_bytes(base64.b64decode(os.environ['DATABASE_SSL_CA_BASE64'], validate=True))
@@ -186,6 +190,18 @@ def usable_backups(directory, now):
         if age is not None:
             ages.append(age)
     return sorted(ages)
+
+
+def overdue(column, minutes):
+    """SQL for "stuck for too long, or we cannot tell how long".
+
+    A NULL timestamp never satisfies `<`, so a hung row with no timestamp used
+    to be invisible; the provisioner schema allows NULL (default now(), no NOT
+    NULL). A timestamp in the future is not evidence of progress either — it
+    pushes detection out for as long as the clock is wrong. Both count as overdue.
+    """
+    return (f"({column} IS NULL OR {column} > now() "
+            f"OR {column} < now()-interval '{minutes} minutes')")
 
 
 def first_backup_grace(marker_age, tenant_age=None, grace=30 * 60):

@@ -242,3 +242,21 @@ it("strips FAQ HTML and safely serializes script-closing text", async () => {
     faqs.pop();
   }
 });
+
+import { softwareApplication } from "@/lib/structured-data";
+
+it("marks the offer up on the page a price search leads to", async () => {
+  // The home page carried the only offer markup; /pricing is the page that
+  // ranks for price questions and had none.
+  const fs = await import("node:fs/promises");
+  const source = await fs.readFile("app/pricing/page.tsx", "utf8");
+  expect(source).toContain("softwareApplication()");
+  expect(source).toContain("JsonLd");
+  const application = softwareApplication() as {
+    "@type": string;
+    offers: { price: number; priceCurrency: string };
+  };
+  expect(application["@type"]).toBe("SoftwareApplication");
+  expect(application.offers.price).toBe(39);
+  expect(application.offers.priceCurrency).toBe("EUR");
+});

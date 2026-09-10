@@ -33,10 +33,11 @@ export function organization() {
 const plainText = (value: string) =>
   sanitizeHtml(value, { allowedTags: [], allowedAttributes: {} });
 
-export function homeStructuredData() {
+// The offer belongs on the page a price search leads to as well, so the
+// application entity is built once and used by the home and the pricing page.
+export function softwareApplication() {
   const provider = organization();
-  return [
-    {
+  return {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
       name: PRODUCT_NAME,
@@ -66,7 +67,12 @@ export function homeStructuredData() {
       },
       provider,
       publisher: provider,
-    },
+  };
+}
+
+export function homeStructuredData() {
+  return [
+    softwareApplication(),
     {
       "@context": "https://schema.org",
       "@type": "FAQPage",

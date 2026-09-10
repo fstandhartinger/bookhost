@@ -1,4 +1,6 @@
 import { Pricing } from "@/components/pricing";
+import { JsonLd } from "@/components/json-ld";
+import { softwareApplication } from "@/lib/structured-data";
 export const metadata = {
   title: "Pricing",
   description:
@@ -21,6 +23,8 @@ export default async function Page({
   const params = await searchParams;
   return (
     <>
+      {/* A price search lands here, so the offer has to be marked up here too. */}
+      <JsonLd data={softwareApplication()} />
       {params.canceled && (
         <p role="status" className="mt-8 rounded-lg bg-amber-50 p-4 text-sm">
           Checkout was canceled. No payment was taken. You can start again

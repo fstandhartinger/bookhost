@@ -236,6 +236,30 @@ def overdue(column, minutes):
             f"OR {column} < now()-interval '{minutes} minutes')")
 
 
+def offsite_state(log, now):
+    """What the nightly offsite copy last did — it logs where nobody looks.
+
+    All archives live on the same host as the workspaces. The offsite job runs
+    every night and writes its outcome into its own file, so "Backups: ok" could
+    be true every ten minutes while no copy had ever left the machine. This
+    surfaces that fact in the line an operator actually reads. It deliberately
+    does not turn the check red: a known, accepted gap must stay visible without
+    crying wolf every ten minutes.
+    """
+    try:
+        text = log.read_text(errors='replace').strip()
+        age = now - log.stat().st_mtime
+    except OSError:
+        return 'Offsite: nie gelaufen'
+    if not text:
+        return 'Offsite: ohne Ausgabe'
+    last = text.splitlines()[-1]
+    stunden = int(age // 3600)
+    if 'ERROR' in last:
+        return f'Offsite: FEHLER seit {stunden} h ({last[:80]})'
+    return f'Offsite: ok vor {stunden} h'
+
+
 def first_backup_grace(marker_age, tenant_age=None, grace=30 * 60):
     """Is a workspace still allowed to have no backup at all?
 
@@ -354,6 +378,7 @@ def checks():
         fallbacks = recent_backup_fallbacks(ROOT / 'backup.log', now)
         detail = ('signaturgeprueft; ' if key else 'Signatur UNGEPRUEFT (Schluessel nicht lesbar); ')
         detail += f'fehlend/veraltet: {", ".join(failed) or "keine"}'
+        detail += '; ' + offsite_state(ROOT / 'offsite.log', now)
         if pending:
             detail += '; ausstehend: ' + ', '.join(pending)
         return db is not None and not failed and not errors, detail + f'; ERROR letzte 24h={errors}; fallback cold letzte 24h={fallbacks}'

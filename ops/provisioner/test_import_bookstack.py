@@ -49,6 +49,11 @@ class ImportTests(unittest.TestCase):
         self.mock_check_starter.side_effect=ValueError('not empty')
         with self.assertRaisesRegex(ValueError,'not empty'): self.go()
         self.assertNotIn('backup',self.events)
+    def test_concurrent_content_after_backup_is_retained(self):
+        self.mock_check_starter.side_effect=[None,ValueError('not empty')]
+        with self.assertRaisesRegex(RuntimeError,'original target retained'): self.go()
+        self.assertNotIn('import_dump',self.events)
+        self.assertNotIn('rollback',self.events)
     def test_missing_dump(self):
         self.dump.unlink()
         with self.assertRaises(ValueError): self.go()
@@ -62,6 +67,7 @@ class ImportTests(unittest.TestCase):
         self.assertLess(self.events.index('import_dump'),self.events.index('install_files'))
         self.assertIn('ensure_token',self.events)
         self.assertIn('rewrite_links',self.events)
+        self.mock_artisan.assert_any_call(self.path,['migrate','--force'])
     def test_no_old_url(self):
         self.go()
         self.assertNotIn('rewrite_links',self.events)

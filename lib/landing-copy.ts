@@ -13,7 +13,7 @@ export const faqs = [
   ],
   [
     "What happens if we need a backup restored?",
-    "We make daily backups and retain them for seven days. Contact support to agree which available backup to restore and what that means for changes made since that backup. A daily backup is not continuous recovery, and we do not promise a fixed restore time. BookStack content exports are also available during your subscription; they are useful for portability but are not necessarily a complete backup of users, settings and every system component.",
+    "We make daily backups. Backups older than seven days are removed at the next daily retention run; with scheduled runs, this can add up to 24 hours. Contact support to agree which available backup to restore and what that means for changes made since that backup. A daily backup is not continuous recovery, and we do not promise a fixed restore time. BookStack content exports are also available during your subscription; they are useful for portability but are not necessarily a complete backup of users, settings and every system component.",
   ],
   [
     "How do cancellation and deletion work?",
@@ -49,7 +49,7 @@ export const benefits = [
   [
     "02",
     "Backups with a way back",
-    "Your instance is backed up daily, with seven days of retained backups and restore help through support. Export your content from BookStack whenever you need it, subject to your team's permissions.",
+    "Your instance is backed up daily, with restore help through support. Backups older than seven days are removed at the next daily retention run; with scheduled runs, this can add up to 24 hours. Export your content from BookStack whenever you need it, subject to your team's permissions.",
   ],
   [
     "03",
@@ -71,7 +71,7 @@ export const steps = [
   [
     "2",
     "Check the draft",
-    "Review the proposed page, summary, tags and reviewer checklist alongside the source. Edit mistakes and resolve open questions before publishing. AI suggestions need human review.",
+    "Review the proposed page, summary, tags and reviewer checklist alongside the source preview (first 2,000 characters). Keep your original document for the full comparison. Edit mistakes and resolve open questions before publishing. AI suggestions need human review.",
   ],
   [
     "3",

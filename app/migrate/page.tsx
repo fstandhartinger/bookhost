@@ -34,6 +34,8 @@ export default function MigrationPage() {
           <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-600">
             Send a database dump of the BookStack database and one archive
             containing the <code>uploads</code> and <code>files</code> directories.
+            Agree a shared snapshot time and freeze writes on the old system before exporting.
+            The database dump and file archive must describe the same read-only source.
             Run these commands on your server, replacing the database name and
             paths with your own values:
           </p>
@@ -41,11 +43,15 @@ export default function MigrationPage() {
 mysqldump --single-transaction --routines --triggers bookstack > bookstack.sql
 mariadb-dump --single-transaction --routines --triggers bookstack > bookstack.sql
 
-# Archive the BookStack uploads and files directories
-tar -czf bookstack-files.tar.gz -C /path/to/bookstack uploads files`}</code></pre>
+# Standard BookStack: normalize private attachments to files/ (GNU tar)
+tar -czf bookstack-files.tar.gz -C /path/to/bookstack/public uploads \
+  --transform='s,^storage/uploads/files,files,' -C /path/to/bookstack storage/uploads/files
+
+# LinuxServer: run inside the container with /config mounted (use instead)
+tar -czf bookstack-files.tar.gz -C /config/www uploads files`}</code></pre>
           <p className="mt-5 text-sm leading-7 text-slate-600">
             We do not need login credentials for your server. Your old instance
-            can continue running while we work on the new one.
+            can continue serving read-only access while we work on the new one. Changes made after the export are not included in that import.
           </p>
         </section>
         <section>
@@ -55,9 +61,9 @@ tar -czf bookstack-files.tar.gz -C /path/to/bookstack uploads files`}</code></pr
             <li>Provision a new BookStack instance for your workspace.</li>
             <li>Import the database and the uploads/files archive.</li>
             <li>Run BookStack&apos;s own schema update so older supported versions are brought forward.</li>
-            <li>Rewrite absolute links from the old address to the new one.</li>
+            <li>When you supply the old base URL, rewrite matching links in supported current page HTML/Markdown, book and chapter descriptions, and image URLs. Settings, historical revisions and other fields require separate checks.</li>
             <li>Rebuild the search index and permissions.</li>
-            <li>Create a backup before every change we make.</li>
+            <li>Create a recovery backup of the destination before starting the import.</li>
           </ul>
         </section>
         <section>
@@ -65,7 +71,7 @@ tar -czf bookstack-files.tar.gz -C /path/to/bookstack uploads files`}</code></pr
           <h2>What you check afterwards</h2>
           <ul className="checklist mt-6">
             <li>The number of books, pages and attachments is correct.</li>
-            <li>You can sign in with the credentials from your existing system. Your old passwords remain valid; our initial password expires.</li>
+            <li>Local password hashes are preserved. Verify sign-in as an administrator and as a regular member as part of acceptance.</li>
             <li>Images and attachments open correctly.</li>
             <li>Search finds the content you expect.</li>
           </ul>
@@ -74,17 +80,20 @@ tar -czf bookstack-files.tar.gz -C /path/to/bookstack uploads files`}</code></pr
           <p className="eyebrow">04 / PLAN THE CHANGE</p>
           <h2>Timing and switch-over</h2>
           <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-600">
-            The usual process lets your old instance keep serving people while
-            the new instance is prepared and checked. Once you are happy, the
-            switch is a DNS or bookmark change to the new address. We do not
-            switch anything off on your server.
+            Agree a shared snapshot time, freeze writes, export both files, then check
+            the imported workspace before cutover by DNS or bookmark change.
+            Keep the old system read-only through acceptance and cutover. For a
+            longer preparation period with resumed writes, arrange a final second
+            import from a fresh, consistent snapshot under a new write freeze,
+            repeat acceptance checks, then switch over. We do not switch anything
+            off on your server.
           </p>
         </section>
         <section>
           <p className="eyebrow">05 / KNOW THE BOUNDARIES</p>
           <h2>What we do not migrate today</h2>
           <ul className="checklist mt-6">
-            <li>External login methods such as LDAP, SAML and OIDC need to be configured again on the new instance.</li>
+            <li>Two-factor authentication (MFA) and external sign-in methods (LDAP, SAML, OIDC) require separate assessment and recovery or reconfiguration before cutover.</li>
             <li>S3 and other external file storage is not imported.</li>
             <li>We review very old BookStack versions before starting.</li>
             <li>Custom server extensions do not run on our hosting.</li>

@@ -46,7 +46,8 @@ export default function Reliability() {
               Each workspace gets a daily backup of its BookStack database and
               files, including pages, attachments and images. Backups are
               encrypted with age and authenticated with an HMAC signature. We
-              keep seven days of backups locally. A first backup is triggered
+              remove local backups older than seven days at the next daily retention
+              run; with scheduled runs, this can add up to 24 hours. A first backup is triggered
               directly after a workspace is provisioned.
             </p>
             <p>
@@ -136,10 +137,14 @@ export default function Reliability() {
             </p>
             <p>We do not offer a contractual availability commitment.</p>
             <p>
-              Document intake is a beta feature. AI processing remains disabled
-              while we do not have a documented data processing agreement with
-              the model provider and the required safeguards for international
-              transfers. See our{" "}
+              Document intake is available in beta. Each upload sends extracted text,
+              not the original file, to Chutes for AI drafting. Without an upload,
+              this feature sends nothing to Chutes. Source text is removed on
+              publication or rejection; intake records and drafts are deleted
+              after 30 days from creation in the next hourly cleanup. Technical
+              availability does not establish a provider DPA or international
+              transfer safeguards. Until those prerequisites are documented, use
+              only non-personal example documents. See our{" "}
               <Link className="text-moss underline" href="/legal/datenschutz">
                 Privacy Policy
               </Link>{" "}

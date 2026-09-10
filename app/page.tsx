@@ -38,7 +38,7 @@ export default function Home() {
               </a>
               <p className="mt-2 text-center text-xs text-slate-600">
                 Read-only demo workspace (the demo runs on our workspace domain
-                wissen.app.mintapis.com)
+                demo.bookhost.co)
               </p>
             </div>
           </div>

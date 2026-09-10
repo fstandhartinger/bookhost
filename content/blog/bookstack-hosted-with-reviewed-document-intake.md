@@ -38,7 +38,7 @@ You can sign in to BookHost with an email address and password. You can also exp
 
 ## What reviewed intake means today
 
-The available beta starts with an uploaded PDF, DOCX, Markdown or text file. A model proposes a draft with a summary, tags and a reviewer checklist. A person checks the source, edits the proposal and chooses where it belongs. Only a team owner or admin can approve publication to BookStack. Email intake remains planned. This is BookHost's workflow around BookStack, not a feature claimed for the upstream project. [Current intake details](https://bookhost.co/#faq).
+The available beta starts with an uploaded PDF, DOCX, Markdown or text file. A model proposes a draft with a summary, tags and a reviewer checklist. A person checks the source preview (first 2,000 characters), uses their original document for the full comparison, edits the proposal and chooses where it belongs. Only a team owner or admin can approve publication to BookStack. Email intake remains planned. This is BookHost's workflow around BookStack, not a feature claimed for the upstream project. [Current intake details](https://bookhost.co/#faq).
 
 For example, a supplier might send a revised maintenance procedure. The reviewer should check which equipment it applies to, whether a warning disappeared, and whether the proposed destination is visible to the right colleagues. A plausible summary does not settle those questions. AI output can contain mistakes, so approval is a responsibility, not a ceremonial click. Permission-aware answers and reminders about ageing content remain later work.
 

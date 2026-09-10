@@ -16,8 +16,16 @@ def valid_slug(slug):
     return bool(re.fullmatch(r'[a-z0-9](?:[a-z0-9-]{1,28}[a-z0-9])', slug)) and '--' not in slug and not slug.startswith('restore') and slug not in RESERVED
 
 
+# Context-local so recovery's budget cannot leak into other lifecycle operations.
+from contextvars import ContextVar
+_command_deadline: ContextVar[float | None] = ContextVar('command_deadline', default=None)
+
 def run(args, data=None):
-    p = subprocess.run(['timeout','--foreground','--kill-after=10s','180s',*args], input=data, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    deadline = _command_deadline.get()
+    budget = 180 if deadline is None else min(180, deadline-time.monotonic())
+    if budget <= 0:
+        raise RuntimeError('BookStack not running or readiness unconfirmed: recovery deadline exceeded')
+    p = subprocess.run(['timeout','--foreground','--kill-after=10s',str(budget)+'s',*args], input=data, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if p.returncode: raise RuntimeError('Command failed: ' + ' '.join(args[:4]))
     return p.stdout
 
@@ -311,6 +319,32 @@ def restore_http_probe(path):
         image_result='200 image/png'
     return {'login':'200 '+title.group(1).strip(),'page':'200 '+page[1],'image':image_result}
 
+def service_recovered(path):
+    """Read-only local HTTP/DB readiness; never enable public access as restore does."""
+    deadline=time.monotonic()+60
+    token=_command_deadline.set(deadline)
+    try:
+        while True:
+            if time.monotonic()>=deadline:
+                raise RuntimeError('BookStack not running or readiness unconfirmed: recovery deadline exceeded')
+            try:
+                if b'bookstack' not in compose(path,'ps','--status','running','--services').splitlines():
+                    raise RuntimeError('BookStack not running')
+                if time.monotonic()>=deadline:
+                    raise RuntimeError('BookStack not running or readiness unconfirmed: recovery deadline exceeded')
+                body=compose(path,'exec','-T','bookstack','curl','--fail','--silent',
+                             '--show-error','--max-time','5','http://127.0.0.1/login')
+                if b'name="_token"' not in body or b'/login"' not in body:
+                    raise RuntimeError('BookStack login not ready')
+                return
+            except RuntimeError:
+                remaining=deadline-time.monotonic()
+                if remaining<=0: raise
+                time.sleep(min(2,remaining))
+    finally:
+        _command_deadline.reset(token)
+
+
 def backup(path, hot=False, keep=False, nightly=False):
     if nightly or (not hot and not keep):
         retention(path)
@@ -354,16 +388,25 @@ def backup(path, hot=False, keep=False, nightly=False):
             final=dest/(name+encrypted.suffix)
             final.with_suffix(final.suffix+'.hmac').write_text(tag)
             encrypted.rename(final)
-            print('BACKUP '+('hot' if hot else 'cold')+' '+str(final))
-            return
+            # An archive receipt is not a service-recovery receipt.
+            print('BACKUP ARCHIVE '+('hot' if hot else 'cold')+' '+str(final), flush=True)
         except Exception as exc:
             print('BACKUP ERROR '+('hot-inconsistent ' if str(exc)=='hot-inconsistent' else '')+path.name, file=sys.stderr)
             raise
         finally:
-            if stopped:
-                try: compose(path,'start','bookstack')
-                except Exception: pass
-            run(['sudo','-n','rm','-rf','--',str(stage)])
+            try:
+                if stopped:
+                    try:
+                        compose(path,'start','bookstack')
+                        # Probe from inside the tenant, independent of public DNS.
+                        service_recovered(path)
+                    except Exception as exc:
+                        print('BACKUP ERROR recovery '+path.name, file=sys.stderr, flush=True)
+                        raise RuntimeError('Backup service recovery failed: '+path.name) from exc
+            finally:
+                run(['sudo','-n','rm','-rf','--',str(stage)])
+        print('BACKUP '+('hot' if hot else 'cold')+' '+str(final))
+        return final
 
 def restore(path, src=None):
     choices=[Path(src)] if src is not None else sorted(p for p in (path/'backups').iterdir() if p.suffix in {'.age','.enc'} and p.with_suffix(p.suffix+'.hmac').exists())

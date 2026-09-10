@@ -328,6 +328,7 @@ class NightlyBackupTests(unittest.TestCase):
             def fake_compose(p,*args,**kwargs):
                 calls.append(args)
                 if args[:2]==('ps','--status'): return b'bookstack\n'
+                if args[:4]==('exec','-T','bookstack','curl'): return b'<form action="/login"><input name="_token"></form>'
                 if args[:2]==('exec','-T'): return b'dump'
                 return b''
             fingerprints=[{'content':{'n':i,'uploads':[]}} for i in range(6)]

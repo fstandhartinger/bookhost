@@ -59,6 +59,13 @@ only appropriate under the same external lock.
 A start requires at least 20 GiB available according to df and fewer running
 BookStack tenant containers than `MAX_TENANTS` in `limits.env` (default 15).
 
+Capacity: new workspaces are refused when free space drops below
+`MIN_FREE_DISK_GB` or the data filesystem exceeds `MAX_DISK_PERCENT`, or when
+`MAX_TENANTS` is reached. Existing tenants, their backups and resume paths are
+never blocked by this guard. On a host shared with other workloads set
+`MAX_DISK_PERCENT` high (95) and rely on `MIN_FREE_DISK_GB`; `capacity.py`
+prints free space, per-tenant usage and the remaining reserve.
+
 `limits.env` is operator configuration and is intentionally untracked; copy
 `limits.env.example` and adjust it. Releases (`release.sh <ref>`) therefore never
 collide with local operator values, and a missing file falls back to the defaults.

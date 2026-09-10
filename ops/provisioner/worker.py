@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 """Serialized lifecycle reconciliation; diagnostics never contain credentials."""
+import ipaddress
+import socket
+import ssl
 import argparse
 import fcntl
 import os
@@ -99,6 +102,61 @@ def sync_destroy_marker(path, contract_ended_at, desired):
         finally: os.close(directory)
 
 
+def domain_alias(slug, host, remove=False):
+    # Existing tenant.py owns its tenant flock and preserves APP_URL/canonical host.
+    subprocess.run([sys.executable, str(HERE/'tenant.py'), 'aliases', slug,
+                    '--remove' if remove else '--add', host],
+                   check=True, timeout=120, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def domain_https_ready(host):
+    # Never connect to customer-controlled DNS. SNI and hostname validation still
+    # check the actual customer certificate on our local/private TLS proxy.
+    address = os.environ.get('CUSTOM_DOMAIN_PROXY_IP', '127.0.0.1')
+    ip = ipaddress.ip_address(address)
+    if not (ip.is_private or ip.is_loopback):
+        raise ValueError('Custom domain proxy must be a private or loopback IP')
+    try:
+        with socket.create_connection((address, 443), timeout=5) as raw:
+            with ssl.create_default_context().wrap_socket(raw, server_hostname=host) as tls:
+                tls.settimeout(5)
+                tls.sendall(('HEAD /login HTTP/1.1\r\nHost: '+host+'\r\nConnection: close\r\n\r\n').encode('ascii'))
+                first = tls.recv(1024).split(b'\r\n', 1)[0].split()
+                return len(first) >= 2 and first[1] in (b'200', b'301', b'302', b'303', b'307', b'308')
+    except (ssl.SSLError, OSError):
+        return False
+
+
+def reconcile_domains(db, instance):
+    # API takes the same team row lock. Keep it until routing and status agree;
+    # a withdrawal cannot disappear between alias addition and activation.
+    with db.transaction():
+        rows = db.execute("""SELECT d.team_id,d.host,n.slug,d.removal_requested_at IS NOT NULL
+            FROM tenant_domains d JOIN tenants n ON n.team_id=d.team_id
+            JOIN teams t ON t.id=d.team_id
+            WHERE COALESCE(n.provisioner_instance,'production')=%s
+            AND (d.last_attempt_at IS NULL OR d.last_attempt_at < now()-interval '1 minute')
+            AND (d.removal_requested_at IS NOT NULL OR
+                 (d.status IN ('verified','failed') AND d.verified_at IS NOT NULL
+                  AND n.status='running' AND n.desired_state='running'))
+            ORDER BY d.last_attempt_at NULLS FIRST,d.requested_at LIMIT 3 FOR UPDATE OF t,d SKIP LOCKED""", (instance,)).fetchall()
+        for team, host, slug, removing in rows:
+            db.execute('UPDATE tenant_domains SET last_attempt_at=now() WHERE team_id=%s AND host=%s', (team, host))
+            if not valid_slug(slug) or (ROOT/slug/'.import-quarantine.json').exists():
+                db.execute("UPDATE tenant_domains SET last_error='Workspace unavailable for domain changes; contact support' WHERE team_id=%s AND host=%s", (team, host))
+                continue
+            try:
+                domain_alias(slug, host, removing)
+                if removing:
+                    db.execute('DELETE FROM tenant_domains WHERE team_id=%s AND host=%s', (team, host))
+                elif domain_https_ready(host):
+                    db.execute("UPDATE tenant_domains SET status='active',active_at=now(),last_error=NULL WHERE team_id=%s AND host=%s", (team, host))
+                else:
+                    db.execute("UPDATE tenant_domains SET status='verified',last_error='Waiting for HTTPS certificate; retrying automatically' WHERE team_id=%s AND host=%s", (team, host))
+            except Exception:
+                db.execute("UPDATE tenant_domains SET status='failed',last_error='Domain routing failed; retrying automatically' WHERE team_id=%s AND host=%s", (team, host))
+
+
 def once():
     instance = os.environ.get('PROVISIONER_INSTANCE', 'production')
     dsn=env_read(Path('/home/flori/ventures2/bookstack/work/.app.env'))['DATABASE_URL_LOCAL']
@@ -106,6 +164,7 @@ def once():
         # Schema bootstrap is operator/production work, never a test queue mutation.
         if instance == 'production':
             db.execute((HERE/'schema.sql').read_text())
+        reconcile_domains(db, instance)
         # run-worker.sh flock spans the whole command: no live worker is reclaimed.
         stale=db.execute("SELECT id,slug FROM tenants WHERE COALESCE(provisioner_instance,'production')=%s AND status='provisioning' AND updated_at < now()-interval '20 minutes'",(instance,)).fetchall()
         for ident,slug in stale:

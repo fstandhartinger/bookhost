@@ -127,6 +127,23 @@ def domain_https_ready(host):
         return False
 
 
+def release_absent_domain(db, team, host, slug):
+    """Release an absent tenant's claim while holding its lifecycle lock."""
+    locks = ROOT/'.locks'
+    locks.mkdir(parents=True, exist_ok=True)
+    with (locks/(slug+'.lock')).open('w') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        path = ROOT/slug
+        # Recheck under the same lock as tenant.py: provision/purge may have
+        # changed the tenant while we waited. Uncertain state stays reserved.
+        if path.is_symlink() or (path/'.import-quarantine.json').exists():
+            raise ValueError('Workspace unavailable for domain changes')
+        if (path/'.initialized').exists():
+            return False
+        db.execute('DELETE FROM tenant_domains WHERE team_id=%s AND host=%s', (team, host))
+        return True
+
+
 def reconcile_domains(db, instance):
     # API takes the same team row lock. Keep it until routing and status agree;
     # a withdrawal cannot disappear between alias addition and activation.
@@ -143,22 +160,33 @@ def reconcile_domains(db, instance):
                   AND n.status='running' AND n.desired_state='running'))
             ORDER BY d.last_attempt_at NULLS FIRST,d.requested_at LIMIT 3 FOR UPDATE OF t,d SKIP LOCKED""", (instance,)).fetchall()
         for team, host, slug, removing in rows:
-            db.execute('UPDATE tenant_domains SET last_attempt_at=now(),attempts=attempts+1 WHERE team_id=%s AND host=%s', (team, host))
-            if not valid_slug(slug) or (ROOT/slug/'.import-quarantine.json').exists():
-                db.execute("UPDATE tenant_domains SET last_error='Workspace unavailable for domain changes; contact support' WHERE team_id=%s AND host=%s", (team, host))
-                continue
+            attempts = db.execute('UPDATE tenant_domains SET last_attempt_at=now(),attempts=attempts+1 WHERE team_id=%s AND host=%s RETURNING attempts', (team, host)).fetchone()[0]
+            completed = False
             try:
+                if not valid_slug(slug) or (ROOT/slug/'.import-quarantine.json').exists():
+                    db.execute("UPDATE tenant_domains SET last_error='Workspace unavailable for domain changes; contact support' WHERE team_id=%s AND host=%s", (team, host))
+                    continue
+                if removing and release_absent_domain(db, team, host, slug):
+                    completed = True
+                    continue
                 domain_alias(slug, host, removing)
                 if removing:
                     db.execute('DELETE FROM tenant_domains WHERE team_id=%s AND host=%s', (team, host))
+                    completed = True
                 elif domain_https_ready(host):
                     db.execute("UPDATE tenant_domains SET status='active',active_at=now(),last_error=NULL,attempts=0 WHERE team_id=%s AND host=%s", (team, host))
+                    completed = True
                 else:
                     db.execute("UPDATE tenant_domains SET status='verified',last_error='Waiting for HTTPS certificate; retrying automatically' WHERE team_id=%s AND host=%s", (team, host))
             except Exception:
                 db.execute("UPDATE tenant_domains SET status='failed',last_error=CASE WHEN attempts>=20 "
                            "THEN 'Domain routing failed after repeated attempts. Check the DNS records and press Check again.' "
                            "ELSE 'Domain routing failed; retrying automatically' END WHERE team_id=%s AND host=%s", (team, host))
+
+            finally:
+                if attempts >= 20 and not completed:
+                    print(f'Domain retry limit reached (20 attempts); operator action required; '
+                          f'team={team} host={host} removal={removing}; automatic retries stopped', flush=True)
 
 
 def once():

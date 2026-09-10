@@ -1,6 +1,7 @@
 import pg from "pg";
 import { databaseConfig } from "./db-config.mjs";
 import { readdir, readFile } from "node:fs/promises";
+const includeDeferred = process.argv.slice(2).includes("--include-deferred");
 const pool = new pg.Pool(databaseConfig());
 pool.on("error", () =>
   console.error("Database migration pool connection failed"),
@@ -16,7 +17,10 @@ try {
   for (const name of (
     await readdir(new URL("../db/migrations/", import.meta.url))
   )
-    .filter((n) => n.endsWith(".sql"))
+    .filter(
+      (n) =>
+        n.endsWith(".sql") && (includeDeferred || !n.endsWith(".deferred.sql")),
+    )
     .sort()) {
     if (
       (

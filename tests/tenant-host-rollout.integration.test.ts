@@ -61,6 +61,14 @@ describe.skipIf(!enabled)("tenant host expand/contract", () => {
     await insert("existing");
     await db.query(migration("021_tenant_host.sql"));
     expect(
+      (
+        await db.query(
+          "SELECT is_nullable FROM information_schema.columns WHERE table_schema=$1 AND table_name='tenants' AND column_name='host'",
+          [schema],
+        )
+      ).rows[0].is_nullable,
+    ).toBe("YES");
+    expect(
       (await db.query("SELECT host FROM tenants WHERE slug='existing'")).rows[0]
         .host,
     ).toBe("existing.wissen.app.mintapis.com");
@@ -91,7 +99,7 @@ describe.skipIf(!enabled)("tenant host expand/contract", () => {
   });
   it("startup skips contract; explicit CLI applies it once and rejects legacy inserts afterwards", async () => {
     const run = (...args: string[]) =>
-      execFileSync(process.execPath, ["scripts/migrate.mjs", ...args], {
+      execFileSync("npm", ["run", "migrate", "--", ...args], {
         env: {
           ...process.env,
           DATABASE_URL: url,
@@ -126,5 +134,14 @@ describe.skipIf(!enabled)("tenant host expand/contract", () => {
       (await insert("contract-new", "contract.bookhost.co")).rows[0].host,
     ).toBe("contract.bookhost.co");
     expect(run("--include-deferred")).not.toContain("Applied migration");
+    // Emergency precondition for an old-image rollback after contract.
+    await db.query(
+      "BEGIN; ALTER TABLE tenants ALTER COLUMN host DROP NOT NULL;" +
+        migration("021_tenant_host.sql") +
+        "; COMMIT;",
+    );
+    expect((await insert("restored-old")).rows[0].host).toBe(
+      "restored-old.wissen.app.mintapis.com",
+    );
   });
 });

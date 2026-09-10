@@ -444,12 +444,37 @@ analytics opt-out, member removal and intake/event retention.
 ### Per-tenant host rollout
 
 Migration 021 backfills all existing tenants to `<slug>.wissen.app.mintapis.com`
-and requires a unique `host`. URLs use this stored host; intake email remains
+and adds a nullable, unique-when-present `host`. URLs use this stored host; intake email remains
 under `intake.wissen.app.mintapis.com`. Deploy the control plane first (entrypoint
 runs migrations), then update the provisioner checkout and set its `limits.env`
 `TENANT_DOMAIN=bookhost.co`, matching `NEW_TENANT_DOMAIN`. Drain pending provisions
-before this coordinated change so the old worker cannot create old-domain tenants
-after the new control plane accepts new workspaces. No existing workspace is moved.
+before this coordinated worker change. Queue draining alone does not exclude
+old-image HTTP requests; the 021 compatibility trigger covers those writers. No existing workspace is moved.
 The worker records the actual APP_URL host after provision/resume, so resuming an
 old workspace preserves its URL. The demo stays on its existing Wissen address.
 Update the watchdog checkout to check stored hosts (legacy fallback supported).
+
+Tenant-host rollout (expand/contract): normal `npm run migrate` applies 021
+(nullable host, legacy backfill and compatibility trigger) and 022 (complete event
+name constraint). Files ending in `.deferred.sql` are excluded from normal startup.
+Deploy the new image only after 021/022. During mixed-image operation and rollback,
+old INSERTs without host receive `<slug>.wissen.app.mintapis.com`; new writers set
+host explicitly. NULL host reads also fall back to the legacy domain.
+
+At least one deploy after 021, once **no old image or in-flight old request remains**
+and rollback to an old image is no longer required, explicitly run
+`npm run migrate -- --include-deferred` to apply 023. This opt-in applies all pending
+deferred migrations; review that set before running it. 023 sets NOT NULL and removes
+the compatibility trigger atomically. Afterwards old INSERTs intentionally fail;
+to restore old-image compatibility first `DROP NOT NULL` on tenants.host and reapply
+021 in one transaction, then roll back the image. Do not remove stored hosts.
+
+Isolated Postgres regression checks (never point these at production): migrate a
+fresh disposable database, then run
+`INTAKE_DB_TEST=1 NOTIFICATIONS_DB_TEST=1 npm test` with its `DATABASE_URL` and no
+production TLS environment. This includes `tests/tenant-host-rollout.integration.test.ts`:
+pre-021 schema, mixed writers, rollback, uniqueness, nullable UPDATE fallback,
+normal migration exclusion and explicit CLI contract application. The source-driven
+`tests/event-names.test.ts` preserves historical names and checks all literal event
+INSERTs in lib/ and app/; dynamic/reordered event INSERTs fail closed until the
+extractor is extended.

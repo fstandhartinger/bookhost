@@ -1,3 +1,4 @@
+import { tenantHost } from "@/lib/tenant-host";
 import { auth } from "@/auth";
 import { db, transaction } from "@/lib/db";
 import { billingEligible } from "@/lib/trial";
@@ -47,7 +48,7 @@ export async function GET(request: Request) {
   return new Response(null, {
     status: 302,
     headers: {
-      Location: `https://${tenant.host}`,
+      Location: `https://${tenantHost(tenant)}`,
       "Cache-Control": "no-store",
     },
   });

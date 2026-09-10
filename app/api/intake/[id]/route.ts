@@ -1,3 +1,4 @@
+import { tenantHost } from "@/lib/tenant-host";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { sameOrigin } from "@/lib/security";
@@ -25,7 +26,6 @@ export async function GET(_request: Request, context: Context) {
       draft_tags,
       error,
       bookstack_page_id,
-      host,
       role,
     } = item;
     return Response.json(
@@ -46,7 +46,7 @@ export async function GET(_request: Request, context: Context) {
         source_preview: (item.extracted_text || "").slice(0, 2000),
         can_publish: canPublish(role),
         url: bookstack_page_id
-          ? `https://${host}/link/${bookstack_page_id}`
+          ? `https://${tenantHost(item)}/link/${bookstack_page_id}`
           : null,
       },
       { headers: { "Cache-Control": "no-store" } },
@@ -81,7 +81,7 @@ export async function POST(request: Request, context: Context) {
       throw new IntakeError("Only team owners and admins can publish.", 403);
     if (item.status === "published")
       return Response.json({
-        url: `https://${item.host}/link/${item.bookstack_page_id}`,
+        url: `https://${tenantHost(item)}/link/${item.bookstack_page_id}`,
       });
     if (!canTransition(item.status, "approved"))
       throw new IntakeError("This document has already been reviewed.", 409);
@@ -109,7 +109,7 @@ export async function POST(request: Request, context: Context) {
     const client = await clientFor({
       id: item.tenant_id,
       slug: item.slug,
-      host: item.host,
+      host: tenantHost(item),
     });
     const bookId =
       body.book_id === undefined ? item.target_book_id : Number(body.book_id);

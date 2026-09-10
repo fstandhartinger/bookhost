@@ -1,3 +1,4 @@
+import { tenantHost } from "@/lib/tenant-host";
 import { db } from "@/lib/db";
 import { BookStack } from "./bookstack";
 import { decrypt } from "./crypto";
@@ -46,7 +47,7 @@ export async function itemForUser(userId: string, id: string) {
   return row;
 }
 export async function clientFor(
-  tenant: { id: string; slug: string; host: string },
+  tenant: { id: string; slug: string; host?: string | null },
   database: Pick<typeof db, "query"> = db,
 ) {
   const secret = (
@@ -61,7 +62,7 @@ export async function clientFor(
       503,
     );
   return new BookStack(
-    tenant.host,
+    tenantHost(tenant),
     secret.api_id,
     decrypt(secret.api_secret_enc, tenant.slug),
   );

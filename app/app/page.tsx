@@ -1,3 +1,4 @@
+import { tenantHost } from "@/lib/tenant-host";
 import { NEW_TENANT_DOMAIN } from "@/lib/config";
 import { OnboardingChecklist } from "@/components/onboarding-checklist";
 import React from "react";
@@ -329,7 +330,7 @@ export default async function Dashboard({
                 </ActionButton>
               )}
               <p className="mt-4 break-all text-sm font-medium">
-                {tenant.host}
+                {tenantHost(tenant)}
               </p>
               {!delayed &&
                 ["pending", "provisioning", "restoring"].includes(status) && (
@@ -353,7 +354,7 @@ export default async function Dashboard({
                       key={`${team.id}:${session.user.id}`}
                       teamId={team.id}
                       email={user?.email || session.user.email || ""}
-                      host={tenant.host}
+                      host={tenantHost(tenant)}
                       login={memberLogin}
                     />
                   )}

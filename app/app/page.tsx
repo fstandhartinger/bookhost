@@ -51,6 +51,8 @@ export default async function Dashboard({
   const activeTeam = (await cookies()).get(ACTIVE_TEAM_COOKIE)?.value;
   const team =
     teams.find((t) => t.id === (selectedTeam || activeTeam)) || teams[0];
+  // Carry the shown team so document intake cannot land on a different one.
+  const intakeHref = team ? `/app/intake?team=${team.id}` : "/app/intake";
   const isOwner = !team || team.owner_user_id === session.user.id;
   const userId = session.user.id;
   const ownsTeam = teams.some((t) => t.owner_user_id === userId);
@@ -407,7 +409,10 @@ export default async function Dashboard({
                   >
                     Open BookStack ↗
                   </a>
-                  <a className="button-secondary mt-3" href="/app/intake">
+                  <a
+                    className="button-secondary mt-3"
+                    href={intakeHref}
+                  >
                     Document intake (beta)
                   </a>
                   {!isOwner && (
@@ -456,7 +461,7 @@ export default async function Dashboard({
           ) : !isOwner ? (
             <p className="mt-4">
               Your owner is setting up this workspace.{" "}
-              <a className="underline" href="/app/intake">
+              <a className="underline" href={intakeHref}>
                 Open document intake
               </a>
             </p>

@@ -91,7 +91,7 @@ beforeEach(() => {
 
 describe("member billing view", () => {
   it("does not show checkout for a member with an active trial", async () => {
-    const markup = renderToStaticMarkup(await IntakePage());
+    const markup = renderToStaticMarkup(await IntakePage({ searchParams: Promise.resolve({}) }));
     expect(markup).not.toContain("No subscription is linked");
     expect(markup).not.toContain("Resume workspace");
     expect(markup).not.toContain("Start checkout");
@@ -99,7 +99,7 @@ describe("member billing view", () => {
 
   it("shows only a neutral member message without a subscription", async () => {
     setup("member", null);
-    const markup = renderToStaticMarkup(await IntakePage());
+    const markup = renderToStaticMarkup(await IntakePage({ searchParams: Promise.resolve({}) }));
     expect(markup).toContain("Billing is managed by the team owner.");
     expect(markup).not.toContain("Resume workspace");
     expect(markup).not.toContain("Start checkout");
@@ -108,7 +108,7 @@ describe("member billing view", () => {
 
   it("keeps the owner checkout notice when no subscription exists", async () => {
     setup("owner", null);
-    const markup = renderToStaticMarkup(await IntakePage());
+    const markup = renderToStaticMarkup(await IntakePage({ searchParams: Promise.resolve({}) }));
     expect(markup).toContain("No subscription is linked");
     expect(markup).toContain("Resume workspace");
   });

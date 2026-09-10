@@ -250,8 +250,12 @@ it("keeps document intake on the active team", async () => {
   const source = await import("node:fs/promises").then((fs) =>
     fs.readFile("app/app/intake/page.tsx", "utf8"),
   );
-  // The page must select the tenant of the team the dashboard shows.
+  // The page must select the tenant of the team the dashboard shows, and an
+  // explicit ?team= link must win over the cookie exactly as on /app.
   expect(source).toContain("ACTIVE_TEAM_COOKIE");
-  expect(source).toMatch(/memberships\.find\(\(m\) => m\.team_id === activeTeam\)/);
+  expect(source).toMatch(
+    /memberships\.find\(\s*\(m\) => m\.team_id === \(selectedTeam \|\| activeTeam\)/,
+  );
+  expect(source).toMatch(/ORDER BY m\.created_at DESC,m\.team_id/);
   expect(source).toMatch(/FROM tenants t WHERE t\.team_id=\$1/);
 });

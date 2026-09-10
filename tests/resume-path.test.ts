@@ -372,7 +372,7 @@ it.each(["checkout.session.completed", "customer.subscription.updated"])(
     expect(tenant?.desired_state).toBe("suspended");
     expect(notices[0].kind).toBe("trial_ended");
     expect(await generateNotifications(db, expiry)).toBe(0);
-    expect(renderToStaticMarkup(await IntakePage())).not.toContain(
+    expect(renderToStaticMarkup(await IntakePage({ searchParams: Promise.resolve({}) }))).not.toContain(
       "INTAKE-AVAILABLE",
     );
     tenant!.status = "suspended"; // worker boundary; executable Python tests cover actual reconciliation
@@ -433,7 +433,7 @@ it.each(["checkout.session.completed", "customer.subscription.updated"])(
     expect(tenant?.desired_state).toBe("running");
     expect(notices.every((n) => n.resolved_at)).toBe(true);
     expect(await dashboard()).toContain("being restored");
-    expect(renderToStaticMarkup(await IntakePage())).not.toContain(
+    expect(renderToStaticMarkup(await IntakePage({ searchParams: Promise.resolve({}) }))).not.toContain(
       "INTAKE-AVAILABLE",
     );
     const returned = await welcome(
@@ -443,7 +443,7 @@ it.each(["checkout.session.completed", "customer.subscription.updated"])(
     );
     expect(returned.headers.get("location")).toContain("/app?setup=password");
     tenant!.status = "running";
-    expect(renderToStaticMarkup(await IntakePage())).toContain(
+    expect(renderToStaticMarkup(await IntakePage({ searchParams: Promise.resolve({}) }))).toContain(
       "INTAKE-AVAILABLE",
     );
     expect(await workspace("owner", id)).toMatchObject({
@@ -459,7 +459,7 @@ it.each(["expired", "suspended", "restoring"])(
       tenant!.status = "suspended";
     }
     if (phase === "suspended") tenant!.desired_state = "suspended";
-    expect(renderToStaticMarkup(await IntakePage())).not.toContain(
+    expect(renderToStaticMarkup(await IntakePage({ searchParams: Promise.resolve({}) }))).not.toContain(
       "INTAKE-AVAILABLE",
     );
     await expect(workspace("owner", id)).rejects.toMatchObject({ status: 409 });

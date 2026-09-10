@@ -12,19 +12,27 @@ export const metadata = {
   title: "Document intake",
   robots: { index: false, follow: false },
 };
-export default async function IntakePage() {
+export default async function IntakePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ team?: string }>;
+}) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
-  // Follow the team the dashboard shows; never fall back to another team's workspace.
+  // Follow the team the dashboard shows; never fall back to another team's
+  // workspace. Same precedence and tie-break as the dashboard, so a link that
+  // names a team cannot leave the two pages on different teams.
+  const { team: selectedTeam } = (await searchParams) || {};
   const activeTeam = (await cookies()).get(ACTIVE_TEAM_COOKIE)?.value;
   const memberships = (
     await db.query(
-      "SELECT m.team_id,m.role FROM memberships m WHERE m.user_id=$1 ORDER BY m.created_at DESC",
+      "SELECT m.team_id,m.role FROM memberships m WHERE m.user_id=$1 ORDER BY m.created_at DESC,m.team_id",
       [session.user.id],
     )
   ).rows;
   const membership =
-    memberships.find((m) => m.team_id === activeTeam) || memberships[0];
+    memberships.find((m) => m.team_id === (selectedTeam || activeTeam)) ||
+    memberships[0];
   const tenants = membership
     ? (
         await db.query(

@@ -8,6 +8,7 @@ import {
   syncSubscription,
   cancelDuplicateCheckout,
 } from "@/lib/billing";
+import { ACTIVE_TEAM_COOKIE, contextCookieOptions } from "@/lib/join-context";
 import { baseUrl } from "@/lib/config";
 import { clientIp, digest } from "@/lib/security";
 import { correlationId, reportError } from "@/lib/error-diagnostics";
@@ -125,7 +126,7 @@ export async function GET(request: NextRequest) {
           "INSERT INTO events(name,team_id,utm_source) SELECT 'trial_started',id,utm_source FROM teams WHERE id=$1 AND EXISTS(SELECT 1 FROM subscriptions WHERE team_id=$1 AND status='trialing')",
           [team.id],
         );
-      return { cookie, token };
+      return { cookie, token, teamId: team.id };
     });
     if (!result) return login();
     if ("duplicate" in result)
@@ -138,6 +139,12 @@ export async function GET(request: NextRequest) {
     response.cookies.set(result.cookie.name, result.token, {
       ...result.cookie.options,
       maxAge: 7 * 86400,
+    });
+    // The trial that was just started must be the team the dashboard shows,
+    // otherwise a member of someone else's team lands back in that team.
+    response.cookies.set(ACTIVE_TEAM_COOKIE, result.teamId, {
+      ...contextCookieOptions(),
+      maxAge: 30 * 86400,
     });
     response.cookies.set("wissen-checkout", "", {
       path: "/welcome",

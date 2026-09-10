@@ -141,6 +141,14 @@ it("reports welcome failures using only the Stripe-confirmed session identifier"
   logged.mockRestore();
 });
 describe("Checkout-first login", () => {
+  it("makes the team the trial was started for the active one", async () => {
+    // A member of someone else's team who starts their own trial must land in
+    // that new team, not back in the team that invited them.
+    const response = await GET(request());
+    const active = response.cookies.get("wissen-team");
+    expect(active?.value).toBeTruthy();
+    expect(response.headers.get("set-cookie")).toContain("HttpOnly");
+  });
   it("issues an Auth.js-compatible HttpOnly JWT once and rejects replay", async () => {
     const response = await GET(request());
     expect(response.status).toBe(307);

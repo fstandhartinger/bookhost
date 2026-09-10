@@ -158,11 +158,11 @@ describe("public wording matches implemented behaviour", () => {
   });
 });
 
-it("answers the self-hoster's first question near the top of the home page", () => {
+it("answers the self-hoster's first question near the top of the home page", async () => {
   // The BookStack installation docs send us people who already run their own
   // instance. The pointer to what moving involves must stay above the fold.
-  const fs = require("node:fs") as typeof import("node:fs");
-  const source = fs.readFileSync("app/page.tsx", "utf8");
+  const fs = await import("node:fs/promises");
+  const source = await fs.readFile("app/page.tsx", "utf8");
   const hero = source.slice(0, source.indexOf("<PaymentNote />"));
   expect(hero).toContain('href="/migrate"');
 });

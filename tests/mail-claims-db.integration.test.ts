@@ -39,7 +39,7 @@ describe.skipIf(process.env.NOTIFICATIONS_DB_TEST !== "1")(
         await readFile("db/migrations/025_activation_notices.sql", "utf8"),
       );
       const migration = await readFile(
-        "db/migrations/027_notice_mail_claims.sql",
+        "db/migrations/028_notice_mail_claims.sql",
         "utf8",
       );
       await pool.query(migration);

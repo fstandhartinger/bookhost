@@ -47,7 +47,7 @@ it.skipIf(process.env.NOTIFICATIONS_DB_TEST !== "1")(
         "013_notifications.sql",
         "014_billing_lifecycle.sql",
         "025_activation_notices.sql",
-        "027_notice_mail_claims.sql",
+        "028_notice_mail_claims.sql",
       ])
         await client.query(
           await readFile(

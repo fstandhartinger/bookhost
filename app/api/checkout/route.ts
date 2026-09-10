@@ -107,7 +107,20 @@ export async function POST(request: Request) {
           team.id,
         ])
       ).rows[0];
-      if (!tenant || tenant.error === "workspace_unavailable")
+      // Paying again must not promise back data we destroyed. A team that never
+      // reached a running workspace has nothing to restore, so it may subscribe:
+      // the onboarding step survives tenant rows and is the durable evidence.
+      const everHadWorkspace = tenant
+        ? tenant.error === "workspace_unavailable"
+        : Boolean(
+            (
+              await db.query(
+                "SELECT 1 FROM team_onboarding WHERE team_id=$1 AND step='workspace'",
+                [team!.id],
+              )
+            ).rowCount,
+          );
+      if (everHadWorkspace)
         return Response.json(
           { error: WORKSPACE_UNAVAILABLE_MESSAGE },
           { status: 409 },

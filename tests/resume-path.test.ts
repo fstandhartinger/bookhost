@@ -100,6 +100,8 @@ const checkout = {
   subscription: "sub_paid",
 };
 let subscription: Record<string, unknown>;
+// Whether this team ever reached a running workspace (durable onboarding step).
+let hadWorkspace: boolean;
 let tenant: {
   id: string;
   team_id: string;
@@ -254,6 +256,8 @@ async function query(sql: string, values: unknown[] = []) {
         ? []
         : [{ present: 1 }],
     );
+  if (sql.includes("FROM team_onboarding"))
+    return result(hadWorkspace ? [{ present: 1 }] : []);
   if (sql.includes("FROM tenants WHERE team_id"))
     return result(tenant ? [tenant] : []);
   if (sql.includes("FROM users WHERE id"))
@@ -350,6 +354,7 @@ beforeEach(() => {
     error: null,
   };
   notices = [];
+  hadWorkspace = true;
   mock.query.mockReset().mockImplementation(query);
   mock.create.mockReset().mockResolvedValue({
     id: checkout.id,
@@ -480,6 +485,19 @@ it.each(["missing", "destroyed"])(
     expect(mock.create).not.toHaveBeenCalled();
   },
 );
+it("lets a team that never had a workspace subscribe again", async () => {
+  // Cancelled the trial before the workspace was ever created: nothing was
+  // destroyed, so checkout must open instead of sending the owner to support.
+  subscription.status = "canceled";
+  tenant = null;
+  hadWorkspace = false;
+  const response = await openCheckout(request());
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({
+    url: "https://checkout.stripe.com/fixture",
+  });
+  expect(mock.create).toHaveBeenCalled();
+});
 it("shows an actionable error when payment arrives after workspace destruction", async () => {
   tenant!.status = "failed";
   tenant!.error = "workspace_unavailable";

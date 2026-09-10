@@ -32,7 +32,9 @@ it.each([
     .mockResolvedValue(new Response('{"data":[],"total":0}'));
   try {
     const client = new BookStack(host, "id", "secret");
-    expect(client.base).toBe(`https://${host}`);
+    expect(client.base).toBe(
+      `https://${host ?? "fixture.wissen.app.mintapis.com"}`,
+    );
     await client.list("books");
     expect(fetcher.mock.calls[0][0]).toBe(
       `https://${host}/api/books?count=500&offset=0`,
@@ -41,7 +43,7 @@ it.each([
     fetcher.mockRestore();
   }
 });
-it.each(["different.bookhost.co", "fixture.wissen.app.mintapis.com"])(
+it.each(["different.bookhost.co", "fixture.wissen.app.mintapis.com", null])(
   "opens stored tenant host %s",
   async (host) => {
     mocks.query
@@ -62,11 +64,11 @@ it.each(["different.bookhost.co", "fixture.wissen.app.mintapis.com"])(
           new Request(`https://bookhost.co/api/bookstack/open?team=${id}`),
         )
       ).headers.get("location"),
-    ).toBe(`https://${host}`);
+    ).toBe(`https://${host ?? "fixture.wissen.app.mintapis.com"}`);
     expect(mocks.query.mock.calls[0][0]).toContain("n.host");
   },
 );
-it.each(["different.bookhost.co", "fixture.wissen.app.mintapis.com"])(
+it.each(["different.bookhost.co", "fixture.wissen.app.mintapis.com", null])(
   "uses stored host for intake read and already-published link %s",
   async (host) => {
     mocks.query.mockResolvedValue({
@@ -94,10 +96,10 @@ it.each(["different.bookhost.co", "fixture.wissen.app.mintapis.com"])(
     });
     const ctx = { params: Promise.resolve({ id }) };
     expect((await (await GET(request, ctx)).json()).url).toBe(
-      `https://${host}/link/42`,
+      `https://${host ?? "fixture.wissen.app.mintapis.com"}/link/42`,
     );
     expect((await (await POST(request, ctx)).json()).url).toBe(
-      `https://${host}/link/42`,
+      `https://${host ?? "fixture.wissen.app.mintapis.com"}/link/42`,
     );
     expect(mocks.query.mock.calls[0][0]).toContain("t.host");
   },

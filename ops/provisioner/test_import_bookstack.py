@@ -81,6 +81,27 @@ class ImportTests(unittest.TestCase):
         self.mock_install_files.side_effect=RuntimeError('failure')
         with self.assertRaisesRegex(RuntimeError,'backup.enc'): self.go()
         self.assertIn('rollback',self.events)
+
+    def test_failed_recovery_and_emergency_stop_create_quarantine(self):
+        self.mock_install_files.side_effect=RuntimeError('import failed')
+        self.mock_rollback.side_effect=RuntimeError('restore failed')
+
+        def compose(path, *args, **kwargs):
+            if args == ('stop', 'bookstack'):
+                raise RuntimeError('docker unavailable; token=do-not-log')
+            return b'bookstack\ndb\n'
+
+        self.compose.side_effect=compose
+        with self.assertRaisesRegex(RuntimeError, r'Emergency stop failed \(RuntimeError\).*quarantined') as raised:
+            self.go()
+        self.assertNotIn('do-not-log', str(raised.exception))
+        marker=self.path/'.import-quarantine.json'
+        self.assertTrue(marker.is_file())
+        quarantine=__import__('json').loads(marker.read_text())
+        self.assertEqual(quarantine['slug'],'tmp-dst')
+        self.assertEqual(quarantine['phase'],'file import')
+        self.assertEqual(quarantine['stop_status'],'failed')
+        self.assertNotIn('token',marker.read_text())
     def test_plain_and_gzip(self):
         for compressed in (False,True):
             p=self.root/('input.sql.gz' if compressed else 'input.sql')

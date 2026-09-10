@@ -14,6 +14,7 @@ const state = vi.hoisted(() => ({
       id: "cs_fixture",
       url: "https://checkout.stripe.com/fixture",
     }),
+  failQuery: "",
 }));
 vi.mock("@/auth", () => ({
   auth: async () => ({ user: { id: "owner", email: "owner@example.invalid" } }),
@@ -29,6 +30,8 @@ vi.mock("@/lib/db", () => ({
     fn({ query: async () => ({ rows: [], rowCount: 0 }) }),
   db: {
     query: async (sql: string) => {
+      if (state.failQuery && sql.includes(state.failQuery))
+        throw new Error("secret=sk_test_never_log token=private-upstream-body");
       if (sql.includes("FROM tenants WHERE team_id"))
         return { rows: [{ status: "suspended", error: null }], rowCount: 1 };
       if (sql.includes("FROM teams"))
@@ -53,7 +56,54 @@ const request = () =>
 beforeEach(() => {
   state.create.mockClear();
   state.customer = "cus_existing";
+  state.failQuery = "";
   process.env.STRIPE_PRICE_TEAM = "price_fixture";
+});
+
+it("reports checkout-attempt persistence failures with a safe user-visible correlation", async () => {
+  state.status = "";
+  state.failQuery = "INSERT INTO checkout_attempts";
+  const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+
+  const response = await POST(request());
+  const body = await response.json();
+
+  expect(response.status).toBe(503);
+  expect(body.reference).toMatch(/^[A-Za-z0-9_-]{8,64}$/);
+  expect(logged).toHaveBeenCalledTimes(1);
+  const record = JSON.parse(String(logged.mock.calls[0][0]));
+  expect(record).toMatchObject({
+    event: "checkout_error",
+    phase: "attempt_persist",
+    team_id: "team",
+    session_id: "cs_fixture",
+    correlation_id: body.reference,
+  });
+  const serialized = JSON.stringify(logged.mock.calls);
+  expect(serialized).not.toContain("sk_test_never_log");
+  expect(serialized).not.toContain("private-upstream-body");
+  logged.mockRestore();
+});
+
+it("reports analytics insertion failures without leaking them or failing checkout", async () => {
+  state.status = "";
+  state.failQuery = "INSERT INTO events";
+  const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+
+  const response = await POST(request());
+
+  expect(response.status).toBe(200);
+  expect(logged).toHaveBeenCalledTimes(1);
+  const record = JSON.parse(String(logged.mock.calls[0][0]));
+  expect(record).toMatchObject({
+    event: "checkout_error",
+    phase: "analytics_insert",
+    team_id: "team",
+    session_id: "cs_fixture",
+    correlation_id: expect.stringMatching(/^[A-Za-z0-9_-]{8,64}$/),
+  });
+  expect(JSON.stringify(logged.mock.calls)).not.toContain("sk_test_never_log");
+  logged.mockRestore();
 });
 it.each(["trialing", "active", "past_due"])(
   "routes %s subscribers to their portal",

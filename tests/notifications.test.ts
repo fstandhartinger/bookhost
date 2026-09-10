@@ -58,6 +58,21 @@ describe("trial thresholds", () => {
     );
     expect(billingNotice(null)?.kind).toBe("no_subscription");
   });
+  it("describes payment grace before suspension and eligibility follows its deadline", () => {
+    const graceUntil = new Date(end.getTime() + 7 * 86400000);
+    const delinquent = {
+      ...sub,
+      status: "past_due",
+      payment_grace_started_at: end,
+      payment_grace_until: graceUntil,
+      payment_failure_notified_at: end,
+    } as unknown as Parameters<typeof billingNotice>[0];
+    expect(billingNotice(delinquent, end)).toMatchObject({
+      kind: "payment_failed",
+      urgent: true,
+    });
+    expect(billingNotice(delinquent, end)?.text).toContain("7 days");
+  });
   it("skips a run when another database transaction owns the lock", async () => {
     const query = vi.fn(async () => ({ rows: [{ acquired: false }] }));
     expect(await generateNotifications({ query } as unknown as Queryable)).toBe(

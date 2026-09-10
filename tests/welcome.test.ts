@@ -10,6 +10,7 @@ const state = vi.hoisted(() => ({
   duplicate: false,
   operations: [] as string[],
   consents: [] as unknown[][],
+  failQuery: "",
 }));
 vi.mock("@/auth", () => ({
   auth: async () => null,
@@ -51,6 +52,10 @@ vi.mock("@/lib/db", () => ({
   transaction: async (fn: (client: unknown) => Promise<unknown>) =>
     fn({
       query: async (sql: string, values: unknown[]) => {
+        if (state.failQuery && sql.includes(state.failQuery))
+          throw new Error(
+            "nonce=fixture-nonce token=secret-session upstream={stripe:object}",
+          );
         if (sql.includes("pg_advisory_xact_lock"))
           state.operations.push("lock");
         if (sql.includes("INSERT INTO consents")) state.consents.push(values);
@@ -97,10 +102,36 @@ beforeEach(() => {
     duplicate: false,
     operations: [],
     consents: [],
+    failQuery: "",
   });
   process.env.AUTH_URL = "http://127.0.0.1:3999";
   process.env.AUTH_SECRET =
     "test-only-secret-not-a-production-credential-123456";
+});
+
+it("reports welcome failures with a safe correlation visible on the retry redirect", async () => {
+  state.failQuery = "SELECT * FROM checkout_attempts";
+  const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+
+  const response = await GET(request());
+  const location = new URL(response.headers.get("location")!);
+  const reference = location.searchParams.get("reference");
+
+  expect(reference).toMatch(/^[A-Za-z0-9_-]{8,64}$/);
+  expect(logged).toHaveBeenCalledTimes(1);
+  const record = JSON.parse(String(logged.mock.calls[0][0]));
+  expect(record).toMatchObject({
+    event: "welcome_error",
+    phase: "welcome_callback",
+    session_id: "cs_fixture",
+    correlation_id: reference,
+  });
+  expect(record).not.toHaveProperty("nonce");
+  const serialized = JSON.stringify(logged.mock.calls);
+  expect(serialized).not.toContain("fixture-nonce");
+  expect(serialized).not.toContain("secret-session");
+  expect(serialized).not.toContain("stripe:object");
+  logged.mockRestore();
 });
 describe("Checkout-first login", () => {
   it("issues an Auth.js-compatible HttpOnly JWT once and rejects replay", async () => {

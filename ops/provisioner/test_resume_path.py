@@ -60,6 +60,15 @@ class ResumePathTests(unittest.TestCase):
                 (path/'.destroy_requested_at').write_text(str(now-30*86400))
                 tenant.purge(path); compose.assert_called_once(); run.assert_called_once()
 
+    def test_contract_end_marker_uses_persisted_end_and_paid_resume_removes_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.fixture(Path(tmp))
+            ended_at = 1_800_000_123
+            worker.sync_destroy_marker(path, ended_at, desired='suspended')
+            self.assertEqual((path/'.destroy_requested_at').read_text(), str(ended_at))
+            worker.sync_destroy_marker(path, None, desired='running')
+            self.assertFalse((path/'.destroy_requested_at').exists())
+
     def test_missing_or_destroyed_workspace_fails_visibly_without_recreation(self):
         for kind in ('missing', 'marked', 'purged', 'missing-env', 'missing-compose', 'uninitialized'):
             with self.subTest(kind=kind), tempfile.TemporaryDirectory() as tmp:
@@ -74,3 +83,12 @@ class ResumePathTests(unittest.TestCase):
                 db, command = self.reconcile(root, 'suspended', 'running')
                 self.assertFalse(any(c.args[0] == 'provision' for c in command.call_args_list))
                 self.assertTrue(any("status='failed'" in c.args[0] and 'workspace_unavailable' in c.args[0] for c in db.execute.call_args_list))
+
+    def test_import_quarantine_blocks_automatic_resume(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp); path=self.fixture(root)
+            (path/'.import-quarantine.json').write_text('{"phase":"file import","stop_status":"failed"}\n')
+            db, command=self.reconcile(root,'suspended','running')
+            command.assert_not_called()
+            self.assertTrue(any("status='failed'" in c.args[0] and 'import_quarantined' in c.args[0]
+                                for c in db.execute.call_args_list))

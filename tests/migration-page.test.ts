@@ -1,5 +1,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { createElement } from "react";
+import * as React from "react";
+import { describe, expect, it, vi } from "vitest";
+vi.mock("next/font/google", () => ({ Inter: () => ({ className: "inter" }) }));
+(globalThis as { React?: typeof React }).React = React;
 import MigrationPage from "@/app/migrate/page";
 import RootLayout from "@/app/layout";
 import { faqs } from "@/lib/landing-copy";
@@ -7,7 +11,7 @@ import sitemap from "@/app/sitemap";
 
 describe("migration marketing page", () => {
   it("renders all five migration sections and both dump commands", () => {
-    const html = renderToStaticMarkup(<MigrationPage />);
+    const html = renderToStaticMarkup(createElement(MigrationPage));
     for (const heading of [
       "What you send us",
       "What we do",
@@ -35,7 +39,9 @@ describe("migration marketing page", () => {
   });
 
   it("keeps unsupported promises out of the page", () => {
-    const html = renderToStaticMarkup(<MigrationPage />).toLowerCase();
+    const text = renderToStaticMarkup(createElement(MigrationPage))
+      .replace(/<[^>]*>/g, " ")
+      .toLowerCase();
     for (const forbidden of [
       "guaranteed",
       "zero downtime",
@@ -43,15 +49,13 @@ describe("migration marketing page", () => {
       "any size",
       "sla",
     ]) {
-      expect(html).not.toContain(forbidden);
+      expect(text).not.toMatch(new RegExp(`\\b${forbidden}\\b`));
     }
   });
 
   it("includes the migration link in the site footer", () => {
     const html = renderToStaticMarkup(
-      <RootLayout>
-        <p>fixture</p>
-      </RootLayout>,
+      createElement(RootLayout, null, createElement("p", null, "fixture")),
     );
     expect(html).toContain('href="/migrate"');
   });

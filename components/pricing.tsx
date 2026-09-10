@@ -18,6 +18,9 @@ export function Pricing() {
             Your trial starts when you sign up; your workspace is usually ready
             within 5 minutes.
           </p>
+          <p className="mt-4 text-sm text-slate-600">
+            Moving an existing BookStack? <Link className="underline" href="/migrate">See how migration works.</Link>
+          </p>
         </div>
         <div className="price-card">
           <div className="flex items-center justify-between">

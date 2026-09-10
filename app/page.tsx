@@ -176,12 +176,14 @@ export default function Home() {
           <h2>Before you move in.</h2>
         </div>
         <div>
-          {faqs.map(([q, a]) => (
+          {faqs.map(([q, a, href]) => (
             <details key={q} className="group border-b border-ink/15 py-5">
               <summary className="cursor-pointer text-base font-medium">
                 {q}
               </summary>
-              <p className="mt-4 text-sm leading-7 text-slate-600">{a}</p>
+              <p className="mt-4 text-sm leading-7 text-slate-600">
+                {href ? <>{a.split("/migrate")[0]}<a className="underline" href={href}>/migrate</a>{a.split("/migrate")[1]}</> : a}
+              </p>
             </details>
           ))}
         </div>

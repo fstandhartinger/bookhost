@@ -145,11 +145,12 @@ class LifecycleTests(unittest.TestCase):
                     tenant.provision(p,'valid@example.invalid')
                 self.assertFalse((p/'.initialized').exists())
 
-    def test_capacity_disk_and_count_and_notice_throttle(self):
+    def test_capacity_logs_each_refusal_without_writing_marker(self):
         with tempfile.TemporaryDirectory() as d:
-            with patch.object(worker,'ROOT',Path(d)),patch.object(worker.subprocess,'check_output',side_effect=['Avail\n100\n','wissen-demo-bookstack-1\n']*2),contextlib.redirect_stdout(io.StringIO()) as out:
+            with patch.object(worker,'ROOT',Path(d)), patch.object(worker,'disk_state',return_value={'free_gib':1,'used_percent':99}), patch.object(worker,'running_tenants',return_value=1), contextlib.redirect_stdout(io.StringIO()) as out:
                 self.assertFalse(worker.capacity()); self.assertFalse(worker.capacity())
-            self.assertEqual(out.getvalue().count('Capacity:'),1)
+            self.assertEqual(out.getvalue().count('Capacity:'),2)
+            self.assertEqual(list(Path(d).iterdir()),[])
 
     def test_openssl_fallback_roundtrip(self):
         with tempfile.TemporaryDirectory() as d:

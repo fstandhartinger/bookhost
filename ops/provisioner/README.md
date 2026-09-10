@@ -302,3 +302,42 @@ database, uploads and BookStack readiness using the normal restore verification
 procedure. Remove `.import-quarantine.json` only after recovery is validated;
 the next worker pass may then reconcile the requested lifecycle state. Keep the
 marker in place and the tenant stopped if validation is incomplete.
+
+### Capacity admission and read-only report
+
+The serialized worker checks capacity immediately before admitting a **new**
+workspace. Configure `limits.env` using `limits.env.example`: `MIN_FREE_DISK_GB=20`
+(GiB, 1024³ bytes), `MAX_DISK_PERCENT=85`, `MAX_TENANTS=15`,
+`DISK_WARN_PERCENT=80`, `DISK_FAIL_PERCENT=90`. Free space below the minimum,
+usage at or above the maximum, or running tenants at the count limit refuses
+admission. An unavailable disk/Docker check or invalid thresholds also refuses
+admission. The row becomes `failed` with a customer-safe error; the worker log
+records measured capacity and thresholds. No notification delivery is claimed.
+After capacity is available, an operator can explicitly retry the failed row by
+setting it back to `pending` through the existing control-plane workflow.
+
+Initialized workspaces bypass admission, including resume and pending recovery.
+Backup, restore-test and suspend are unaffected. `MAX_TENANTS` counts running
+`wissen-*` BookStack service containers (including demo, excluding restore-test
+containers); it is not a limit on all retained tenant directories. Admission is
+in `worker.py`, protected by the existing serialized worker runner; direct manual
+`tenant.py provision` remains an operator operation and requires checking capacity
+first. This guard is not a disk quota and cannot prevent existing workloads or
+other host applications from consuming the remaining space.
+
+Run from the checkout with the provisioner's Python interpreter:
+
+```sh
+.venv/bin/python capacity.py
+.venv/bin/python capacity.py --json
+```
+
+The command only reads filesystem statistics, `docker ps`, and `du`; sudo access
+is needed to measure MariaDB-owned files. All tenant directories with a compose
+file are listed, including suspended tenants and nested backups, largest first.
+Hidden infrastructure and temporary `restore-*` directories are excluded from
+the tenant list but still consume the filesystem reserve. GiB sizes are allocated
+blocks, not apparent file sizes. Percentages match df's available-block denominator
+(`used + free`), excluding reserved blocks. Reserve is signed: a negative warning
+reserve means the threshold is already exceeded. Figures are a live snapshot,
+not a growth forecast; investigate total host usage when tenant sizes are small.

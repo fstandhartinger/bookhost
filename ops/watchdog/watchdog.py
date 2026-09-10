@@ -9,11 +9,15 @@ import os
 from pathlib import Path
 import re
 import shutil
+import sys
 import subprocess
 import tempfile
 import time
 import urllib.parse
 import urllib.request
+
+sys.path.append(str(Path(__file__).resolve().parents[1] / 'provisioner'))
+from capacity import capacity_limits, thresholds, running_tenants, disk_state
 
 ROOT = Path('/home/flori/ventures2/bookstack/tenants')
 LOG = ROOT / 'watchdog.log'
@@ -195,11 +199,15 @@ def checks():
         return db is not None and not failed and not errors, detail + f'; ERROR letzte 24h={errors}; fallback cold letzte 24h={fallbacks}'
     check(LABELS[4], backups)
     def host():
-        disk = shutil.disk_usage('/')
-        # Match df: reserved blocks are unavailable to the service user.
-        percent = disk.used / (disk.used + disk.free) * 100
+        config = thresholds(capacity_limits())
+        disk = disk_state(ROOT)
+        percent = disk['used_percent']
+        count = running_tenants()
         age = now - (ROOT / 'worker.log').stat().st_mtime
-        return percent < 90 and age < 180, f'Platte={percent:.1f}%; Worker-Log={age:.0f}s alt'
+        warning = 'WARNUNG: Plattenreserve knapp; ' if percent >= config['DISK_WARN_PERCENT'] else ''
+        return percent < config['DISK_FAIL_PERCENT'] and age < 180, (
+            warning + f"Platte={percent:.1f}%; frei={disk['free_gib']:.1f} GiB; "
+            f'laufende Tenants={count}; Worker-Log={age:.0f}s alt')
     check(LABELS[5], host)
     check(LABELS[6], lambda: (db['drafting'] == 0, f"drafting >30min: {db['drafting']}"))
     return results

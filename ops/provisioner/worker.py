@@ -12,6 +12,7 @@ from urllib.parse import urlsplit
 import psycopg
 from tenant import HERE, ROOT, env_read, valid_slug, compose
 from bookstack_api_token import store_token
+from capacity import disk_state, running_tenants, thresholds, CUSTOMER_ERROR
 
 DEFAULT_RESERVED_TEST_PREFIXES = ('rc-', 'fb-', 'nh-', 'dom-', 'bh-', 'tmp-', 'test-')
 
@@ -47,16 +48,20 @@ def command(action, slug, email=None):
 
 
 def capacity():
-    values=limits()
-    limit=int(values.get('MAX_TENANTS','15'))
-    free=int(subprocess.check_output(['df','-B1','--output=avail',str(ROOT)],text=True).splitlines()[-1])
-    names=subprocess.check_output(['sudo','-n','docker','ps','--filter','label=com.docker.compose.service=bookstack','--format','{{.Names}}'],text=True).splitlines()
-    count=sum(name.startswith('wissen-') and not name.startswith('wissen-restore-') for name in names)
-    if free >= 20*1024**3 and count < limit: return True
-    marker=ROOT/'.capacity-notice'
-    if not marker.exists() or time.time()-marker.stat().st_mtime >= 3600:
-        print(f'Capacity: pending retained; running={count}, MAX_TENANTS={limit}, free_GiB={free//1024**3}',flush=True)
-        marker.touch()
+    try:
+        config=thresholds(limits())
+        disk=disk_state(ROOT)
+        count=running_tenants()
+        if (disk['free_gib'] >= config['MIN_FREE_DISK_GB']
+                and disk['used_percent'] < config['MAX_DISK_PERCENT']
+                and count < config['MAX_TENANTS']):
+            return True
+        print(f"Capacity: new workspace refused; running={count}, MAX_TENANTS={config['MAX_TENANTS']:g}, "
+              f"free_GiB={disk['free_gib']:.2f}, MIN_FREE_DISK_GB={config['MIN_FREE_DISK_GB']:g}, "
+              f"used_percent={disk['used_percent']:.2f}, MAX_DISK_PERCENT={config['MAX_DISK_PERCENT']:g}",flush=True)
+    except Exception:
+        # Fail closed without exposing command output or configuration secrets.
+        print('Capacity: new workspace refused; disk/count/configuration check unavailable',flush=True)
     return False
 
 
@@ -160,7 +165,12 @@ def once():
             # Honor legacy status=suspended before resume, also stopping any remnants.
             if status=='suspended' and (path/'docker-compose.yml').exists(): command('deprovision',slug)
             if status not in ('pending','suspended'): continue
-            if not capacity(): continue
+            # Only new workspaces consume admission capacity. Existing lifecycle
+            # operations (including pending recovery) must remain available.
+            if not existing and not capacity():
+                db.execute("UPDATE tenants SET status='failed',error=%s,updated_at=now() WHERE COALESCE(provisioner_instance,'production')=%s AND id=%s AND status=%s",
+                           (CUSTOMER_ERROR,instance,ident,status))
+                continue
             row=db.execute("UPDATE tenants SET status='provisioning',error=NULL,updated_at=now() WHERE COALESCE(provisioner_instance,'production')=%s AND id=%s AND status=%s AND desired_state='running' RETURNING id",(instance,ident,status)).fetchone()
             if not row: continue
             try:

@@ -58,3 +58,10 @@ Run unit tests: `python3 -m unittest discover -s ops/watchdog -v`.
 Exit status: 0 all checks healthy, 1 a failed check, 2 fatal configuration/state
 error. Keep the cron running on nonzero exit; the next observation is needed for
 confirmation and recovery.
+
+Disk capacity uses the tenant data filesystem and the sibling provisioner's
+`limits.env`: `DISK_WARN_PERCENT=80` adds a visible `WARNUNG` to the check detail
+while it remains green; `DISK_FAIL_PERCENT=90` turns it red. The host check also
+reports free GiB and running BookStack tenants (excluding restore containers).
+Worker-log freshness remains an independent failure condition. Warnings are
+visible in check output/logs; they do not send a failure notification while green.

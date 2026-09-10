@@ -22,7 +22,7 @@ export async function claimEmail() {
       )
       UPDATE intake_items SET status='drafting',updated_at=now()
       FROM candidate WHERE intake_items.id=candidate.id AND intake_items.status='queued'
-      RETURNING intake_items.id,created_by,tenant_id,filename,
+      RETURNING intake_items.id,team_id,created_by,tenant_id,filename,
         (SELECT content FROM intake_email_files WHERE item_id=intake_items.id) AS content`)
     ).rows[0];
   });
@@ -33,17 +33,16 @@ export async function drainEmail() {
   draining = true;
   try {
     for (let n = 0; n < 2 && inboundEmailEnabled(); n++) {
-      const release = acquireSlot();
-      if (!release) break;
-      let row;
-      try {
-        row = await claimEmail();
-      } catch (error) {
-        release();
-        throw error;
-      }
+      const row = await claimEmail();
       if (!row) {
-        release();
+        break;
+      }
+      const release = acquireSlot(row.team_id);
+      if (!release) {
+        await db.query(
+          "UPDATE intake_items SET status='queued',updated_at=now() WHERE id=$1 AND status='drafting'",
+          [row.id],
+        );
         break;
       }
       let dir: string | undefined;

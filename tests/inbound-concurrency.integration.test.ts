@@ -118,7 +118,7 @@ function mail(n: number, message_id = randomUUID()) {
   const f = fixtures[n];
   return {
     message_id,
-    to: [`${f.slug}@intake.wissen.app.mintapis.com`],
+    to: [`${f.slug}@intake.bookhost.co`],
     from: { address: f.email },
     subject: "Concurrency regression",
     text: "Human review is required. ".repeat(15),

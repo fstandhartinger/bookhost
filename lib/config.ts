@@ -25,8 +25,14 @@ export const TENANT_DOMAINS = (
   .filter(Boolean);
 export const DEMO_URL =
   process.env.DEMO_URL || "https://demo.bookhost.co";
-// Inbound email routing is independent of workspace web hosts.
-export const INTAKE_TENANT_DOMAIN = "wissen.app.mintapis.com";
+// Inbound email routing is independent of workspace web hosts. Customers see
+// this address on the intake page, so it carries the product domain; the
+// operator points it at whatever the mail relay actually accepts.
+export const INTAKE_TENANT_DOMAIN = (
+  process.env.INTAKE_TENANT_DOMAIN || "bookhost.co"
+)
+  .trim()
+  .toLowerCase();
 export function baseUrl() {
   return (
     process.env.AUTH_URL ||

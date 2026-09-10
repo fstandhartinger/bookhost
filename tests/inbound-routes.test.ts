@@ -41,7 +41,7 @@ it("rejects unsigned and wrongly signed requests before database admission", asy
 it("passes a valid signed document to atomic admission and acknowledges IDs", async () => {
   const raw = JSON.stringify({
     message_id: "route-test",
-    to: ["demo@intake.wissen.app.mintapis.com"],
+    to: ["demo@intake.bookhost.co"],
     from: { address: "member@example.com" },
     subject: "Email",
     text: "x".repeat(201),

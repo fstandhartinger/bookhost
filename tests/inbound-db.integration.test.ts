@@ -63,7 +63,7 @@ it.skipIf(process.env.INTAKE_DB_TEST !== "1")(
         Buffer.from(
           JSON.stringify({
             message_id: crypto.randomUUID(),
-            to: [`${slug}@intake.wissen.app.mintapis.com`],
+            to: [`${slug}@intake.bookhost.co`],
             from: { address: "member@example.com" },
             subject: "Email subject",
             text: "This document must be reviewed by the team. ".repeat(12),

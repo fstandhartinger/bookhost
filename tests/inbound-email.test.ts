@@ -1,5 +1,6 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { createHmac } from "node:crypto";
+import { EMAIL_DOMAIN } from "@/lib/intake/email";
 import {
   parseEmail,
   senderAllowed,
@@ -48,7 +49,7 @@ export function message() {
   );
   return {
     message_id: "unit-message",
-    to: ["demo@intake.wissen.app.mintapis.com"],
+    to: ["demo@intake.bookhost.co"],
     from: { address: "member@example.com", name: "Member" },
     subject: "Review checklist",
     text: "",
@@ -98,7 +99,7 @@ it("rejects attachment counts, sizes, encoding, unsafe names and types", () => {
     /large/,
   );
   expect(() =>
-    parse({ ...m, to: [...m.to, "other@intake.wissen.app.mintapis.com"] }),
+    parse({ ...m, to: [...m.to, "other@intake.bookhost.co"] }),
   ).toThrow();
 });
 
@@ -136,4 +137,16 @@ it("accepts Punycode sender domains and rejects unsupported RFC addr-spec forms 
     expect(() => parse({ ...message(), from: { address } })).toThrow(
       /from.address must be an ASCII RFC 5322/,
     );
+});
+
+it("shows the intake address on the product domain and honours the operator override", async () => {
+  // Customers read this address on the intake page minutes after signing up,
+  // so it must not carry the pre-rename host.
+  expect(EMAIL_DOMAIN).toBe("intake.bookhost.co");
+  vi.resetModules();
+  process.env.INTAKE_TENANT_DOMAIN = "Relay.Example";
+  const reloaded = await import("@/lib/intake/email");
+  expect(reloaded.EMAIL_DOMAIN).toBe("intake.relay.example");
+  delete process.env.INTAKE_TENANT_DOMAIN;
+  vi.resetModules();
 });

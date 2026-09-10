@@ -22,7 +22,7 @@ import {
 import { enqueue } from "@/lib/intake/jobs";
 const raw = JSON.stringify({
   message_id: "disabled",
-  to: ["demo@intake.wissen.app.mintapis.com"],
+  to: ["demo@intake.bookhost.co"],
   from: { address: "member@example.com" },
   subject: "Private",
   text: "x".repeat(201),

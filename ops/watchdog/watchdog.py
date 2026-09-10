@@ -95,7 +95,7 @@ def database():
     query = """BEGIN READ ONLY;
 SET LOCAL statement_timeout = '15s';
 SELECT json_build_object(
- 'running', COALESCE((SELECT json_agg(json_build_object('slug',slug,'host',COALESCE(to_jsonb(tenants)->>'host',slug||'.wissen.app.mintapis.com')) ORDER BY slug) FROM tenants WHERE status='running'), '[]'::json),
+ 'running', COALESCE((SELECT json_agg(json_build_object('slug',slug,'host',COALESCE(to_jsonb(tenants)->>'host',slug||'.wissen.app.mintapis.com'),'created',extract(epoch from created_at)) ORDER BY slug) FROM tenants WHERE status='running'), '[]'::json),
  'provisioning', (SELECT count(*) FROM tenants WHERE status='provisioning' AND updated_at < now()-interval '20 minutes'),
  'pending', (SELECT count(*) FROM tenants WHERE status='pending' AND created_at < now()-interval '15 minutes'),
  'drafting', (SELECT count(*) FROM intake_items WHERE status='drafting' AND updated_at < now()-interval '30 minutes'),
@@ -163,8 +163,9 @@ def backup_time(path, now):
         if taken is not None:
             # A timestamp in the future is not evidence of a fresh backup.
             return None if taken > now + 300 else now - taken
-    stamp = path.stat().st_mtime
-    return None if stamp > now + 300 else now - stamp
+    # No usable timestamp in the name. The mtime is not a substitute: copying or
+    # touching an archive would make it look like it was taken seconds ago.
+    return None
 
 
 def usable_backups(directory, now):
@@ -185,6 +186,21 @@ def usable_backups(directory, now):
         if age is not None:
             ages.append(age)
     return sorted(ages)
+
+
+def first_backup_grace(marker_age, tenant_age=None, grace=30 * 60):
+    """Is a workspace still allowed to have no backup at all?
+
+    Only while it is genuinely new. The rule used to look at the .initialized
+    marker alone, and that file can be renewed: a workspace that had never been
+    backed up stayed excused for as long as something kept touching it. The
+    workspace's own age comes from the database row and cannot be touched from
+    the file system; where it is unknown the marker still decides, so an older
+    snapshot does not turn every workspace red.
+    """
+    if marker_age is None or marker_age > grace:
+        return False
+    return tenant_age is None or tenant_age <= grace
 
 
 def recent_backup_errors(path, now):
@@ -246,6 +262,9 @@ def checks():
         rows = [row if isinstance(row, dict) else {'slug': row} for row in db['running']]
         running = [row['slug'] for row in rows]
         hosts = {row['slug']: row.get('host') or row['slug'] + '.wissen.app.mintapis.com' for row in rows}
+        # Age of the workspace itself, from the database. A file marker can be
+        # renewed; the row's creation time cannot be touched from the file system.
+        created = {row['slug']: row.get('created') for row in rows}
         if any(len(host) > 253 or not re.fullmatch(r'(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?', host) for host in hosts.values()):
             raise ValueError('Invalid host')
         if any(not re.fullmatch(r'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?', slug) for slug in running):
@@ -253,6 +272,7 @@ def checks():
     except Exception:
         db = None
         running = []
+        created = {}
     def tenants():
         failed = []
         for slug in running:
@@ -273,9 +293,10 @@ def checks():
             ages = usable_backups(tenant / 'backups', now)
             if not ages:
                 marker = tenant / '.initialized'
-                age = now - marker.stat().st_mtime if marker.exists() else float('inf')
-                if age <= 30 * 60:
-                    pending.append(f'{slug} (erstbackup ausstehend ({max(0, int(age // 60))} min))')
+                age = now - marker.stat().st_mtime if marker.exists() else None
+                born = created.get(slug)
+                if first_backup_grace(age, None if born is None else now - float(born)):
+                    pending.append(f'{slug} (erstbackup ausstehend ({max(0, int((age or 0) // 60))} min))')
                 else:
                     failed.append(slug)
             elif ages[0] >= 26 * 3600:

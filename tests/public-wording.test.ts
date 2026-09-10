@@ -157,3 +157,12 @@ describe("public wording matches implemented behaviour", () => {
     expect(text).toContain("| Control-Plane: `wissen-checkout` | Zuordnung des Checkouts auf `/welcome`; HttpOnly, SameSite=Lax, Secure bei HTTPS | 24 Stunden |\n| BookStack: `bookstack_session`");
   });
 });
+
+it("answers the self-hoster's first question near the top of the home page", () => {
+  // The BookStack installation docs send us people who already run their own
+  // instance. The pointer to what moving involves must stay above the fold.
+  const fs = require("node:fs") as typeof import("node:fs");
+  const source = fs.readFileSync("app/page.tsx", "utf8");
+  const hero = source.slice(0, source.indexOf("<PaymentNote />"));
+  expect(hero).toContain('href="/migrate"');
+});

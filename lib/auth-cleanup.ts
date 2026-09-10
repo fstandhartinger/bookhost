@@ -25,14 +25,19 @@ export function startAuthCleanup() {
           client,
           new Date(),
           process.env.SMTP_HOST
-            ? async (email, text) => {
+            ? async (email, text, notice) => {
+                const activation = notice.kind.startsWith("activation_");
                 await mailTransport().sendMail({
                   from:
                     process.env.SMTP_FROM ||
                     "BookHost <noreply@mail.mintapis.com>",
                   to: email,
-                  subject: "Your BookHost workspace: billing notice",
-                  text: `${text}\n\nManage billing: ${baseUrl()}/app/billing`,
+                  subject: activation
+                    ? "Your BookHost workspace: next step"
+                    : "Your BookHost workspace: billing notice",
+                  text: activation
+                    ? `${text}\n\nNext step: ${baseUrl()}${notice.href}`
+                    : `${text}\n\nManage billing: ${baseUrl()}/app/billing`,
                 });
               }
             : undefined,

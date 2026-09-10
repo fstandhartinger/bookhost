@@ -5,6 +5,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     "",
     "/pricing",
+    "/reliability",
     "/blog",
     ...getPosts().map((post) => `/blog/${post.slug}`),
     "/legal/impressum",

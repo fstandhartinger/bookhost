@@ -51,6 +51,10 @@ export function Pricing() {
               >
                 How we test restores
               </Link>
+              {" · "}
+              <Link className="underline" href="/reliability">
+                Backups, recovery and current limits
+              </Link>
             </li>
             <li>Seven-day backup retention and restore help</li>
             <li>Reviewed document intake — available now (beta)</li>

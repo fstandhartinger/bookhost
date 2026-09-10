@@ -77,12 +77,17 @@ export default function Home() {
               <h3 className="text-xl font-semibold">{title}</h3>
               <p className="mt-3 text-sm leading-6 text-slate-600">{text}</p>
               {title === "Backups with a way back" && (
-                <Link
-                  className="mt-3 inline-block text-sm underline"
-                  href="/blog/how-we-test-every-bookstack-backup-restore"
-                >
-                  How we test restores
-                </Link>
+                <div className="flex flex-wrap gap-x-4">
+                  <Link
+                    className="mt-3 inline-block text-sm underline"
+                    href="/blog/how-we-test-every-bookstack-backup-restore"
+                  >
+                    How we test restores
+                  </Link>
+                  <Link className="mt-3 inline-block text-sm underline" href="/reliability">
+                    Backups, recovery and current limits
+                  </Link>
+                </div>
               )}
             </article>
           ))}

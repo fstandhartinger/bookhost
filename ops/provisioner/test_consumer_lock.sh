@@ -15,8 +15,7 @@ STUB
 chmod +x "$tmp/bin/python3"
 fixture() {
   mkdir -p "$tmp/repo/ops"
-  cp -r "$src/ops/provisioner" "$tmp/repo/ops/"
-  cp -r "$src/ops/watchdog" "$tmp/repo/ops/"
+  tar -C "$src" --exclude=.venv --exclude=__pycache__ -cf - ops/provisioner ops/watchdog | tar -C "$tmp/repo" -xf -
   repo="$tmp/repo"
 }
 repository() {
@@ -43,6 +42,8 @@ STUB
 case "${1:?case}" in
 maintenance)
   fixture
+  mkdir -p "$PROVISIONER_STATE_DIR/example"
+  touch "$PROVISIONER_STATE_DIR/example/"{.initialized,docker-compose.yml,.destroy_requested_at}
   touch "$PROVISIONER_STATE_DIR/.maintenance"
   for script in provisioner/backup-all.sh provisioner/purge-all.sh provisioner/offsite-sync.sh watchdog/run.sh provisioner/run-worker.sh; do
     output=$(bash "$repo/ops/$script")
@@ -53,7 +54,7 @@ maintenance)
 shared_drain)
   repository good
   for n in 1 2; do
-    bash -c '. "$1"; consumer_lock "test-$2" 2; date +%s%N > "$3/start-$2"; sleep 2; date +%s%N > "$3/end-$2"' _ "$repo/ops/provisioner/consumer-lock.sh" "$n" "$tmp" &
+    bash -ec '. "$1"; consumer_lock "test-$2" 2; date +%s%N > "$3/start-$2"; sleep 2; date +%s%N > "$3/end-$2"' _ "$repo/ops/provisioner/consumer-lock.sh" "$n" "$tmp" &
   done
   for i in {1..100}; do
     [[ ! -e "$tmp/start-1" || ! -e "$tmp/start-2" ]] || break
@@ -71,7 +72,9 @@ shared_drain)
   wait
   [[ "$(git -C "$repo" rev-parse HEAD)" == "$new" ]]
   [[ ! -e "$PROVISIONER_STATE_DIR/.maintenance" ]]
+  drained=$(sed -n 's/.* drained=\([0-9]*\).*/\1/p' "$tmp/release.log")
   for n in 1 2; do
+    (( $(cat "$tmp/end-$n") < drained ))
     (( $(cat "$tmp/start-$n") < $(cat "$tmp/release-start") ))
     (( $(cat "$tmp/end-$n") < $(cat "$tmp/release-end") ))
     printf 'consumer-%s start=%s end=%s\n' "$n" "$(cat "$tmp/start-$n")" "$(cat "$tmp/end-$n")"
@@ -100,6 +103,38 @@ nightly)
   echo NIGHTLY_HOT=1 >> "$repo/ops/provisioner/limits.env"
   bash "$repo/ops/provisioner/backup-all.sh"
   [[ "$(cat "$CALLS")" == 'example --nightly' ]]
+  ;;
+timeout)
+  fixture
+  exec 8>"$PROVISIONER_STATE_DIR/.provisioner.lock"
+  flock -x 8
+  for name in backup-all purge-all offsite-sync; do
+    output=$(PROVISIONER_LOCK_WAIT=0 bash "$repo/ops/provisioner/$name.sh")
+    [[ "$output" == "SKIP maintenance $name" ]]
+  done
+  output=$(PROVISIONER_LOCK_WAIT=0 bash "$repo/ops/watchdog/run.sh")
+  [[ "$output" == 'SKIP maintenance watchdog' ]]
+  output=$(bash "$repo/ops/provisioner/run-worker.sh")
+  [[ "$output" == 'SKIP maintenance run-worker' ]]
+  [[ ! -e "$CALLS" ]]
+  ;;
+release_guards)
+  repository good
+  echo dirty > "$repo/untracked"
+  if bash "$repo/ops/provisioner/release.sh" "$new"; then exit 1; fi
+  [[ ! -e "$PROVISIONER_STATE_DIR/.maintenance" ]]
+  rm "$repo/untracked"
+  git -C "$repo" checkout -q "$new"
+  if bash "$repo/ops/provisioner/release.sh" "$old"; then exit 1; fi
+  [[ "$(git -C "$repo" rev-parse HEAD)" == "$new" ]]
+  touch "$PROVISIONER_STATE_DIR/.maintenance"
+  if bash "$repo/ops/provisioner/release.sh" "$new"; then exit 1; fi
+  [[ -e "$PROVISIONER_STATE_DIR/.maintenance" ]]
+  rm "$PROVISIONER_STATE_DIR/.maintenance"
+  exec 8>"$PROVISIONER_STATE_DIR/.provisioner.lock"
+  flock -s 8
+  if PROVISIONER_RELEASE_WAIT=0 bash "$repo/ops/provisioner/release.sh" "$new"; then exit 1; fi
+  [[ ! -e "$PROVISIONER_STATE_DIR/.maintenance" ]]
   ;;
 *) exit 2;;
 esac

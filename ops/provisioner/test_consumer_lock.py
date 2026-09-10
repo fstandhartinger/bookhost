@@ -23,3 +23,9 @@ class ConsumerLockTests(unittest.TestCase):
 
     def test_nightly(self):
         self.run_case("nightly")
+
+    def test_timeout(self):
+        self.run_case("timeout")
+
+    def test_release_guards(self):
+        self.run_case("release_guards")

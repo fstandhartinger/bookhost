@@ -1,3 +1,5 @@
+import { JsonLd } from "@/components/json-ld";
+import { organization } from "@/lib/structured-data";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -58,12 +60,14 @@ export default async function BlogArticle({ params }: Props) {
   const url = `${blogOrigin}/blog/${post.slug}`;
   const schema = {
     "@context": "https://schema.org",
-    "@type": "Article",
+    "@type": "BlogPosting",
     headline: post.title,
     description: post.description,
     datePublished: `${post.date}T00:00:00Z`,
+    // No separate revision date is recorded; publication is the known revision.
+    dateModified: `${post.date}T00:00:00Z`,
     author: { "@type": "Person", name: post.author },
-    publisher: { "@type": "Organization", name: "BookHost", url: blogOrigin },
+    publisher: organization(),
     mainEntityOfPage: { "@type": "WebPage", "@id": url },
     url,
     image: `${blogOrigin}/og.png`,
@@ -72,12 +76,7 @@ export default async function BlogArticle({ params }: Props) {
   };
   return (
     <div className="mx-auto max-w-3xl py-12 md:py-16">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(schema).replace(/</g, "\\u003c"),
-        }}
-      />
+      <JsonLd data={schema} />
       <Link className="text-sm text-moss underline" href="/blog">
         ← All articles
       </Link>

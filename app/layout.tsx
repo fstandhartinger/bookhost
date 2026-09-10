@@ -1,3 +1,4 @@
+import { PRODUCT_DESCRIPTION } from "@/lib/metadata";
 import AnalyticsBeacon from "@/lib/analytics/beacon";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
@@ -10,8 +11,7 @@ export const metadata: Metadata = {
     default: `${PRODUCT_NAME} — Managed BookStack hosting for teams`,
     template: `%s · ${PRODUCT_NAME}`,
   },
-  description:
-    "Hosted BookStack with document intake (beta): upload, review and approve. €39/month plus VAT. 14 days free, no card; 20 trial drafts, 300/month on Team.",
+  description: PRODUCT_DESCRIPTION,
   metadataBase: new URL(PUBLIC_BASE_URL),
   alternates: { canonical: "./" },
   openGraph: {

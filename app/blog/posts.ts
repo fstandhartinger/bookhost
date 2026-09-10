@@ -1,7 +1,9 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
-export const blogOrigin = "https://bookhost.co";
+import { PUBLIC_BASE_URL } from "@/lib/config";
+
+export const blogOrigin = PUBLIC_BASE_URL;
 export type BlogPost = {
   slug: string;
   title: string;

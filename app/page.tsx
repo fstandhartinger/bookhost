@@ -1,3 +1,5 @@
+import { JsonLd } from "@/components/json-ld";
+import { homeStructuredData } from "@/lib/structured-data";
 import { PaymentNote } from "@/components/payment-note";
 import Image from "next/image";
 import { ActionButton } from "@/components/action-button";
@@ -8,6 +10,7 @@ import Link from "next/link";
 export default function Home() {
   return (
     <>
+      <JsonLd data={homeStructuredData()} />
       <section className="section grid gap-14 lg:grid-cols-[1.1fr_1fr] lg:items-center">
         <div>
           <p className="eyebrow">YOUR TEAM KNOWS A LOT. KEEP IT THAT WAY.</p>

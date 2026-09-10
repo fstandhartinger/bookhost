@@ -1,5 +1,18 @@
 import { Pricing } from "@/components/pricing";
-export const metadata = { title: "Pricing" };
+export const metadata = {
+  title: "Pricing",
+  description:
+    "One plan for hosted BookStack: €39/month plus VAT, 14 days free without a card. Includes up to 25 dashboard members, 5 GB of uploads and 300 drafts per calendar month.",
+  alternates: { canonical: "/pricing" },
+  openGraph: {
+    title: "BookHost pricing — €39/month, 14 days free",
+    description:
+      "One plan for hosted BookStack, billed monthly and cancellable at any time. 14 days free without a card.",
+    url: "/pricing",
+    type: "website",
+    images: [{ url: "/og.png", width: 1200, height: 630 }],
+  },
+};
 export default async function Page({
   searchParams,
 }: {

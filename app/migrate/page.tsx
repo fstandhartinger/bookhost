@@ -11,6 +11,9 @@ export const metadata: Metadata = {
       "A practical guide to moving an existing BookStack instance to BookHost.",
     url: "/migrate",
     type: "website",
+    // A page-level openGraph block replaces the root one, so the shared card
+    // image has to be repeated here or the link preview loses it.
+    images: [{ url: "/og.png", width: 1200, height: 630 }],
   },
 };
 

@@ -69,7 +69,7 @@ export default function RootLayout({
           >
             <Link
               href="/"
-              className="flex items-center gap-2.5 text-2xl font-semibold tracking-tight"
+              className="flex items-center gap-2.5 text-xl font-semibold tracking-tight sm:text-2xl"
             >
               <span
                 aria-hidden="true"
@@ -79,8 +79,10 @@ export default function RootLayout({
               </span>
               bookhost<span className="text-moss">.</span>
             </Link>
-            <div className="flex items-center gap-5 text-sm">
-              <Link className="hover:underline" href="/pricing">
+            <div className="flex items-center gap-3 text-sm sm:gap-5">
+              {/* The call to action leads to /pricing as well, so on a phone the
+                  plain link only costs the width that pushed the row off screen. */}
+              <Link className="hidden hover:underline sm:inline" href="/pricing">
                 Pricing
               </Link>
               <Link className="whitespace-nowrap hover:underline" href="/login">

@@ -18,6 +18,7 @@ import { POST as inbound } from "@/app/api/intake/inbound/route";
 import { POST as senders } from "@/app/api/intake/senders/route";
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.stubEnv("INBOUND_EMAIL_ENABLED", "true");
   vi.stubEnv("INBOUND_WEBHOOK_SECRET", "test-secret");
   vi.mocked(db.query).mockResolvedValue({ rows: [{ hits: 1 }] } as never);
 });

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Serialized lifecycle reconciliation; diagnostics never contain credentials."""
 import argparse
+import fcntl
 import os
 import signal
 import subprocess
@@ -59,6 +60,39 @@ def capacity():
     return False
 
 
+def sync_destroy_marker(path, contract_ended_at, desired):
+    """Couple contract retention to the tenant lifecycle lock."""
+    if not path.is_dir() or path.is_symlink(): return
+    locks=path.parent/'.locks'; locks.mkdir(exist_ok=True)
+    with (locks/(path.name+'.lock')).open('w') as lock:
+        fcntl.flock(lock,fcntl.LOCK_EX)
+        # Purge may have removed the tenant while we waited for its lock.
+        if not path.is_dir() or path.is_symlink(): return
+        marker=path/'.destroy_requested_at'; ownership=path/'.contract_end_destroy'
+        if desired == 'running':
+            if ownership.exists():
+                marker.unlink(missing_ok=True); ownership.unlink(missing_ok=True)
+                directory=os.open(path,os.O_RDONLY)
+                try: os.fsync(directory)
+                finally: os.close(directory)
+            return
+        # A pre-existing operator marker remains operator-owned and is never
+        # removed by a later paid resume.
+        if contract_ended_at is None or desired != 'suspended' or (marker.exists() and not ownership.exists()): return
+        timestamp=contract_ended_at.timestamp() if hasattr(contract_ended_at,'timestamp') else float(contract_ended_at)
+        stamp=str(int(timestamp)) if timestamp.is_integer() else str(timestamp)
+        # Ownership goes first: a crash can leave an inert companion, whereas a
+        # marker written first could be mistaken for an operator request.
+        for target in (ownership,marker):
+            temporary=target.with_name(target.name+'.tmp')
+            with temporary.open('w') as output:
+                output.write(stamp); output.flush(); os.fsync(output.fileno())
+            os.replace(temporary,target)
+        directory=os.open(path,os.O_RDONLY)
+        try: os.fsync(directory)
+        finally: os.close(directory)
+
+
 def once():
     instance = os.environ.get('PROVISIONER_INSTANCE', 'production')
     dsn=env_read(Path('/home/flori/ventures2/bookstack/work/.app.env'))['DATABASE_URL_LOCAL']
@@ -69,13 +103,17 @@ def once():
         # run-worker.sh flock spans the whole command: no live worker is reclaimed.
         stale=db.execute("SELECT id,slug FROM tenants WHERE COALESCE(provisioner_instance,'production')=%s AND status='provisioning' AND updated_at < now()-interval '20 minutes'",(instance,)).fetchall()
         for ident,slug in stale:
+            if (ROOT/slug/'.import-quarantine.json').exists():
+                db.execute("UPDATE tenants SET status='failed',error='import_quarantined',updated_at=now() WHERE COALESCE(provisioner_instance,'production')=%s AND id=%s AND status='provisioning'",(instance,ident,))
+                print('Stale tenant skipped; import quarantine requires operator validation: '+slug,flush=True)
+                continue
             try:
                 if valid_slug(slug) or slug=='demo':
                     if (ROOT/slug/'docker-compose.yml').exists(): command('deprovision',slug)
             except Exception:
                 print('Timeout cleanup failed; retry next run',flush=True); continue
             db.execute("UPDATE tenants SET status='failed',error='timeout',updated_at=now() WHERE COALESCE(provisioner_instance,'production')=%s AND id=%s AND status='provisioning'",(instance,ident,))
-        rows=db.execute("SELECT id,slug,admin_email,status,desired_state,provisioner_instance FROM tenants WHERE COALESCE(provisioner_instance,'production')=%s AND status IN ('pending','running','suspended') ORDER BY created_at",(instance,)).fetchall()
+        rows=db.execute("SELECT n.id,n.slug,n.admin_email,n.status,n.desired_state,n.provisioner_instance,s.contract_ended_at FROM tenants n LEFT JOIN effective_subscriptions s ON s.team_id=n.team_id WHERE COALESCE(provisioner_instance,'production')=%s AND n.status IN ('pending','running','suspended','failed') ORDER BY n.created_at",(instance,)).fetchall()
         for tenant_row in rows:
             ident,slug,email,status,desired = tenant_row[:5]
             provisioner_instance = tenant_row[5] if len(tenant_row) > 5 else None
@@ -93,9 +131,18 @@ def once():
                     db.execute("UPDATE tenants SET status='failed',error='Invalid or reserved slug: use 3-30 lowercase letters/digits, single hyphens, no restore prefix',updated_at=now() WHERE COALESCE(provisioner_instance,'production')=%s AND id=%s AND status='pending'",(instance,ident,))
                 continue
             path=ROOT/slug
+            # An import quarantine records a failed recovery. Do not make any
+            # automatic lifecycle change while the on-disk state is uncertain.
+            if (path/'.import-quarantine.json').exists():
+                db.execute("UPDATE tenants SET status='failed',error='import_quarantined',updated_at=now() WHERE COALESCE(provisioner_instance,'production')=%s AND id=%s",(instance,ident,))
+                print('Tenant skipped; import quarantine requires operator validation: '+slug,flush=True)
+                continue
+            contract_ended_at = tenant_row[6] if len(tenant_row) > 6 else None
+            sync_destroy_marker(path, contract_ended_at, desired)
+            if status == 'failed': continue
             # A paid resume must never silently create an empty replacement or
             # loop forever against a durable destruction tombstone.
-            destroyed=(path/'.destroy_requested_at').exists() or (ROOT/'.destroy-requests'/slug).exists()
+            destroyed=((path/'.destroy_requested_at').exists() and not (path/'.contract_end_destroy').exists()) or (ROOT/'.destroy-requests'/slug).exists()
             missing_resume=status=='suspended' and desired=='running' and (
                 not existing or not (path/'.env').exists() or not (path/'docker-compose.yml').exists())
             if destroyed or missing_resume:

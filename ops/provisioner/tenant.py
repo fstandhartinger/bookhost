@@ -540,6 +540,15 @@ def purge(path, now=False):
     marker=path/'.destroy_requested_at'
     if not now and (not marker.exists() or time.time()-float(marker.read_text()) < 30*86400):
         print('PURGE deferred '+path.name); return
+    if (path/'.contract_end_destroy').exists():
+        requests=path.parent/'.destroy-requests'; requests.mkdir(exist_ok=True)
+        target=requests/path.name; temporary=target.with_name(target.name+'.tmp')
+        with temporary.open('w') as output:
+            output.write(marker.read_text()); output.flush(); os.fsync(output.fileno())
+        os.replace(temporary,target)
+        directory=os.open(requests,os.O_RDONLY)
+        try: os.fsync(directory)
+        finally: os.close(directory)
     compose(path,'down','--remove-orphans')
     run(['sudo','-n','rm','-rf','--',str(path)])
     print('PURGED '+path.name)
@@ -554,6 +563,8 @@ def main():
     locks=ROOT/'.locks'; locks.mkdir(exist_ok=True)
     with (locks/(slug+'.lock')).open('w') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX)
+        if (path/'.import-quarantine.json').exists() and action in ('provision','deprovision','destroy','purge','migrate-network'):
+            raise RuntimeError('Tenant quarantined after incomplete import; validate recovery and clear marker first')
         if action=='provision':
             if (path/'.destroy_requested_at').exists() or (ROOT/'.destroy-requests'/slug).exists(): raise ValueError('Tenant marked for destruction')
             def interrupted(*_): raise RuntimeError('Provisioning interrupted')

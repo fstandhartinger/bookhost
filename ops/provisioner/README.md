@@ -97,6 +97,26 @@ a purged tenant. Purge removes tenant files/backups after 30 days. The tombstone
 stays; remove it only during an explicit operator-approved recovery/reuse along
 with reconciling the tenant DB row. Immediate `--now --yes` is for test fixtures.
 
+Billing persists `contract_ended_at` from Stripe's actual end event (or the
+expired no-card trial end) and the worker copies that timestamp into the destroy
+marker. The 30 elapsed days therefore start at contract end, even if an operator
+checks the tenant later. A paid resume before purge removes only a marker carrying
+the `.contract_end_destroy` ownership companion; manually requested destruction
+is never canceled by billing. Inspect the control-plane state with
+`SELECT t.slug,s.status,s.contract_ended_at,s.contract_ended_at + interval '30 days' AS purge_due FROM tenants t JOIN effective_subscriptions s ON s.team_id=t.team_id ORDER BY purge_due NULLS LAST;`
+and compare it with `sudo cat tenants/<slug>/.destroy_requested_at`. The values
+must name the same UTC instant. Never rewrite the marker to the inspection time.
+Apply additive migration `027_contract_retention_grace.sql` before starting the
+updated application or worker; the worker's tenant-only schema bootstrap does not
+partially install billing lifecycle columns.
+
+Payment delinquency stores its first observed time, deadline, and the time the
+`payment_failed` notice was created. `PAYMENT_GRACE_DAYS` controls the deadline
+and defaults to 7. `past_due` and `unpaid` workspaces remain usable before the
+deadline; suspension requires both an elapsed deadline and the persisted notice.
+Inspect these fields with
+`SELECT t.slug,s.status,s.payment_grace_started_at,s.payment_grace_until,s.payment_failure_notified_at,t.desired_state FROM tenants t JOIN effective_subscriptions s ON s.team_id=t.team_id WHERE s.status IN ('past_due','unpaid');`.
+
 User cron (UTC), preserving all unrelated entries:
 - Every minute: `run-worker.sh` (polls at 0 and 30 seconds).
 - 03:17: `backup-all.sh` (stopped tenants stay stopped).
@@ -269,3 +289,16 @@ Explicit link attachments are excluded. `--allow-missing-files` accepts a known
 incomplete import and logs the exception alongside the backup path. It does not
 suppress malformed verification results or other import errors. This checks
 presence/readability, not matching content hashes or file sizes.
+
+If import recovery fails, the importer attempts an emergency stop and writes
+`<tenant>/.import-quarantine.json` whether that stop succeeds or fails. The
+marker contains only the failed phase, stop status and timestamp. The worker
+sets the control-plane error to `import_quarantined` and performs no automatic
+stop, start, suspend or resume while the marker exists.
+
+To inspect the state, read the marker and the `tenants.status/error` row, locate
+the `RECOVERY ARCHIVE` printed by the failed import, and validate the restored
+database, uploads and BookStack readiness using the normal restore verification
+procedure. Remove `.import-quarantine.json` only after recovery is validated;
+the next worker pass may then reconcile the requested lifecycle state. Keep the
+marker in place and the tenant stopped if validation is incomplete.

@@ -1,4 +1,5 @@
 """Offline lifecycle contract: no Docker, network or real DB is used."""
+import shutil
 import tempfile
 import time
 import unittest
@@ -13,7 +14,7 @@ class ResumePathTests(unittest.TestCase):
         db = MagicMock()
         def execute(sql, params=None):
             result = MagicMock()
-            result.fetchall.return_value = [('id', 'customer-team', 'owner@example.invalid', status, desired, None)] if sql.startswith('SELECT id,slug,admin_email') else []
+            result.fetchall.return_value = [('id', 'customer-team', 'owner@example.invalid', status, desired, None, None)] if sql.startswith('SELECT n.id,n.slug,n.admin_email') else []
             result.fetchone.return_value = ('id',)
             return result
         db.execute.side_effect = execute
@@ -60,6 +61,15 @@ class ResumePathTests(unittest.TestCase):
                 (path/'.destroy_requested_at').write_text(str(now-30*86400))
                 tenant.purge(path); compose.assert_called_once(); run.assert_called_once()
 
+    def test_contract_retention_purge_leaves_durable_tombstone(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp); path=self.fixture(root); now=2_000_000_000
+            (path/'.destroy_requested_at').write_text(str(now-30*86400))
+            (path/'.contract_end_destroy').write_text(str(now-30*86400))
+            with patch.object(tenant,'ROOT',root), patch.object(tenant.time,'time',return_value=now), patch.object(tenant,'compose'), patch.object(tenant,'run'):
+                tenant.purge(path)
+            self.assertEqual((root/'.destroy-requests'/'customer-team').read_text(),str(now-30*86400))
+
     def test_contract_end_marker_uses_persisted_end_and_paid_resume_removes_it(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = self.fixture(Path(tmp))
@@ -68,6 +78,30 @@ class ResumePathTests(unittest.TestCase):
             self.assertEqual((path/'.destroy_requested_at').read_text(), str(ended_at))
             worker.sync_destroy_marker(path, None, desired='running')
             self.assertFalse((path/'.destroy_requested_at').exists())
+
+    def test_missing_ended_workspace_does_not_create_or_raise(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)/'already-purged'
+            worker.sync_destroy_marker(path,1_800_000_123,desired='suspended')
+            self.assertFalse(path.exists())
+
+    def test_purge_while_waiting_for_marker_lock_does_not_recreate_tenant(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path=self.fixture(Path(tmp))
+            with patch.object(worker.fcntl,'flock',side_effect=lambda *_: shutil.rmtree(path)):
+                worker.sync_destroy_marker(path,1_800_000_123,desired='suspended')
+            self.assertFalse(path.exists())
+
+    def test_paid_resume_reconciles_a_scheduled_contract_marker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp); path=self.fixture(root)
+            (path/'.destroy_requested_at').write_text('1800000123')
+            (path/'.contract_end_destroy').write_text('1800000123')
+            db, command=self.reconcile(root,'suspended','running')
+            self.assertEqual([call.args[0] for call in command.call_args_list], ['deprovision','provision'])
+            self.assertFalse((path/'.destroy_requested_at').exists())
+            self.assertFalse((path/'.contract_end_destroy').exists())
+            self.assertFalse(any('workspace_unavailable' in call.args[0] for call in db.execute.call_args_list))
 
     def test_missing_or_destroyed_workspace_fails_visibly_without_recreation(self):
         for kind in ('missing', 'marked', 'purged', 'missing-env', 'missing-compose', 'uninitialized'):
@@ -89,6 +123,41 @@ class ResumePathTests(unittest.TestCase):
             root=Path(tmp); path=self.fixture(root)
             (path/'.import-quarantine.json').write_text('{"phase":"file import","stop_status":"failed"}\n')
             db, command=self.reconcile(root,'suspended','running')
+            command.assert_not_called()
+            self.assertTrue(any("status='failed'" in c.args[0] and 'import_quarantined' in c.args[0]
+                                for c in db.execute.call_args_list))
+
+    def test_lifecycle_command_rechecks_quarantine_under_lock(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp); path=self.fixture(root)
+            (root/'.locks').mkdir(); (root/'.locks'/'customer-team.lock').touch()
+            (path/'.import-quarantine.json').write_text('{}\n')
+            with patch.object(tenant,'ROOT',root), patch.object(tenant,'compose') as compose, \
+                 patch('sys.argv',['tenant.py','provision','customer-team','owner@example.invalid']):
+                with self.assertRaisesRegex(RuntimeError,'quarantined'):
+                    tenant.main()
+            compose.assert_not_called()
+
+    def test_stale_cleanup_does_not_touch_quarantined_tenant(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp); path=self.fixture(root)
+            (path/'.import-quarantine.json').write_text('{}\n')
+            db=MagicMock()
+            def execute(sql,params=None):
+                result=MagicMock()
+                if sql.startswith('SELECT id,slug FROM tenants'):
+                    result.fetchall.return_value=[('id','customer-team')]
+                elif sql.startswith('SELECT n.id,n.slug,n.admin_email'):
+                    result.fetchall.return_value=[]
+                else:
+                    result.fetchall.return_value=[]
+                return result
+            db.execute.side_effect=execute
+            with patch.object(worker.psycopg,'connect') as connect, patch.object(worker,'ROOT',root), \
+                 patch.object(worker,'env_read',return_value={'DATABASE_URL_LOCAL':'mock'}), \
+                 patch.object(worker,'command') as command:
+                connect.return_value.__enter__.return_value=db
+                worker.once()
             command.assert_not_called()
             self.assertTrue(any("status='failed'" in c.args[0] and 'import_quarantined' in c.args[0]
                                 for c in db.execute.call_args_list))

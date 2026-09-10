@@ -5,17 +5,47 @@ import contextlib
 import fcntl
 import gzip
 import json
+import os
 from pathlib import Path, PurePosixPath
 import shutil
 import signal
 import sys
 import tarfile
 import tempfile
+import time
 from urllib.parse import urlsplit
 
 import tenant
 from tenant import backup
 from bookstack_api_token import ensure_token, kms_key
+
+QUARANTINE_MARKER = '.import-quarantine.json'
+
+
+def quarantine(path, slug, phase, stop_status):
+    """Persist non-sensitive recovery state before returning control to automation."""
+    marker=path/QUARANTINE_MARKER
+    candidate=path/(QUARANTINE_MARKER+'.tmp')
+    payload={
+        'version':1,
+        'slug':slug,
+        'phase':phase,
+        'stop_status':stop_status,
+        'created_at':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),
+        'operator_action':'validate recovery, then remove this marker',
+    }
+    with candidate.open('w') as stream:
+        json.dump(payload,stream,sort_keys=True)
+        stream.write('\n')
+        stream.flush()
+        os.fsync(stream.fileno())
+    os.replace(candidate,marker)
+    directory_fd=os.open(path,os.O_RDONLY|os.O_DIRECTORY)
+    try:
+        os.fsync(directory_fd)
+    finally:
+        os.close(directory_fd)
+    return marker
 
 
 def open_dump(path):
@@ -215,10 +245,14 @@ def import_bookstack(slug, dump, files, old_url=None, dry_run=False, allow_missi
     if path.is_symlink() or not path.is_dir(): raise ValueError('Tenant does not exist')
     if not all((path/name).is_file() for name in ('.initialized','.env','docker-compose.yml')):
         raise ValueError('Tenant is not initialized')
+    if (path/QUARANTINE_MARKER).exists():
+        raise ValueError('Tenant is quarantined after an incomplete import; operator validation required')
     # Existing lifecycle lock is used without creating/truncating anything on dry-run.
     lockpath=tenant.ROOT/'.locks'/(slug+'.lock')
     with (lockpath.open('r') if lockpath.exists() else contextlib.nullcontext()) as lock:
         if lock is not None: fcntl.flock(lock,fcntl.LOCK_EX)
+        if (path/QUARANTINE_MARKER).exists():
+            raise ValueError('Tenant is quarantined after an incomplete import; operator validation required')
         running=tenant.compose(path,'ps','--status','running','--services').splitlines()
         if not {b'bookstack',b'db'}.issubset(set(running)): raise ValueError('Tenant is not running (BookStack and DB required)')
         before=counts(path); check_starter(path)
@@ -284,9 +318,16 @@ def import_bookstack(slug, dump, files, old_url=None, dry_run=False, allow_missi
                     state='Import had not started; original target retained.'
             except BaseException:
                 # Fail closed: never serve a partial import if recovery also fails.
-                try: tenant.compose(path,'stop','bookstack')
-                except Exception: pass
-                state='Recovery failed; BookStack stopped. Operator restore required.'
+                try:
+                    tenant.compose(path,'stop','bookstack')
+                    stop_status='confirmed_stopped'
+                    stop_detail='Emergency stop confirmed.'
+                except BaseException as stop_error:
+                    stop_status='failed'
+                    stop_detail='Emergency stop failed (' + type(stop_error).__name__ + ').'
+                marker=quarantine(path,slug,phase,stop_status)
+                state=('Recovery failed; '+stop_detail+' Tenant quarantined at '+str(marker)+
+                       '; operator restore and validation required.')
             raise RuntimeError('Import failed during '+phase+'. '+detail+' '+state+' Recovery archive: '+str(archive)) from None
         result={'before':before,'after':after,'rewritten_links':links,'backup':str(archive),'file_check':file_check,'allow_missing_files':allow_missing_files}
         print('IMPORTED '+json.dumps(result),flush=True)

@@ -22,6 +22,7 @@ import { generateDraft } from "@/lib/intake/draft";
 it.skipIf(process.env.INTAKE_DB_TEST !== "1")(
   "atomically accepts mail, replays without charging, rejects senders, rolls back quota and runs mocked drafting",
   async () => {
+    vi.stubEnv("INBOUND_EMAIL_ENABLED", "true");
     const user = (
       await db.query("INSERT INTO users(email) VALUES($1) RETURNING id", [
         `email-test-${crypto.randomUUID()}@example.invalid`,

@@ -108,6 +108,7 @@ export async function cancelDuplicateCheckout(
 export async function syncSubscription(
   client: Queryable,
   sub: Stripe.Subscription,
+  observedAt = new Date(),
 ) {
   const customer =
     typeof sub.customer === "string" ? sub.customer : sub.customer.id;
@@ -117,8 +118,39 @@ export async function syncSubscription(
   );
   if (!team.rows[0]) return;
   const item = sub.items.data[0];
+  const graceDays = Math.max(
+    1,
+    Number.parseInt(process.env.PAYMENT_GRACE_DAYS || "7", 10) || 7,
+  );
+  const hasPaymentMethod = Boolean(
+    sub.default_payment_method ||
+      sub.default_source ||
+      (typeof sub.customer !== "string" &&
+        !sub.customer.deleted &&
+        (sub.customer.invoice_settings.default_payment_method ||
+          sub.customer.default_source)),
+  );
+  const expiredNoCardTrial = Boolean(
+    sub.status === "trialing" &&
+      sub.trial_end &&
+      sub.trial_end * 1000 <= Date.now() &&
+      !hasPaymentMethod,
+  );
+  const endedAt = sub.ended_at
+    ? new Date(sub.ended_at * 1000)
+    : expiredNoCardTrial
+      ? new Date(sub.trial_end! * 1000)
+    : ["canceled", "incomplete_expired"].includes(sub.status)
+      ? sub.status === "incomplete_expired" && sub.trial_end && !hasPaymentMethod
+        ? new Date(sub.trial_end * 1000)
+        : sub.cancel_at_period_end && item?.current_period_end
+          ? new Date(item.current_period_end * 1000)
+          : sub.canceled_at && !sub.cancel_at_period_end
+          ? new Date(sub.canceled_at * 1000)
+          : new Date()
+      : null;
   await client.query(
-    `INSERT INTO subscriptions(team_id,stripe_subscription_id,status,price_id,trial_end,current_period_end,cancel_at_period_end,stripe_created_at,has_payment_method) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(stripe_subscription_id) DO UPDATE SET status=EXCLUDED.status,price_id=EXCLUDED.price_id,trial_end=EXCLUDED.trial_end,current_period_end=EXCLUDED.current_period_end,cancel_at_period_end=EXCLUDED.cancel_at_period_end,stripe_created_at=EXCLUDED.stripe_created_at,has_payment_method=EXCLUDED.has_payment_method,updated_at=now()`,
+    `INSERT INTO subscriptions(team_id,stripe_subscription_id,status,price_id,trial_end,current_period_end,cancel_at_period_end,stripe_created_at,has_payment_method,contract_ended_at,payment_grace_started_at,payment_grace_until,payment_failure_notified_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,CASE WHEN $3 IN ('past_due','unpaid') THEN $12::timestamptz END,CASE WHEN $3 IN ('past_due','unpaid') THEN $12::timestamptz+($11||' days')::interval END,NULL) ON CONFLICT(stripe_subscription_id) DO UPDATE SET status=EXCLUDED.status,price_id=EXCLUDED.price_id,trial_end=EXCLUDED.trial_end,current_period_end=EXCLUDED.current_period_end,cancel_at_period_end=EXCLUDED.cancel_at_period_end,stripe_created_at=EXCLUDED.stripe_created_at,has_payment_method=EXCLUDED.has_payment_method,contract_ended_at=CASE WHEN EXCLUDED.status='active' OR (EXCLUDED.status='trialing' AND EXCLUDED.trial_end>now()) THEN NULL ELSE COALESCE(subscriptions.contract_ended_at,EXCLUDED.contract_ended_at) END,payment_grace_started_at=CASE WHEN EXCLUDED.status IN ('past_due','unpaid') THEN COALESCE(subscriptions.payment_grace_started_at,$12::timestamptz) ELSE NULL END,payment_grace_until=CASE WHEN EXCLUDED.status IN ('past_due','unpaid') THEN COALESCE(subscriptions.payment_grace_until,$12::timestamptz+($11||' days')::interval) ELSE NULL END,payment_failure_notified_at=CASE WHEN EXCLUDED.status IN ('past_due','unpaid') THEN subscriptions.payment_failure_notified_at ELSE NULL END,updated_at=now()`,
     [
       team.rows[0].id,
       sub.id,
@@ -130,16 +162,32 @@ export async function syncSubscription(
         : null,
       sub.cancel_at_period_end,
       new Date(sub.created * 1000),
-      Boolean(
-        sub.default_payment_method ||
-        sub.default_source ||
-        (typeof sub.customer !== "string" &&
-          !sub.customer.deleted &&
-          (sub.customer.invoice_settings.default_payment_method ||
-            sub.customer.default_source)),
-      ),
+      hasPaymentMethod,
+      endedAt,
+      graceDays,
+      observedAt,
     ],
   );
+  if (["past_due", "unpaid"].includes(sub.status)) {
+    await client.query(
+      `WITH owner AS (SELECT owner_user_id FROM teams WHERE id=$1), episode AS
+       (SELECT stripe_subscription_id||':payment_failed:'||to_char(payment_grace_started_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS period FROM subscriptions WHERE stripe_subscription_id=$2), created AS (
+        INSERT INTO notifications(user_id,kind,period,payload,subscription_id)
+        SELECT owner_user_id,'payment_failed',episode.period,$3::jsonb,$2 FROM owner,episode
+        ON CONFLICT(user_id,kind,period) DO NOTHING RETURNING created_at)
+       UPDATE subscriptions SET payment_failure_notified_at=COALESCE(payment_failure_notified_at,
+         (SELECT created_at FROM created),(SELECT created_at FROM notifications n,owner,episode WHERE n.user_id=owner.owner_user_id AND n.kind='payment_failed' AND n.period=episode.period))
+       WHERE stripe_subscription_id=$2`,
+      [
+        team.rows[0].id,
+        sub.id,
+        JSON.stringify({
+          text: `Your payment failed. Update your payment method and pay the outstanding invoice within ${graceDays} days to keep workspace access.`,
+          href: "/app/billing",
+        }),
+      ],
+    );
+  }
   const current = (
     await client.query(
       "SELECT * FROM effective_subscriptions WHERE team_id=$1",
@@ -168,7 +216,10 @@ export async function handleStripeEvent(
   event: Stripe.Event,
   stripe: Pick<Stripe, "subscriptions">,
 ) {
-  const sync = async (sub: Stripe.Subscription) => {
+  const eventDate = Number.isFinite(event.created)
+    ? new Date(event.created * 1000)
+    : new Date();
+  const sync = async (sub: Stripe.Subscription, trustEventDate = false) => {
     if (
       !["canceled", "incomplete_expired"].includes(sub.status) &&
       (await cancelDuplicateCheckout(
@@ -181,7 +232,13 @@ export async function handleStripeEvent(
       ))
     )
       return;
-    await syncSubscription(client, sub);
+    await syncSubscription(
+      client,
+      sub,
+      trustEventDate && ["past_due", "unpaid"].includes(sub.status)
+        ? eventDate
+        : new Date(),
+    );
   };
   // The caller holds a transaction and a global transaction lock. Fetch current
   // subscriptions rather than trusting delivery order of Stripe snapshots.
@@ -215,6 +272,7 @@ export async function handleStripeEvent(
       event.type === "customer.subscription.deleted"
         ? sub
         : await stripe.subscriptions.retrieve(sub.id, { expand: ["customer"] }),
+      ["past_due", "unpaid"].includes(sub.status),
     );
   } else if (event.type === "customer.updated") {
     const customer = event.data.object as Stripe.Customer;
@@ -237,6 +295,7 @@ export async function handleStripeEvent(
     if (id)
       await sync(
         await stripe.subscriptions.retrieve(id, { expand: ["customer"] }),
+        event.type === "invoice.payment_failed",
       );
   }
 }

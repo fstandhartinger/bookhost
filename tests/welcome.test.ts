@@ -53,8 +53,11 @@ vi.mock("@/lib/db", () => ({
     fn({
       query: async (sql: string, values: unknown[]) => {
         if (state.failQuery && sql.includes(state.failQuery))
-          throw new Error(
-            "nonce=fixture-nonce token=secret-session upstream={stripe:object}",
+          throw Object.assign(
+            new Error(
+              "nonce=fixture-nonce token=secret-session upstream={stripe:object}",
+            ),
+            { code: "57014" },
           );
         if (sql.includes("pg_advisory_xact_lock"))
           state.operations.push("lock");
@@ -86,9 +89,9 @@ vi.mock("@/lib/db", () => ({
     }),
 }));
 import { GET } from "@/app/welcome/route";
-function request(cookie = true) {
+function request(cookie = true, sessionId = "cs_fixture") {
   return new NextRequest(
-    "http://127.0.0.1:3999/welcome?session_id=cs_fixture",
+    `http://127.0.0.1:3999/welcome?session_id=${encodeURIComponent(sessionId)}`,
     { headers: cookie ? { cookie: "wissen-checkout=fixture-nonce" } : {} },
   );
 }
@@ -109,35 +112,41 @@ beforeEach(() => {
     "test-only-secret-not-a-production-credential-123456";
 });
 
-it("reports welcome failures with a safe correlation visible on the retry redirect", async () => {
+it("reports welcome failures using only the Stripe-confirmed session identifier", async () => {
   state.failQuery = "SELECT * FROM checkout_attempts";
   const logged = vi.spyOn(console, "error").mockImplementation(() => {});
 
-  const response = await GET(request());
+  const response = await GET(request(true, "cs_attacker-controlled-secret"));
   const location = new URL(response.headers.get("location")!);
   const reference = location.searchParams.get("reference");
 
-  expect(reference).toMatch(/^[A-Za-z0-9_-]{8,64}$/);
+  expect(reference).toMatch(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+  );
   expect(logged).toHaveBeenCalledTimes(1);
   const record = JSON.parse(String(logged.mock.calls[0][0]));
   expect(record).toMatchObject({
     event: "welcome_error",
-    phase: "welcome_callback",
+    phase: "attempt_validation",
     session_id: "cs_fixture",
     correlation_id: reference,
+    error_category: "database_57014",
   });
   expect(record).not.toHaveProperty("nonce");
   const serialized = JSON.stringify(logged.mock.calls);
   expect(serialized).not.toContain("fixture-nonce");
   expect(serialized).not.toContain("secret-session");
   expect(serialized).not.toContain("stripe:object");
+  expect(serialized).not.toContain("attacker-controlled-secret");
   logged.mockRestore();
 });
 describe("Checkout-first login", () => {
   it("issues an Auth.js-compatible HttpOnly JWT once and rejects replay", async () => {
     const response = await GET(request());
     expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toBe("http://127.0.0.1:3999/app?setup=password");
+    expect(response.headers.get("location")).toBe(
+      "http://127.0.0.1:3999/app?setup=password",
+    );
     const cookie = response.cookies.get("authjs.session-token");
     expect(cookie).toBeTruthy();
     const token = await decode({

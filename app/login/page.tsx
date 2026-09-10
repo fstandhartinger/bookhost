@@ -15,12 +15,19 @@ export default async function Login({
     sent?: string;
     error?: string;
     checkout?: string;
+    reference?: string;
     reset?: string;
   }>;
 }) {
   const destination = await loginDestination();
   if (await auth()) redirect(destination);
   const params = await searchParams;
+  const supportReference =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      params.reference || "",
+    )
+      ? params.reference
+      : null;
   const emailEnabled = smtpReady();
   return (
     <section className="mx-auto max-w-md py-20">
@@ -57,6 +64,11 @@ export default async function Login({
               existing account’s email, sign in to that account.
             </>
           )}
+        </p>
+      )}
+      {supportReference && (
+        <p className="mt-2 text-sm text-slate-600">
+          Support reference: {supportReference}
         </p>
       )}
       {params.reset && (

@@ -31,7 +31,10 @@ vi.mock("@/lib/db", () => ({
   db: {
     query: async (sql: string) => {
       if (state.failQuery && sql.includes(state.failQuery))
-        throw new Error("secret=sk_test_never_log token=private-upstream-body");
+        throw Object.assign(
+          new Error("secret=sk_test_never_log token=private-upstream-body"),
+          { code: "57014" },
+        );
       if (sql.includes("FROM tenants WHERE team_id"))
         return { rows: [{ status: "suspended", error: null }], rowCount: 1 };
       if (sql.includes("FROM teams"))
@@ -69,7 +72,10 @@ it("reports checkout-attempt persistence failures with a safe user-visible corre
   const body = await response.json();
 
   expect(response.status).toBe(503);
-  expect(body.reference).toMatch(/^[A-Za-z0-9_-]{8,64}$/);
+  expect(body.reference).toMatch(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+  );
+  expect(body.error).toContain(body.reference);
   expect(logged).toHaveBeenCalledTimes(1);
   const record = JSON.parse(String(logged.mock.calls[0][0]));
   expect(record).toMatchObject({
@@ -78,6 +84,7 @@ it("reports checkout-attempt persistence failures with a safe user-visible corre
     team_id: "team",
     session_id: "cs_fixture",
     correlation_id: body.reference,
+    error_category: "database_57014",
   });
   const serialized = JSON.stringify(logged.mock.calls);
   expect(serialized).not.toContain("sk_test_never_log");
@@ -100,7 +107,10 @@ it("reports analytics insertion failures without leaking them or failing checkou
     phase: "analytics_insert",
     team_id: "team",
     session_id: "cs_fixture",
-    correlation_id: expect.stringMatching(/^[A-Za-z0-9_-]{8,64}$/),
+    correlation_id: expect.stringMatching(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    ),
+    error_category: "database_57014",
   });
   expect(JSON.stringify(logged.mock.calls)).not.toContain("sk_test_never_log");
   logged.mockRestore();

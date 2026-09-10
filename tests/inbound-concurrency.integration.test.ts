@@ -51,6 +51,7 @@ const fixtures: {
 }[] = [];
 beforeAll(async () => {
   if (!enabled) return;
+  vi.stubEnv("INBOUND_EMAIL_ENABLED", "true");
   vi.stubEnv("INBOUND_WEBHOOK_SECRET", "integration-test-only");
   for (let n = 0; n < 2; n++) {
     const email = `concurrency-${randomUUID()}@example.invalid`;

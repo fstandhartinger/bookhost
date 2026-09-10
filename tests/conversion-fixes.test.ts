@@ -27,11 +27,13 @@ describe("conversion guidance", () => {
     expect(paymentNote).toMatch(/billing\s+address/);
   });
 
-  it("uses the configured demo domain in the launch article", async () => {
-    expect(
-      await source(
-        "content/blog/bookstack-hosted-with-reviewed-document-intake.md",
-      ),
-    ).not.toContain(["demo", "bookhost.co"].join("."));
+  it("links the live demo host from the launch article", async () => {
+    const article = await source(
+      "content/blog/bookstack-hosted-with-reviewed-document-intake.md",
+    );
+    const { DEMO_URL } = await import("@/lib/config");
+    // The article must link the demo that is actually served, never a stale host.
+    expect(article).toContain(DEMO_URL);
+    expect(article).not.toContain("demo.wissen.app.mintapis.com");
   });
 });

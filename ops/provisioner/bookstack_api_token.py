@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Idempotent tenant API bootstrap. Both .env credential values use AES-256-GCM."""
 import base64
+import contextlib
 import fcntl
 import os
 from pathlib import Path
@@ -44,7 +45,7 @@ def api_valid(slug, ident, secret):
         raise RuntimeError('Tenant API unavailable') from None
 
 
-def ensure_token(slug, rotate=False):
+def ensure_token(slug, rotate=False, *, reinstall=False, locked=False):
     if not valid_slug(slug) and slug != 'demo':
         raise ValueError('Invalid tenant')
     path = ROOT / slug
@@ -53,8 +54,9 @@ def ensure_token(slug, rotate=False):
     key = kms_key()
     locks = ROOT / '.locks'
     locks.mkdir(exist_ok=True)
-    with (locks / (slug + '.lock')).open('a') as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)
+    with (contextlib.nullcontext() if locked else (locks / (slug + '.lock')).open('a')) as lock:
+        if lock is not None:
+            fcntl.flock(lock, fcntl.LOCK_EX)
         values = env_read(path / '.env')
         old_ident = None
         if values.get('BOOKSTACK_API_ID') and values.get('BOOKSTACK_API_SECRET'):
@@ -77,14 +79,15 @@ app(BookStack\Permissions\JointPermissionBuilder::class)->rebuildForAll();
 echo 'service';
 } else { echo 'legacy'; }
 """, {'id': old_ident})
-            if not rotate and service.strip() == b'service' and api_valid(slug, old_ident, old_secret):
+            if not reinstall and not rotate and service.strip() == b'service' and api_valid(slug, old_ident, old_secret):
                 return old_ident, values['BOOKSTACK_API_SECRET']
-        ident, secret = secrets.token_hex(16), secrets.token_hex(16)
+        # Reinstall preserves control-plane credentials while recreating the imported DB record.
+        ident, secret = (old_ident, old_secret) if reinstall and old_ident else (secrets.token_hex(16), secrets.token_hex(16))
         php(path, r"""
 $v=json_decode(stream_get_contents(STDIN),true);
 Illuminate\Support\Facades\DB::transaction(function() use ($v) {
 $u=BookStack\Users\Models\User::where('system_name','wissen-intake')->first();
-if (!$u) $u=new BookStack\Users\Models\User();
+if (!$u) { $u=new BookStack\Users\Models\User(); $u->slug='bookhost-intake-'.bin2hex(random_bytes(8)); }
 $u->forceFill(['name'=>'BookHost Intake','email'=>'wissen-intake@invalid.local','system_name'=>'wissen-intake','password'=>'','email_confirmed'=>true]);
 $u->save();
 $role=BookStack\Users\Models\Role::firstOrNew(['system_name'=>'wissen-intake']);

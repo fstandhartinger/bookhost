@@ -107,12 +107,12 @@ describe("public reliability evidence", () => {
     );
   });
 
-  it("labels intake beta and makes the AI processing gate explicit", async () => {
+  it("labels the live upload beta and explains the actual data transfer", async () => {
     const limits = section(await html(), "limits");
-    expect(limits).toContain("Document intake is a beta feature");
-    expect(limits).toMatch(
-      /AI processing remains disabled[^<]*data processing agreement with the model provider/,
-    );
+    expect(limits).toContain("Document intake is available in beta");
+    expect(limits).not.toContain("AI processing remains disabled");
+    expect(limits).toContain("Each upload sends extracted text, not the original file, to Chutes");
+    expect(limits).toContain("Without an upload");
     expect(limits).toContain('href="/legal/datenschutz"');
   });
 

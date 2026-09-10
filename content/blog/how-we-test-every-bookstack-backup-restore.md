@@ -10,9 +10,9 @@ A backup file is evidence that something was written. It is not yet evidence tha
 
 ## Start with a consistent backup
 
-Our backup job is scheduled daily. It briefly stops the selected team’s BookStack application, takes a consistent MariaDB dump and archives the application files, uploads and configuration. It also saves the deployment definition and a small set of content measurements for later comparison. The application then resumes; an already stopped tenant stays stopped. The interruption matters because a database and its uploaded files need to describe the same wiki.
+Updated 10 September 2026: the daily backup job now tries a hot backup while BookStack remains running. It compares database/content fingerprints and upload hashes around the dump and file archive. After three inconsistent hot attempts, it falls back to a cold backup that briefly stops the application and then resumes it. An already stopped tenant is skipped and stays stopped. The backup also saves the deployment definition and content measurements for later comparison.
 
-Local retention is **seven elapsed days**, based on UTC backup dates, rather than a fixed number of archives. A separate daily retention pass also covers stopped tenants. These are implementation details documented in the [backup and retention procedure](https://github.com/fstandhartinger/bookstack-ops/blob/main/ops/provisioner/README.md), not a promise of continuous recovery to any moment between backups.
+Backups older than seven days are removed at the next daily retention run; with scheduled runs, this can add up to 24 hours. Backup ages use UTC dates, rather than a fixed number of archives. A separate daily retention pass also covers stopped tenants. These are implementation details documented in the [backup and retention procedure](https://github.com/fstandhartinger/bookstack-ops/blob/main/ops/provisioner/README.md), not a promise of continuous recovery to any moment between backups.
 
 ## Encrypt, then authenticate before restoring
 

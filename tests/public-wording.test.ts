@@ -14,7 +14,7 @@ describe("public wording matches implemented behaviour", () => {
   });
   it("A06 app/migrate/page.tsx 2", async () => {
     const text = await readFile("app/migrate/page.tsx", "utf8");
-    expect(text).not.toContain("Run these commands on your server, replacing the database name and\n            paths with your own values:");
+    expect(text).not.toContain("directories.\n            Run these commands");
     expect(text).toContain("Agree a shared snapshot time and freeze writes on the old system before exporting.\n            The database dump and file archive must describe the same read-only source.\n            Run these commands on your server, replacing the database name and\n            paths with your own values:");
   });
   it("A06 app/migrate/page.tsx 3", async () => {

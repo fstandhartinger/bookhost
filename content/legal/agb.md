@@ -1,6 +1,6 @@
 # Allgemeine Geschäftsbedingungen für BookHost
 
-Stand: 08.09.2026
+Stand: 10.09.2026
 
 ## 1. Anbieter, Geltungsbereich und Kundenkreis
 
@@ -22,7 +22,7 @@ Wir übermitteln die Vertragsbestätigung einschließlich Leistungsumfang, Preis
 
 ## 3. Leistungsumfang und angekündigte Funktionen
 
-BookHost stellt dem Kunden eine über das Internet erreichbare BookStack-Instanz zur Verwaltung von BookStack-Seiten und Anhängen bereit. Zum Team-Tarif gehören deren Betrieb, notwendige Wartung und Sicherheitsaktualisierungen, tägliche Backups mit sieben Tagen Aufbewahrung sowie Support per E-Mail. Der Team-Tarif umfasst bis zu 25 Nutzer je Workspace und 5 GB Upload-Speicher. Für CPU- und Datenbankressourcen gilt Fair Use im Rahmen der üblichen BookStack-Verwaltung eines Teams dieser Größe. Bei höherem Bedarf an Nutzern, Speicher oder Rechen- und Datenbankressourcen kontaktieren Sie uns für eine individuelle Vereinbarung. Die konkrete Instanzadresse ergibt sich aus der Bestellbestätigung.
+BookHost stellt dem Kunden eine über das Internet erreichbare BookStack-Instanz zur Verwaltung von BookStack-Seiten und Anhängen bereit. Zum Team-Tarif gehören deren Betrieb, notwendige Wartung und Sicherheitsaktualisierungen, tägliche Backups mit altersbasierter Rotation gemäß Abschnitt 6 sowie Support per E-Mail. Der Team-Tarif umfasst bis zu 25 Nutzer je Workspace und 5 GB Upload-Speicher. Für CPU- und Datenbankressourcen gilt Fair Use im Rahmen der üblichen BookStack-Verwaltung eines Teams dieser Größe. Bei höherem Bedarf an Nutzern, Speicher oder Rechen- und Datenbankressourcen kontaktieren Sie uns für eine individuelle Vereinbarung. Die konkrete Instanzadresse ergibt sich aus der Bestellbestätigung.
 
 Die BookStack-Exportfunktionen stehen während der Vertragslaufzeit im Rahmen der vergebenen Berechtigungen jederzeit zur Verfügung. Ein Inhalts-Export ist nicht zwangsläufig eine vollständige Systemsicherung einschließlich Nutzerverwaltung und sämtlicher Einstellungen. Individuelle Migrationen, besondere Integrationen und zusätzliche Dienstleistungen werden nur nach gesonderter Vereinbarung geschuldet; etwaige Kosten müssen vorher vereinbart werden.
 
@@ -52,7 +52,7 @@ Wir streben eine Verfügbarkeit von **99 % im Kalendermonat** an. Dies ist ein B
 
 Planbare Wartungsarbeiten kündigen wir nach Möglichkeit im Voraus an und halten Unterbrechungen kurz. Zur Behebung akuter Sicherheitsprobleme können kurzfristige Arbeiten erforderlich sein.
 
-Wir erstellen täglich Sicherungen der für die Wiederherstellung erforderlichen Instanzdaten und bewahren sie sieben Tage auf. Sicherungen werden verschlüsselt gespeichert. Wiederherstellungen aus vorhandenen Sicherungen gehören zum vereinbarten Betrieb; der Kunde fordert sie über den Support an. Vor einer Wiederherstellung stimmen wir den gewünschten Sicherungsstand und die Folgen für neuere Änderungen ab. Zwischen zwei Sicherungen entstandene Änderungen können im Fehlerfall verloren gehen. Eine bestimmte Wiederherstellungszeit ist nicht vereinbart. Der Anbieter prüft die Wiederherstellbarkeit regelmäßig und dokumentiert die Prüfungen; daraus folgt keine Zusicherung vollständiger Fehlerfreiheit.
+Wir erstellen täglich Sicherungen der für die Wiederherstellung erforderlichen Instanzdaten. Die laufende Backup-Rotation entfernt Sicherungen, die älter als sieben Tage sind, beim nächsten täglichen Lauf; bei planmäßigem Betrieb können bis zu 24 Stunden hinzukommen. Sicherungen werden verschlüsselt gespeichert. Wiederherstellungen aus vorhandenen Sicherungen gehören zum vereinbarten Betrieb; der Kunde fordert sie über den Support an. Vor einer Wiederherstellung stimmen wir den gewünschten Sicherungsstand und die Folgen für neuere Änderungen ab. Zwischen zwei Sicherungen entstandene Änderungen können im Fehlerfall verloren gehen. Eine bestimmte Wiederherstellungszeit ist nicht vereinbart. Der Anbieter prüft die Wiederherstellbarkeit regelmäßig und dokumentiert die Prüfungen; daraus folgt keine Zusicherung vollständiger Fehlerfreiheit.
 
 ## 7. Pflichten des Kunden und Rechte an Inhalten
 

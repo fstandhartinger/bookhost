@@ -15,6 +15,7 @@ import tempfile
 import time
 import urllib.parse
 import urllib.request
+from urllib.parse import urlsplit
 
 sys.path.append(str(Path(__file__).resolve().parents[1] / 'provisioner'))
 from capacity import capacity_limits, thresholds, running_tenants, disk_state
@@ -93,15 +94,27 @@ ROLLBACK;
         return json.loads(result.stdout)
 
 
-def http(url, health=False):
+def http(url, health=False, contains=None):
+    """A page counts as healthy only if it is still ours and shows its content.
+
+    Status 200 alone proved too little: urlopen follows redirects, so a proxy
+    could answer with a maintenance page, a different workspace or another site
+    entirely and the check stayed green. The final host must therefore match the
+    one we asked for, and the body must carry a marker only the real page has.
+    """
     start = time.monotonic()
     request = urllib.request.Request(url, headers={'User-Agent': 'BookHost-Operator-Watchdog/1.0'})
     with urllib.request.urlopen(request, timeout=5) as response:
         if response.status != 200:
             return False
+        if urlsplit(response.geturl()).hostname != urlsplit(url).hostname:
+            return False
         if health:
             body = json.loads(response.read(65536))
             return body.get('db') is True and time.monotonic() - start < 5
+        if contains is not None:
+            body = response.read(262144).decode('utf-8', 'replace')
+            return contains in body
         return True
 
 
@@ -192,10 +205,18 @@ def checks():
             results[label] = {'ok': bool(ok), 'detail': detail}
         except Exception:
             results[label] = {'ok': False, 'detail': 'Prüfung fehlgeschlagen; Verbindung/Konfiguration lokal prüfen'}
-    check(LABELS[0], lambda: (http(os.environ.get('WATCHDOG_TEST_URL', 'https://bookhost.co/healthz'), True), 'HTTP 200, db=true, <5s'))
+    base = os.environ.get('WATCHDOG_TEST_URL', 'https://bookhost.co/healthz')
+    # healthz only runs SELECT 1, so it says nothing about whether customers can
+    # actually sign in. The sign-in page has to render its form as well.
+    login_probe = base.replace('/healthz', '/login')
+    check(LABELS[0], lambda: (
+        http(base, True) and http(login_probe, contains='name="password"'),
+        'HTTP 200, db=true, <5s, Anmeldeformular vorhanden'))
     # The public demo is what visitors see; follow its configured host, not a fixed one.
     demo_url = os.environ.get('DEMO_URL', 'https://demo.bookhost.co')
-    check(LABELS[1], lambda: (http(demo_url), 'HTTP 200 ' + demo_url))
+    check(LABELS[1], lambda: (
+        http(demo_url, contains='Read-only demo of BookHost'),
+        'HTTP 200 mit Demo-Banner ' + demo_url))
     try:
         db = database()
         rows = [row if isinstance(row, dict) else {'slug': row} for row in db['running']]
@@ -212,7 +233,7 @@ def checks():
         failed = []
         for slug in running:
             try:
-                if http(f'https://{hosts[slug]}/login'):
+                if http(f'https://{hosts[slug]}/login', contains='name="password"'):
                     continue
             except Exception:
                 pass

@@ -39,7 +39,7 @@ describe("public reliability evidence", () => {
 
   it("dates the restore evidence and preserves the first test's HTTP gap", async () => {
     const checks = section(await html(), "restore-checks");
-    expect(checks).toContain('datetime="2026-09-09"');
+    expect(checks).toMatch(/datetime="2026-09-09"/i);
     expect(checks).toContain(
       "HTTP retrieval was not verified in this first test",
     );

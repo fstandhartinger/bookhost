@@ -14,8 +14,14 @@ from bookstack_api_token import store_token
 
 DEFAULT_RESERVED_TEST_PREFIXES = ('rc-', 'fb-', 'nh-', 'dom-', 'bh-', 'tmp-', 'test-')
 
+def limits():
+    """Operator config is untracked; a missing file must fall back to defaults."""
+    path=HERE/'limits.env'
+    return env_read(path) if path.exists() else {}
+
+
 def reserved_test_prefixes():
-    raw = env_read(HERE/'limits.env').get('RESERVED_TEST_PREFIXES', ','.join(DEFAULT_RESERVED_TEST_PREFIXES))
+    raw = limits().get('RESERVED_TEST_PREFIXES', ','.join(DEFAULT_RESERVED_TEST_PREFIXES))
     return tuple(prefix.strip() for prefix in raw.split(',') if prefix.strip())
 
 def is_reserved_test_slug(slug):
@@ -40,7 +46,7 @@ def command(action, slug, email=None):
 
 
 def capacity():
-    values=env_read(HERE/'limits.env')
+    values=limits()
     limit=int(values.get('MAX_TENANTS','15'))
     free=int(subprocess.check_output(['df','-B1','--output=avail',str(ROOT)],text=True).splitlines()[-1])
     names=subprocess.check_output(['sudo','-n','docker','ps','--filter','label=com.docker.compose.service=bookstack','--format','{{.Names}}'],text=True).splitlines()

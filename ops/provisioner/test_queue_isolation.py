@@ -59,3 +59,12 @@ class QueueIsolationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class LimitsFallbackTest(unittest.TestCase):
+    def test_missing_limits_file_falls_back_to_defaults(self):
+        import worker, pathlib, tempfile, unittest.mock as mock
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(worker, 'HERE', pathlib.Path(d)):
+                self.assertEqual(worker.limits(), {})
+                self.assertEqual(worker.reserved_test_prefixes(), worker.DEFAULT_RESERVED_TEST_PREFIXES)
+

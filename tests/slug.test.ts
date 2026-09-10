@@ -40,7 +40,11 @@ it.each([
 ])("rejects %s", (slug) => expect(validateSlug(slug)).toBeTruthy());
 
 it("keeps control-plane test prefixes synchronized with the provisioner defaults", () => {
-  const limits = fs.readFileSync(path.resolve(process.cwd(), "ops/provisioner/limits.env"), "utf8");
+  const limitsPath = ["ops/provisioner/limits.env", "ops/provisioner/limits.env.example"]
+    .map((p) => path.resolve(process.cwd(), p))
+    .find((p) => fs.existsSync(p));
+  if (!limitsPath) throw new Error("No provisioner limits file found");
+  const limits = fs.readFileSync(limitsPath, "utf8");
   const configured = limits.match(/^RESERVED_TEST_PREFIXES=(.*)$/m)?.[1].split(",").filter(Boolean);
   expect(configured).toEqual([...RESERVED_TEST_PREFIXES]);
 });

@@ -135,13 +135,15 @@ def reconcile_domains(db, instance):
             FROM tenant_domains d JOIN tenants n ON n.team_id=d.team_id
             JOIN teams t ON t.id=d.team_id
             WHERE COALESCE(n.provisioner_instance,'production')=%s
-            AND (d.last_attempt_at IS NULL OR d.last_attempt_at < now()-interval '1 minute')
+            AND d.attempts < 20
+            AND (d.last_attempt_at IS NULL OR d.last_attempt_at <
+                 now()-(interval '1 minute' * LEAST(60, GREATEST(1, d.attempts*d.attempts))))
             AND (d.removal_requested_at IS NOT NULL OR
                  (d.status IN ('verified','failed') AND d.verified_at IS NOT NULL
                   AND n.status='running' AND n.desired_state='running'))
             ORDER BY d.last_attempt_at NULLS FIRST,d.requested_at LIMIT 3 FOR UPDATE OF t,d SKIP LOCKED""", (instance,)).fetchall()
         for team, host, slug, removing in rows:
-            db.execute('UPDATE tenant_domains SET last_attempt_at=now() WHERE team_id=%s AND host=%s', (team, host))
+            db.execute('UPDATE tenant_domains SET last_attempt_at=now(),attempts=attempts+1 WHERE team_id=%s AND host=%s', (team, host))
             if not valid_slug(slug) or (ROOT/slug/'.import-quarantine.json').exists():
                 db.execute("UPDATE tenant_domains SET last_error='Workspace unavailable for domain changes; contact support' WHERE team_id=%s AND host=%s", (team, host))
                 continue
@@ -150,11 +152,13 @@ def reconcile_domains(db, instance):
                 if removing:
                     db.execute('DELETE FROM tenant_domains WHERE team_id=%s AND host=%s', (team, host))
                 elif domain_https_ready(host):
-                    db.execute("UPDATE tenant_domains SET status='active',active_at=now(),last_error=NULL WHERE team_id=%s AND host=%s", (team, host))
+                    db.execute("UPDATE tenant_domains SET status='active',active_at=now(),last_error=NULL,attempts=0 WHERE team_id=%s AND host=%s", (team, host))
                 else:
                     db.execute("UPDATE tenant_domains SET status='verified',last_error='Waiting for HTTPS certificate; retrying automatically' WHERE team_id=%s AND host=%s", (team, host))
             except Exception:
-                db.execute("UPDATE tenant_domains SET status='failed',last_error='Domain routing failed; retrying automatically' WHERE team_id=%s AND host=%s", (team, host))
+                db.execute("UPDATE tenant_domains SET status='failed',last_error=CASE WHEN attempts>=20 "
+                           "THEN 'Domain routing failed after repeated attempts. Check the DNS records and press Check again.' "
+                           "ELSE 'Domain routing failed; retrying automatically' END WHERE team_id=%s AND host=%s", (team, host))
 
 
 def once():

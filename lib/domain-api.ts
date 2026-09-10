@@ -91,7 +91,8 @@ export async function domainRequest(
       );
       const status = result.verified ? "verified" : "pending_dns";
       await client.query(
-        "UPDATE tenant_domains SET status=$3,last_error=$4,verified_at=CASE WHEN $3='verified' THEN now() ELSE NULL END WHERE team_id=$1 AND host=$2",
+        // A customer-triggered check clears the retry backoff.
+        "UPDATE tenant_domains SET status=$3,last_error=$4,attempts=0,last_attempt_at=NULL,verified_at=CASE WHEN $3='verified' THEN now() ELSE NULL END WHERE team_id=$1 AND host=$2",
         [team, host, status, result.error || null],
       );
       return Response.json({ status, error: result.error });

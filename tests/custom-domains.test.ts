@@ -238,3 +238,10 @@ it("reports a missing workspace reference separately from an invalid domain", as
   expect(missingIndex).toBeGreaterThan(-1);
   expect(domainIndex).toBeGreaterThan(missingIndex);
 });
+
+it("clears the retry backoff when the customer checks again", async () => {
+  const source = await import("node:fs/promises").then((fs) =>
+    fs.readFile("lib/domain-api.ts", "utf8"),
+  );
+  expect(source).toMatch(/attempts=0,last_attempt_at=NULL/);
+});

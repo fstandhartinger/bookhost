@@ -144,7 +144,9 @@ def checks():
         except Exception:
             results[label] = {'ok': False, 'detail': 'Prüfung fehlgeschlagen; Verbindung/Konfiguration lokal prüfen'}
     check(LABELS[0], lambda: (http(os.environ.get('WATCHDOG_TEST_URL', 'https://bookhost.co/healthz'), True), 'HTTP 200, db=true, <5s'))
-    check(LABELS[1], lambda: (http('https://demo.wissen.app.mintapis.com/'), 'HTTP 200'))
+    # The public demo is what visitors see; follow its configured host, not a fixed one.
+    demo_url = os.environ.get('DEMO_URL', 'https://demo.bookhost.co')
+    check(LABELS[1], lambda: (http(demo_url), 'HTTP 200 ' + demo_url))
     try:
         db = database()
         rows = [row if isinstance(row, dict) else {'slug': row} for row in db['running']]

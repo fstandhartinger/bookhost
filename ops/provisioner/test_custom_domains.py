@@ -1,3 +1,4 @@
+import pathlib
 import unittest
 from unittest.mock import MagicMock, patch
 import worker
@@ -55,3 +56,13 @@ class DomainTransportTests(unittest.TestCase):
         with patch.dict(worker.os.environ, {'CUSTOM_DOMAIN_PROXY_IP': '8.8.8.8'}), patch.object(worker.socket, 'create_connection') as connect:
             with self.assertRaises(ValueError): worker.domain_https_ready('wiki.example.org')
             connect.assert_not_called()
+
+
+class DomainBackoffTest(unittest.TestCase):
+    def test_query_paces_retries_and_stops_after_twenty(self):
+        source = (pathlib.Path(__file__).with_name('worker.py')).read_text()
+        self.assertIn('d.attempts < 20', source)
+        self.assertIn("interval '1 minute' * LEAST(60, GREATEST(1, d.attempts*d.attempts))", source)
+        self.assertIn('attempts=attempts+1', source)
+        self.assertIn("status='active',active_at=now(),last_error=NULL,attempts=0", source)
+        self.assertIn('press Check again', source)

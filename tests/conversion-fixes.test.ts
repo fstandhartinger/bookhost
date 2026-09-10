@@ -37,3 +37,12 @@ describe("conversion guidance", () => {
     expect(article).not.toContain("demo.wissen.app.mintapis.com");
   });
 });
+
+it("warns on the upload panel that the AI beta is limited to non-personal documents", async () => {
+  const source = await import("node:fs/promises").then((fs) =>
+    fs.readFile("components/intake.tsx", "utf8"),
+  );
+  expect(source).toContain("Beta restriction");
+  expect(source).toMatch(/without personal data/);
+  expect(source).toContain("/legal/datenschutz");
+});

@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { EmailSource, type EmailMetadata } from "./intake-email-source";
 import { EmailIntake } from "./email-intake";
@@ -229,6 +230,12 @@ export function Intake({
                 Text is sent to Chutes for AI drafting and stored for review.
                 The original file is not retained. Scanned PDFs need OCR first.
               </p>
+            <p className="mt-2 text-xs leading-5 text-amber-800">
+              Beta restriction: our data processing agreement and transfer
+              documentation with the AI provider are not complete yet. Until they
+              are, upload only documents without personal data. See the{" "}
+              <Link className="underline" href="/legal/datenschutz">privacy notice</Link>.
+            </p>
               <label className="block text-sm font-medium">
                 Book
                 <select

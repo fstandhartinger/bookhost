@@ -1,5 +1,5 @@
 import { it, expect } from "vitest";
-import { validateSlug } from "../lib/slug";
+import { RESERVED_TEST_PREFIXES, validateSlug } from "../lib/slug";
 import fs from "node:fs";
 import path from "node:path";
 it.each(["my-team", "abc", "a12", "a".repeat(30)])("accepts %s", (slug) =>
@@ -42,5 +42,5 @@ it.each([
 it("keeps control-plane test prefixes synchronized with the provisioner defaults", () => {
   const limits = fs.readFileSync(path.resolve(process.cwd(), "ops/provisioner/limits.env"), "utf8");
   const configured = limits.match(/^RESERVED_TEST_PREFIXES=(.*)$/m)?.[1].split(",").filter(Boolean);
-  expect(configured).toEqual(["rc-", "fb-", "nh-", "dom-", "bh-", "tmp-", "test-"]);
+  expect(configured).toEqual([...RESERVED_TEST_PREFIXES]);
 });

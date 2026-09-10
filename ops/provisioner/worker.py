@@ -12,6 +12,15 @@ import psycopg
 from tenant import HERE, ROOT, env_read, valid_slug, compose
 from bookstack_api_token import store_token
 
+DEFAULT_RESERVED_TEST_PREFIXES = ('rc-', 'fb-', 'nh-', 'dom-', 'bh-', 'tmp-', 'test-')
+
+def reserved_test_prefixes():
+    raw = env_read(HERE/'limits.env').get('RESERVED_TEST_PREFIXES', ','.join(DEFAULT_RESERVED_TEST_PREFIXES))
+    return tuple(prefix.strip() for prefix in raw.split(',') if prefix.strip())
+
+def is_reserved_test_slug(slug):
+    return slug.startswith(reserved_test_prefixes())
+
 
 def command(action, slug, email=None):
     args=[sys.executable,str(HERE/'tenant.py'),action,slug]
@@ -57,8 +66,18 @@ def once():
             except Exception:
                 print('Timeout cleanup failed; retry next run',flush=True); continue
             db.execute("UPDATE tenants SET status='failed',error='timeout',updated_at=now() WHERE id=%s AND status='provisioning'",(ident,))
-        rows=db.execute("SELECT id,slug,admin_email,status,desired_state FROM tenants WHERE status IN ('pending','running','suspended') ORDER BY created_at").fetchall()
-        for ident,slug,email,status,desired in rows:
+        rows=db.execute("SELECT id,slug,admin_email,status,desired_state,provisioner_instance FROM tenants WHERE status IN ('pending','running','suspended') ORDER BY created_at").fetchall()
+        instance = os.environ.get('PROVISIONER_INSTANCE', 'production')
+        for tenant_row in rows:
+            ident,slug,email,status,desired = tenant_row[:5]
+            provisioner_instance = tenant_row[5] if len(tenant_row) > 5 else None
+            if provisioner_instance is not None and provisioner_instance != instance:
+                print('Tenant skipped; provisioner instance mismatch: '+slug,flush=True)
+                continue
+            if status == 'pending' and is_reserved_test_slug(slug):
+                db.execute("UPDATE tenants SET status='error',error='Reserved test slug; provision manually in an isolated checkout',updated_at=now() WHERE id=%s AND status='pending'",(ident,))
+                print('Tenant rejected; reserved test slug: '+slug,flush=True)
+                continue
             existing=(ROOT/slug/'.initialized').exists() if valid_slug(slug) or slug=='demo' else False
             # Existing operator-owned demo is allowed only for lifecycle actions.
             if not valid_slug(slug) and not (slug=='demo' and existing and status!='pending'):

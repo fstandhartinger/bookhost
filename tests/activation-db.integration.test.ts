@@ -37,20 +37,15 @@ it.skipIf(process.env.ACTIVATION_DB_TEST !== "1")(
         [team, subscription, at(336)],
       );
       const send = vi.fn(async () => undefined);
-      expect(await generateNotifications(client, at(23), send)).toBe(0);
-      expect(await generateNotifications(client, at(24), send)).toBe(1);
-      expect(await generateNotifications(client, at(25), send)).toBe(0);
-      expect(send).toHaveBeenCalledTimes(1);
-      expect(send.mock.calls[0]).toEqual([
-        expect.any(String),
-        expect.any(String),
-        { kind: "activation_workspace", href: "/app" },
-      ]);
+      expect(await generateNotifications(client, at(23))).toBe(0);
+      expect(await generateNotifications(client, at(24))).toBe(1);
+      expect(await generateNotifications(client, at(25))).toBe(0);
+      expect(send).not.toHaveBeenCalled();
       await client.query(
         "INSERT INTO tenants(team_id,slug,host,status,desired_state) VALUES($1,$2,$3,'running','running')",
         [team, `fixture-${team}`, `${team}.example.invalid`],
       );
-      await generateNotifications(client, at(26), send);
+      await generateNotifications(client, at(26));
       expect(
         (
           await client.query(
@@ -59,14 +54,14 @@ it.skipIf(process.env.ACTIVATION_DB_TEST !== "1")(
           )
         ).rows[0].resolved_at,
       ).toEqual(at(26));
-      expect(await generateNotifications(client, at(71), send)).toBe(0);
-      expect(await generateNotifications(client, at(72), send)).toBe(1);
-      expect(send).toHaveBeenCalledTimes(2);
+      expect(await generateNotifications(client, at(71))).toBe(0);
+      expect(await generateNotifications(client, at(72))).toBe(1);
+      expect(send).not.toHaveBeenCalled();
       await client.query(
         "INSERT INTO team_onboarding(team_id,step) VALUES($1,'publish')",
         [team],
       );
-      await generateNotifications(client, at(73), send);
+      await generateNotifications(client, at(73));
       expect(
         (
           await client.query(
@@ -84,8 +79,8 @@ it.skipIf(process.env.ACTIVATION_DB_TEST !== "1")(
         "UPDATE subscriptions SET status='canceled' WHERE team_id=$1",
         [team],
       );
-      await generateNotifications(client, at(74), send);
-      expect(send).toHaveBeenCalledTimes(2);
+      await generateNotifications(client, at(74));
+      expect(send).not.toHaveBeenCalled();
       expect(
         (
           await client.query(

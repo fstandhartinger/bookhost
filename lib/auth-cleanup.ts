@@ -1,4 +1,4 @@
-import { generateNotifications } from "./notifications";
+import { generateNotifications, deliverNotifications } from "./notifications";
 import { mailTransport } from "./password-mail";
 import { baseUrl } from "./config";
 import { db, transaction } from "./db";
@@ -20,29 +20,17 @@ export function startAuthCleanup() {
         "DELETE FROM page_views WHERE ts<now()-interval '90 days'",
       );
       await db.query("DELETE FROM events WHERE ts<now()-interval '90 days'");
-      await transaction(async (client) =>
-        generateNotifications(
-          client,
-          new Date(),
-          process.env.SMTP_HOST
-            ? async (email, text, notice) => {
-                const activation = notice.kind.startsWith("activation_");
-                await mailTransport().sendMail({
-                  from:
-                    process.env.SMTP_FROM ||
-                    "BookHost <noreply@mail.mintapis.com>",
-                  to: email,
-                  subject: activation
-                    ? "Your BookHost workspace: next step"
-                    : "Your BookHost workspace: billing notice",
-                  text: activation
-                    ? `${text}\n\nNext step: ${baseUrl()}${notice.href}`
-                    : `${text}\n\nManage billing: ${baseUrl()}/app/billing`,
-                });
-              }
-            : undefined,
-        ),
-      );
+      await transaction((client) => generateNotifications(client, new Date()));
+      if (process.env.SMTP_HOST)
+        await deliverNotifications(db, async (email, text) => {
+          await mailTransport().sendMail({
+            from:
+              process.env.SMTP_FROM || "BookHost <noreply@mail.mintapis.com>",
+            to: email,
+            subject: "Your BookHost workspace: billing notice",
+            text: `${text}\n\nManage billing: ${baseUrl()}/app/billing`,
+          });
+        });
     } catch {
       console.error("Authentication cleanup failed");
     } finally {

@@ -105,6 +105,51 @@ def http(url, health=False):
         return True
 
 
+# A backup that the watchdog counts must look like a backup, not merely carry
+# the name of one. Before this check an empty file, a truncated archive, a
+# directory called something.age or an archive whose signature had gone missing
+# all reported "Backups: ok". The age comes from the timestamp in the file name,
+# because a copy or a touch gives an old archive a fresh mtime.
+MIN_BACKUP_BYTES = 4096
+BACKUP_NAME = re.compile(r'^(\d{8}T\d{6}Z)\.age$')
+
+
+def backup_time(path, now):
+    """Seconds since this archive was taken, or None if it cannot be trusted."""
+    match = BACKUP_NAME.match(path.name)
+    if match:
+        try:
+            taken = dt.datetime.strptime(match.group(1), '%Y%m%dT%H%M%SZ').replace(
+                tzinfo=dt.timezone.utc).timestamp()
+        except ValueError:
+            taken = None
+        if taken is not None:
+            # A timestamp in the future is not evidence of a fresh backup.
+            return None if taken > now + 300 else now - taken
+    stamp = path.stat().st_mtime
+    return None if stamp > now + 300 else now - stamp
+
+
+def usable_backups(directory, now):
+    """Archives that carry content and a signature, newest age first."""
+    ages = []
+    for path in directory.glob('*.age'):
+        if not path.is_file() or path.is_symlink():
+            continue
+        try:
+            if path.stat().st_size < MIN_BACKUP_BYTES:
+                continue
+            signature = path.with_name(path.name + '.hmac')
+            if not signature.is_file() or signature.stat().st_size == 0:
+                continue
+        except OSError:
+            continue
+        age = backup_time(path, now)
+        if age is not None:
+            ages.append(age)
+    return sorted(ages)
+
+
 def recent_backup_errors(path, now):
     # Timestamped new logs; legacy un-timestamped lines use file mtime conservatively.
     modified = path.stat().st_mtime
@@ -181,15 +226,15 @@ def checks():
         pending = []
         for slug in running:
             tenant = ROOT / slug
-            files = list((tenant / 'backups').glob('*.age'))
-            if not files:
+            ages = usable_backups(tenant / 'backups', now)
+            if not ages:
                 marker = tenant / '.initialized'
                 age = now - marker.stat().st_mtime if marker.exists() else float('inf')
                 if age <= 30 * 60:
                     pending.append(f'{slug} (erstbackup ausstehend ({max(0, int(age // 60))} min))')
                 else:
                     failed.append(slug)
-            elif now - max(p.stat().st_mtime for p in files) >= 26 * 3600:
+            elif ages[0] >= 26 * 3600:
                 failed.append(slug)
         errors = recent_backup_errors(ROOT / 'backup.log', now)
         fallbacks = recent_backup_fallbacks(ROOT / 'backup.log', now)

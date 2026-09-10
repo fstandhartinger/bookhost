@@ -9,6 +9,9 @@ import unittest
 from unittest.mock import patch
 
 import watchdog as w
+import pathlib
+import shutil
+import datetime as dt
 
 
 class StateTests(unittest.TestCase):
@@ -139,3 +142,64 @@ class StateTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class UsableBackupTests(unittest.TestCase):
+    """A file called something.age is not yet evidence of a backup."""
+
+    def setUp(self):
+        self.dir = pathlib.Path(tempfile.mkdtemp())
+        self.now = dt.datetime(2026, 9, 10, 12, 0, tzinfo=dt.timezone.utc).timestamp()
+
+    def tearDown(self):
+        shutil.rmtree(self.dir, ignore_errors=True)
+
+    def archive(self, name, size=w.MIN_BACKUP_BYTES, signature=True, sig_size=64):
+        path = self.dir / name
+        path.write_bytes(b'x' * size)
+        if signature:
+            (self.dir / (name + '.hmac')).write_bytes(b'y' * sig_size)
+        return path
+
+    def test_complete_archive_counts_and_uses_its_name_for_the_age(self):
+        self.archive('20260910T110000Z.age')
+        ages = w.usable_backups(self.dir, self.now)
+        self.assertEqual(len(ages), 1)
+        self.assertAlmostEqual(ages[0], 3600, delta=2)
+
+    def test_truncated_archive_does_not_count(self):
+        self.archive('20260910T110000Z.age', size=10)
+        self.assertEqual(w.usable_backups(self.dir, self.now), [])
+
+    def test_archive_without_signature_does_not_count(self):
+        self.archive('20260910T110000Z.age', signature=False)
+        self.assertEqual(w.usable_backups(self.dir, self.now), [])
+
+    def test_empty_signature_does_not_count(self):
+        self.archive('20260910T110000Z.age', sig_size=0)
+        self.assertEqual(w.usable_backups(self.dir, self.now), [])
+
+    def test_directory_named_like_an_archive_does_not_count(self):
+        (self.dir / '20260910T110000Z.age').mkdir()
+        self.assertEqual(w.usable_backups(self.dir, self.now), [])
+
+    def test_old_archive_touched_today_stays_old(self):
+        # Copying or touching an old archive gives it a fresh mtime; the name
+        # is what says when the backup was taken.
+        path = self.archive('20260901T110000Z.age')
+        os.utime(path, (self.now, self.now))
+        ages = w.usable_backups(self.dir, self.now)
+        self.assertGreater(ages[0], 26 * 3600)
+
+    def test_future_timestamp_is_not_a_fresh_backup(self):
+        self.archive('20260911T110000Z.age')
+        self.assertEqual(w.usable_backups(self.dir, self.now), [])
+
+    def test_the_old_rule_would_have_accepted_these(self):
+        # The check used to be `glob('*.age')` plus the newest mtime, with no
+        # look at size, signature or file type. This test records the gap so it
+        # cannot quietly come back.
+        (self.dir / '20260910T110000Z.age').mkdir()
+        self.archive('20260910T113000Z.age', size=3, signature=False)
+        self.assertEqual(len(list(self.dir.glob('*.age'))), 2)
+        self.assertEqual(w.usable_backups(self.dir, self.now), [])

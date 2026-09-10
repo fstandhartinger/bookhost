@@ -24,7 +24,7 @@ export const TENANT_DOMAINS = (
   .map((host) => host.trim().toLowerCase())
   .filter(Boolean);
 export const DEMO_URL =
-  process.env.DEMO_URL || "https://demo.wissen.app.mintapis.com";
+  process.env.DEMO_URL || "https://demo.bookhost.co";
 // Inbound email routing is independent of workspace web hosts.
 export const INTAKE_TENANT_DOMAIN = "wissen.app.mintapis.com";
 export function baseUrl() {

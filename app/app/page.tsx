@@ -86,7 +86,7 @@ export default async function Dashboard({
   const tenant = team
     ? (
         await db.query(
-          "SELECT id,slug,host,status,desired_state,updated_at,admin_email,(initial_password IS NOT NULL) AS has_password FROM tenants WHERE team_id=$1",
+          "SELECT id,slug,host,status,desired_state,error,updated_at,admin_email,(initial_password IS NOT NULL) AS has_password FROM tenants WHERE team_id=$1",
           [team.id],
         )
       ).rows[0]
@@ -121,11 +121,13 @@ export default async function Dashboard({
     )
   ).rows;
   const status =
-    !billingEligible(subscription) || tenant?.desired_state === "suspended"
-      ? "suspended"
-      : tenant?.status === "suspended"
-        ? "restoring"
-        : tenant?.status;
+    tenant?.error === "workspace_unavailable"
+      ? "failed"
+      : !billingEligible(subscription) || tenant?.desired_state === "suspended"
+        ? "suspended"
+        : tenant?.status === "suspended"
+          ? "restoring"
+          : tenant?.status;
   const delayed =
     status === "provisioning" &&
     Date.now() - new Date(tenant.updated_at).getTime() > 20 * 60 * 1000;
@@ -209,6 +211,7 @@ export default async function Dashboard({
                   ...subscription,
                   desired_state: tenant?.desired_state,
                   tenant_status: tenant?.status,
+                  tenant_error: tenant?.error,
                 }
               : null
           }

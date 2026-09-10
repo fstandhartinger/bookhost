@@ -14,6 +14,8 @@ class TenantHostTests(unittest.TestCase):
                 path.mkdir()
                 if existing:
                     (path / '.initialized').touch()
+                    (path / '.env').touch()
+                    (path / 'docker-compose.yml').touch()
                 host = 'host-test.wissen.app.mintapis.com' if existing else 'host-test.bookhost.co'
                 db = MagicMock()
                 def execute(sql, params=None):

@@ -27,6 +27,8 @@ vi.mock("@/lib/security", () => ({
 vi.mock("@/lib/db", () => ({
   db: {
     query: async (sql: string) => {
+      if (sql.includes("FROM tenants WHERE team_id"))
+        return { rows: [{ status: "suspended", error: null }], rowCount: 1 };
       if (sql.includes("FROM teams"))
         return { rows: [{ id: "team", stripe_customer_id: state.customer }] };
       return {

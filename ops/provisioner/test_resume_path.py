@@ -61,9 +61,12 @@ class ResumePathTests(unittest.TestCase):
                 tenant.purge(path); compose.assert_called_once(); run.assert_called_once()
 
     def test_missing_or_destroyed_workspace_fails_visibly_without_recreation(self):
-        for kind in ('missing', 'marked', 'purged'):
+        for kind in ('missing', 'marked', 'purged', 'missing-env', 'missing-compose', 'uninitialized'):
             with self.subTest(kind=kind), tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp)
+                if kind in ('missing-env', 'missing-compose', 'uninitialized'):
+                    path = self.fixture(root)
+                    (path / {'missing-env': '.env', 'missing-compose': 'docker-compose.yml', 'uninitialized': '.initialized'}[kind]).unlink()
                 if kind == 'marked':
                     path = self.fixture(root); (path/'.destroy_requested_at').write_text(str(time.time()))
                 if kind == 'purged':

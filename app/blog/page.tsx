@@ -1,3 +1,4 @@
+import { JsonLd } from "@/components/json-ld";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { blogOrigin, formatDate, getPosts } from "./posts";
@@ -28,8 +29,22 @@ export const metadata: Metadata = {
 };
 
 export default function Blog() {
+  const posts = getPosts();
   return (
     <section className="section mx-auto max-w-3xl">
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "Blog",
+          name: title,
+          description,
+          url: `${blogOrigin}/blog`,
+          blogPost: posts.map((post) => ({
+            headline: post.title,
+            url: `${blogOrigin}/blog/${post.slug}`,
+          })),
+        }}
+      />
       <p className="eyebrow">NOTES FROM BOOKHOST</p>
       <h1>The BookHost blog</h1>
       <p className="lede">
@@ -43,7 +58,7 @@ export default function Blog() {
         Subscribe via RSS ↗
       </a>
       <div className="mt-12 space-y-6">
-        {getPosts().map((post) => (
+        {posts.map((post) => (
           <article
             key={post.slug}
             className="rounded-2xl border border-ink/15 bg-white p-6 sm:p-8"

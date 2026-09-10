@@ -1,17 +1,24 @@
 import type { MetadataRoute } from "next";
 import { getPosts } from "@/app/blog/posts";
-import { baseUrl } from "@/lib/config";
+import { PUBLIC_BASE_URL } from "@/lib/config";
 export default function sitemap(): MetadataRoute.Sitemap {
-  return [
+  const staticPaths = [
     "",
     "/pricing",
     "/blog",
-    ...getPosts().map((post) => `/blog/${post.slug}`),
     "/legal/impressum",
     "/legal/datenschutz",
     "/legal/agb",
     "/legal/avv",
     "/privacy",
     "/terms",
-  ].map((path) => ({ url: baseUrl() + path }));
+  ];
+  return [
+    // Static pages have no maintained modification date; do not invent one.
+    ...staticPaths.map((path) => ({ url: PUBLIC_BASE_URL + path })),
+    ...getPosts().map((post) => ({
+      url: `${PUBLIC_BASE_URL}/blog/${post.slug}`,
+      lastModified: post.date,
+    })),
+  ];
 }

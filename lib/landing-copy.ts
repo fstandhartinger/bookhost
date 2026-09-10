@@ -21,6 +21,10 @@ export const faqs = [
     "Cancel through the customer portal, the public cancellation form at /cancel, or email support at any time for the end of your current monthly billing period. You retain normal access until that date, so export any content you want to keep before then. We delete active instance data within 30 days after the contract ends; protected backup copies expire within a further seven days. Earlier deletion can be requested, and statutory retention for invoices does not mean we keep your entire wiki. Consumer cancellation and withdrawal rights remain available as described in the terms.",
   ],
   [
+    "Can we use our own domain?",
+    "Yes. Every workspace gets a bookhost.co address, and owners can add their own domain in the dashboard: enter it, add the shown DNS records, and we serve the workspace on both addresses. The bookhost.co address keeps working.",
+  ],
+  [
     "Can you migrate our existing BookStack instance?",
     "Contact us before switching anything off. We will assess your version, data size, attachments, authentication and custom changes, then agree the scope, any separate cost and the cutover approach before work starts. Migration is not advertised as an automatic one-click import or as included for every existing setup. Keep your current instance and backup until the migrated content and permissions have been checked. The full procedure, the two files we need and what we do not migrate are on our migration page: https://bookhost.co/migrate",
   ],

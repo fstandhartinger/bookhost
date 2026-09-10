@@ -38,6 +38,7 @@ export function Pricing() {
           </div>
           <ul className="checklist">
             <li>Your own hosted BookStack workspace</li>
+            <li>Your own domain, or a bookhost.co address</li>
             <li>{MEMBER_COPY}</li>
             <li>{STORAGE_COPY}</li>
             <li>

@@ -67,7 +67,18 @@ tar -czf bookstack-files.tar.gz -C /config/www uploads files`}</code></pre>
           </ul>
         </section>
         <section>
-          <p className="eyebrow">03 / YOUR ACCEPTANCE CHECK</p>
+          <p className="eyebrow">03 / YOUR ADDRESS</p>
+          <h2>Keep your own domain</h2>
+          <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-600">
+            Your workspace always has a bookhost.co address. Owners can add their
+            own domain in the dashboard: enter it, add the DNS records we show,
+            and we serve the workspace on both addresses once the certificate is
+            issued. External sign-in providers and mail routing are not part of
+            this step.
+          </p>
+        </section>
+        <section>
+          <p className="eyebrow">04 / YOUR ACCEPTANCE CHECK</p>
           <h2>What you check afterwards</h2>
           <ul className="checklist mt-6">
             <li>The number of books, pages and attachments is correct.</li>
@@ -77,7 +88,7 @@ tar -czf bookstack-files.tar.gz -C /config/www uploads files`}</code></pre>
           </ul>
         </section>
         <section>
-          <p className="eyebrow">04 / PLAN THE CHANGE</p>
+          <p className="eyebrow">05 / PLAN THE CHANGE</p>
           <h2>Timing and switch-over</h2>
           <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-600">
             Agree a shared snapshot time, freeze writes, export both files, then check
@@ -90,7 +101,7 @@ tar -czf bookstack-files.tar.gz -C /config/www uploads files`}</code></pre>
           </p>
         </section>
         <section>
-          <p className="eyebrow">05 / KNOW THE BOUNDARIES</p>
+          <p className="eyebrow">06 / KNOW THE BOUNDARIES</p>
           <h2>What we do not migrate today</h2>
           <ul className="checklist mt-6">
             <li>Two-factor authentication (MFA) and external sign-in methods (LDAP, SAML, OIDC) require separate assessment and recovery or reconfiguration before cutover.</li>

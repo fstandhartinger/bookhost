@@ -46,3 +46,12 @@ it("warns on the upload panel that the AI beta is limited to non-personal docume
   expect(source).toMatch(/without personal data/);
   expect(source).toContain("/legal/datenschutz");
 });
+
+it("advertises the custom domain on pricing and in the FAQ", async () => {
+  const fs = await import("node:fs/promises");
+  const pricing = await fs.readFile("components/pricing.tsx", "utf8");
+  const copy = await fs.readFile("lib/landing-copy.ts", "utf8");
+  expect(pricing).toContain("Your own domain");
+  expect(copy).toContain("Can we use our own domain?");
+  expect(copy).toMatch(/bookhost\.co address keeps working/);
+});

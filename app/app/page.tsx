@@ -5,8 +5,7 @@ import { tenantHost } from "@/lib/tenant-host";
 import { NEW_TENANT_DOMAIN } from "@/lib/config";
 import { OnboardingChecklist } from "@/components/onboarding-checklist";
 import React from "react";
-import { cookies } from "next/headers";
-import { ACTIVE_TEAM_COOKIE } from "@/lib/join-context";
+import { activeTeamId } from "@/lib/active-team";
 import { MemberBookStackLogin } from "@/components/member-bookstack-login";
 import { TeamPanel } from "@/components/team-panel";
 import { billingEligible } from "@/lib/trial";
@@ -48,9 +47,8 @@ export default async function Dashboard({
       [session.user.id],
     )
   ).rows;
-  const activeTeam = (await cookies()).get(ACTIVE_TEAM_COOKIE)?.value;
-  const team =
-    teams.find((t) => t.id === (selectedTeam || activeTeam)) || teams[0];
+  const activeId = await activeTeamId(session.user.id, selectedTeam);
+  const team = teams.find((t) => t.id === activeId) || teams[0];
   // Carry the shown team so document intake cannot land on a different one.
   const intakeHref = team ? `/app/intake?team=${team.id}` : "/app/intake";
   const isOwner = !team || team.owner_user_id === session.user.id;

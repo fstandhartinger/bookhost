@@ -1,8 +1,7 @@
 import { BillingNotice } from "@/components/billing-notice";
 import React from "react";
 import Link from "next/link";
-import { cookies } from "next/headers";
-import { ACTIVE_TEAM_COOKIE } from "@/lib/join-context";
+import { activeTeamId, MEMBERSHIP_ORDER } from "@/lib/active-team";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
@@ -23,16 +22,15 @@ export default async function IntakePage({
   // workspace. Same precedence and tie-break as the dashboard, so a link that
   // names a team cannot leave the two pages on different teams.
   const { team: selectedTeam } = (await searchParams) || {};
-  const activeTeam = (await cookies()).get(ACTIVE_TEAM_COOKIE)?.value;
+  const activeId = await activeTeamId(session.user.id, selectedTeam);
   const memberships = (
     await db.query(
-      "SELECT m.team_id,m.role FROM memberships m WHERE m.user_id=$1 ORDER BY m.created_at DESC,m.team_id",
+      `SELECT m.team_id,m.role FROM memberships m WHERE m.user_id=$1 ${MEMBERSHIP_ORDER}`,
       [session.user.id],
     )
   ).rows;
   const membership =
-    memberships.find((m) => m.team_id === (selectedTeam || activeTeam)) ||
-    memberships[0];
+    memberships.find((m) => m.team_id === activeId) || memberships[0];
   const tenants = membership
     ? (
         await db.query(

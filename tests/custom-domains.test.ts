@@ -246,16 +246,34 @@ it("clears the retry backoff when the customer checks again", async () => {
   expect(source).toMatch(/attempts=0,last_attempt_at=NULL/);
 });
 
-it("keeps document intake on the active team", async () => {
-  const source = await import("node:fs/promises").then((fs) =>
-    fs.readFile("app/app/intake/page.tsx", "utf8"),
-  );
-  // The page must select the tenant of the team the dashboard shows, and an
-  // explicit ?team= link must win over the cookie exactly as on /app.
-  expect(source).toContain("ACTIVE_TEAM_COOKIE");
-  expect(source).toMatch(
-    /memberships\.find\(\s*\(m\) => m\.team_id === \(selectedTeam \|\| activeTeam\)/,
-  );
-  expect(source).toMatch(/ORDER BY m\.created_at DESC,m\.team_id/);
-  expect(source).toMatch(/FROM tenants t WHERE t\.team_id=\$1/);
+it("answers the active team in exactly one place", async () => {
+  const fs = await import("node:fs/promises");
+  const { glob } = await import("node:fs/promises").then(() => ({
+    glob: async (dir: string): Promise<string[]> => {
+      const out: string[] = [];
+      for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
+        const full = `${dir}/${entry.name}`;
+        if (entry.isDirectory()) out.push(...(await glob(full)));
+        else if (entry.name === "page.tsx") out.push(full);
+      }
+      return out;
+    },
+  }));
+  const pages = await glob("app");
+  // The dashboard and the intake page drifted apart twice because each decided
+  // for itself which team the visitor is looking at. No page may read the
+  // cookie or order memberships on its own any more.
+  const offenders: string[] = [];
+  for (const file of pages) {
+    const source = await fs.readFile(file, "utf8");
+    if (source.includes("ACTIVE_TEAM_COOKIE")) offenders.push(file);
+  }
+  expect(offenders).toEqual([]);
+  for (const file of ["app/app/page.tsx", "app/app/intake/page.tsx"]) {
+    const source = await fs.readFile(file, "utf8");
+    expect(source).toContain('from "@/lib/active-team"');
+    expect(source).toMatch(/activeTeamId\(\s*session\.user\.id/);
+  }
+  const intake = await fs.readFile("app/app/intake/page.tsx", "utf8");
+  expect(intake).toMatch(/FROM tenants t WHERE t\.team_id=\$1/);
 });

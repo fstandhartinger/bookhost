@@ -3,6 +3,8 @@
 import argparse
 import base64
 import datetime as dt
+import hashlib
+import hmac
 import fcntl
 import json
 import os
@@ -151,6 +153,29 @@ def http(url, health=False, contains=None):
 # directory called something.age or an archive whose signature had gone missing
 # all reported "Backups: ok". The age comes from the timestamp in the file name,
 # because a copy or a touch gives an old archive a fresh mtime.
+BACKUP_KEY = Path('/home/flori/ventures2/bookstack/work/.backup.key')
+
+
+def backup_key(path=BACKUP_KEY):
+    """The key the provisioner signs archives with, or None if unreadable."""
+    try:
+        key = path.read_bytes()
+    except OSError:
+        return None
+    return key or None
+
+
+def authentic(archive, key):
+    """Does the archive still match the signature written beside it?"""
+    signature = archive.with_name(archive.name + '.hmac')
+    try:
+        expected = signature.read_text(errors='replace').strip()
+        actual = hmac.new(key, archive.read_bytes(), hashlib.sha256).hexdigest()
+    except OSError:
+        return False
+    return hmac.compare_digest(actual, expected)
+
+
 MIN_BACKUP_BYTES = 4096
 BACKUP_NAME = re.compile(r'^(\d{8}T\d{6}Z)\.age$')
 
@@ -172,8 +197,13 @@ def backup_time(path, now):
     return None
 
 
-def usable_backups(directory, now):
-    """Archives that carry content and a signature, newest age first."""
+def usable_backups(directory, now, key=None):
+    """Archives that carry content and a signature, newest age first.
+
+    With a key the signature is not merely present but verified, so a corrupted
+    or swapped archive stops counting as a backup. Without one the check stays
+    where it was; a missing operator key must not look like a backup failure.
+    """
     ages = []
     for path in directory.glob('*.age'):
         if not path.is_file() or path.is_symlink():
@@ -185,6 +215,8 @@ def usable_backups(directory, now):
             if not signature.is_file() or signature.stat().st_size == 0:
                 continue
         except OSError:
+            continue
+        if key is not None and not authentic(path, key):
             continue
         age = backup_time(path, now)
         if age is not None:
@@ -304,9 +336,10 @@ def checks():
     def backups():
         failed = []
         pending = []
+        key = backup_key()
         for slug in running:
             tenant = ROOT / slug
-            ages = usable_backups(tenant / 'backups', now)
+            ages = usable_backups(tenant / 'backups', now, key)
             if not ages:
                 marker = tenant / '.initialized'
                 age = now - marker.stat().st_mtime if marker.exists() else None
@@ -319,7 +352,8 @@ def checks():
                 failed.append(slug)
         errors = recent_backup_errors(ROOT / 'backup.log', now)
         fallbacks = recent_backup_fallbacks(ROOT / 'backup.log', now)
-        detail = f'fehlend/veraltet: {", ".join(failed) or "keine"}'
+        detail = ('signaturgeprueft; ' if key else 'Signatur UNGEPRUEFT (Schluessel nicht lesbar); ')
+        detail += f'fehlend/veraltet: {", ".join(failed) or "keine"}'
         if pending:
             detail += '; ausstehend: ' + ', '.join(pending)
         return db is not None and not failed and not errors, detail + f'; ERROR letzte 24h={errors}; fallback cold letzte 24h={fallbacks}'

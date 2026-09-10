@@ -1,5 +1,5 @@
 import { auth } from "@/auth";
-import { db } from "@/lib/db";
+import { db, transaction } from "@/lib/db";
 import { sameOrigin, rateLimit } from "@/lib/security";
 import {
   clientFor,
@@ -89,24 +89,33 @@ export async function POST(request: Request) {
     const client = await clientFor(tenant);
     const current = await workspace(user, tenant.id);
     const target = await client.uploadTarget(upload.fields, upload.filename);
-    await quota(tenant.team_id, current.subscription_status, true);
     const book = target.book.id;
     const chapter = target.chapter?.id || null;
-    const item = (
-      await db.query(
-        "INSERT INTO intake_items(team_id,tenant_id,filename,mime,extracted_text,target_book_id,target_chapter_id,created_by,status,target_book_name,target_chapter_name) VALUES($1,$2,$3,'application/octet-stream',NULL,$4,$5,$6,'queued',$7,$8) RETURNING id",
-        [
-          tenant.team_id,
-          tenant.id,
-          upload.filename.slice(0, 255),
-          book,
-          chapter,
-          user,
-          target.book.name,
-          target.chapter?.name || null,
-        ],
-      )
-    ).rows[0];
+    const filename = upload.filename.slice(0, 255);
+    const item = await transaction(async (c) => {
+      const allowance = await quota(
+        tenant.team_id,
+        current.subscription_status,
+        true,
+        c,
+      );
+      return (
+        await c.query(
+          "INSERT INTO intake_items(team_id,tenant_id,filename,mime,extracted_text,target_book_id,target_chapter_id,created_by,status,target_book_name,target_chapter_name,quota_period) VALUES($1,$2,$3,'application/octet-stream',NULL,$4,$5,$6,'queued',$7,$8,$9) RETURNING id",
+          [
+            tenant.team_id,
+            tenant.id,
+            filename,
+            book,
+            chapter,
+            user,
+            target.book.name,
+            target.chapter?.name || null,
+            allowance.period,
+          ],
+        )
+      ).rows[0];
+    });
     enqueue(
       item.id,
       user,

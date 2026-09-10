@@ -1,3 +1,4 @@
+import { storageNotice } from "@/lib/storage-usage";
 import { tenantHost } from "@/lib/tenant-host";
 import { NEW_TENANT_DOMAIN } from "@/lib/config";
 import { OnboardingChecklist } from "@/components/onboarding-checklist";
@@ -94,7 +95,7 @@ export default async function Dashboard({
   const tenant = team
     ? (
         await db.query(
-          "SELECT id,slug,host,status,desired_state,error,updated_at,admin_email,(initial_password IS NOT NULL) AS has_password FROM tenants WHERE team_id=$1",
+          "SELECT id,slug,host,status,desired_state,error,updated_at,admin_email,storage_used_bytes,storage_measured_at,(initial_password IS NOT NULL) AS has_password FROM tenants WHERE team_id=$1",
           [team.id],
         )
       ).rows[0]
@@ -326,6 +327,20 @@ export default async function Dashboard({
                   ? "Taking longer than expected — we’re on it"
                   : descriptions[status] || "Checking workspace status."}
               </p>
+              {storageNotice(
+                tenant.storage_used_bytes,
+                tenant.storage_measured_at,
+              ) && (
+                <p
+                  role="status"
+                  className="mt-4 rounded-lg bg-amber-50 p-4 text-sm"
+                >
+                  {storageNotice(
+                    tenant.storage_used_bytes,
+                    tenant.storage_measured_at,
+                  )}
+                </p>
+              )}
               {isOwner && status === "suspended" && (
                 <ActionButton
                   endpoint={

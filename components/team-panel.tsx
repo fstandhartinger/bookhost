@@ -1,4 +1,5 @@
 "use client";
+import { QUOTAS } from "@/lib/quotas";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 type Member = {
@@ -57,9 +58,9 @@ export function TeamPanel({
     <section className="price-card mt-8">
       <h2 className="text-2xl">Team</h2>
       <p className="mt-2 text-sm text-slate-600">
-        {members.length} / 25 members · Your plan includes up to 25 members.
-        Invitations expire after 7 days. Teammates get their own BookStack login
-        automatically.
+        {members.length} / {QUOTAS.members} dashboard members (including the
+        owner). Invitations expire after 7 days. Teammates get their own
+        BookStack login automatically.
       </p>
       <ul className="mt-4 divide-y">
         {members.map((m) => (
@@ -152,7 +153,10 @@ export function TeamPanel({
             <option value="10">10 people</option>
           </select>
         </label>
-        <button className="button" disabled={busy || members.length >= 25}>
+        <button
+          className="button"
+          disabled={busy || members.length >= QUOTAS.members}
+        >
           Create invitation link
         </button>
       </form>

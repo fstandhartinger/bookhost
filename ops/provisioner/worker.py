@@ -13,6 +13,7 @@ import psycopg
 from tenant import HERE, ROOT, env_read, valid_slug, compose
 from bookstack_api_token import store_token
 from capacity import disk_state, running_tenants, thresholds, CUSTOMER_ERROR
+from storage_usage import record_storage
 
 DEFAULT_RESERVED_TEST_PREFIXES = ('rc-', 'fb-', 'nh-', 'dom-', 'bh-', 'tmp-', 'test-')
 
@@ -118,7 +119,7 @@ def once():
             except Exception:
                 print('Timeout cleanup failed; retry next run',flush=True); continue
             db.execute("UPDATE tenants SET status='failed',error='timeout',updated_at=now() WHERE COALESCE(provisioner_instance,'production')=%s AND id=%s AND status='provisioning'",(instance,ident,))
-        rows=db.execute("SELECT n.id,n.slug,n.admin_email,n.status,n.desired_state,n.provisioner_instance,s.contract_ended_at FROM tenants n LEFT JOIN effective_subscriptions s ON s.team_id=n.team_id WHERE COALESCE(provisioner_instance,'production')=%s AND n.status IN ('pending','running','suspended','failed') ORDER BY n.created_at",(instance,)).fetchall()
+        rows=db.execute("SELECT n.id,n.slug,n.admin_email,n.status,n.desired_state,n.provisioner_instance,s.contract_ended_at,n.storage_measured_at FROM tenants n LEFT JOIN effective_subscriptions s ON s.team_id=n.team_id WHERE COALESCE(provisioner_instance,'production')=%s AND n.status IN ('pending','running','suspended','failed') ORDER BY n.created_at",(instance,)).fetchall()
         for tenant_row in rows:
             ident,slug,email,status,desired = tenant_row[:5]
             provisioner_instance = tenant_row[5] if len(tenant_row) > 5 else None
@@ -142,6 +143,8 @@ def once():
                 db.execute("UPDATE tenants SET status='failed',error='import_quarantined',updated_at=now() WHERE COALESCE(provisioner_instance,'production')=%s AND id=%s",(instance,ident,))
                 print('Tenant skipped; import quarantine requires operator validation: '+slug,flush=True)
                 continue
+            if status in ('running', 'suspended'):
+                record_storage(db, ident, path, instance, tenant_row[7] if len(tenant_row) > 7 else None)
             contract_ended_at = tenant_row[6] if len(tenant_row) > 6 else None
             sync_destroy_marker(path, contract_ended_at, desired)
             if status == 'failed': continue

@@ -1,3 +1,4 @@
+import { QUOTAS } from "@/lib/quotas";
 import { requireInboundEmail } from "./inbound-enabled";
 import type { Pool, PoolClient } from "pg";
 import { db, transaction } from "@/lib/db";
@@ -115,7 +116,11 @@ export async function acceptEmail(mail: ReturnType<typeof parseEmail>) {
           : new Date().toISOString().slice(0, 7);
       await c.query(
         "INSERT INTO intake_quota(team_id,period,draft_limit) VALUES($1,$2,$3) ON CONFLICT DO NOTHING",
-        [tenant.team_id, period, period === "trial" ? 20 : 300],
+        [
+          tenant.team_id,
+          period,
+          period === "trial" ? QUOTAS.trialDrafts : QUOTAS.monthlyDrafts,
+        ],
       );
       if (
         !(
@@ -130,7 +135,7 @@ export async function acceptEmail(mail: ReturnType<typeof parseEmail>) {
       for (const file of mail.files) {
         const item = (
           await c.query(
-            `INSERT INTO intake_items(team_id,tenant_id,filename,mime,status,target_book_id,target_book_name,created_by,source,source_metadata,draft_title) VALUES($1,$2,$3,$4,'queued',$5,$6,$7,'email',$8,$9) RETURNING id`,
+            `INSERT INTO intake_items(team_id,tenant_id,filename,mime,status,target_book_id,target_book_name,created_by,source,source_metadata,draft_title,quota_period) VALUES($1,$2,$3,$4,'queued',$5,$6,$7,'email',$8,$9,$10) RETURNING id`,
             [
               tenant.team_id,
               tenant.id,
@@ -145,6 +150,7 @@ export async function acceptEmail(mail: ReturnType<typeof parseEmail>) {
                 received_at: mail.received_at,
               }),
               mail.subject.slice(0, 250),
+              period,
             ],
           )
         ).rows[0];

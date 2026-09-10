@@ -1,3 +1,4 @@
+import { MEMBER_COPY, STORAGE_COPY } from "@/lib/quotas";
 import Link from "next/link";
 import { DEMO_URL } from "@/lib/config";
 
@@ -12,7 +13,7 @@ export default function BlogCta() {
       </h2>
       <p className="mt-4 leading-relaxed text-slate-600">
         Hosted BookStack with reviewed document intake in beta. Team is
-        €39/month plus applicable VAT, for up to 25 users and 5 GB of uploads.
+        €39/month plus applicable VAT. {MEMBER_COPY} {STORAGE_COPY}
         Try it for 14 days without a card.
       </p>
       <div className="mt-6 flex flex-wrap items-center gap-5">

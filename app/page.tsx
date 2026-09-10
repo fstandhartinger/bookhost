@@ -1,3 +1,4 @@
+import { DRAFT_COPY } from "@/lib/quotas";
 import { JsonLd } from "@/components/json-ld";
 import { homeStructuredData } from "@/lib/structured-data";
 import { PaymentNote } from "@/components/payment-note";
@@ -27,8 +28,8 @@ export default function Home() {
           <p className="mt-5 text-sm leading-6 text-moss">
             <strong>Document intake (beta) available now.</strong> Upload a
             document, review the draft with its summary, tags and reviewer
-            checklist, then approve it as an owner or admin for BookStack. 20
-            drafts in your trial; 300 per month on Team.
+            checklist, then approve it as an owner or admin for BookStack.{" "}
+            {DRAFT_COPY}
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <ActionButton>Start my 14-day free trial</ActionButton>
@@ -87,7 +88,10 @@ export default function Home() {
                   >
                     How we test restores
                   </Link>
-                  <Link className="mt-3 inline-block text-sm underline" href="/reliability">
+                  <Link
+                    className="mt-3 inline-block text-sm underline"
+                    href="/reliability"
+                  >
                     Backups, recovery and current limits
                   </Link>
                 </div>

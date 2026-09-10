@@ -142,3 +142,13 @@ it("rechecks usage after locking to prevent a concurrent second join", async () 
   });
   expect(query).toHaveBeenCalledTimes(3);
 });
+it.each([25, 26])('rejects joining at %i members with actionable capacity message', async count => {
+  query.mockResolvedValueOnce({rows: [invite]})
+    .mockResolvedValueOnce({rows: [{id}]})
+    .mockResolvedValueOnce({rows: [invite]})
+    .mockResolvedValueOnce({rows: [{id: other, session_version: 3}]})
+    .mockResolvedValueOnce({rows: [], rowCount: 0})
+    .mockResolvedValueOnce({rows: [{count: String(count)}]});
+  await expect(joinTeam('a'.repeat(64), other, {}, 3)).rejects.toMatchObject({status:409, message: expect.stringContaining('Ask an admin to free a place')});
+  expect(query).toHaveBeenCalledTimes(6);
+});

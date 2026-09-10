@@ -1,7 +1,8 @@
+import { MEMBER_COPY, STORAGE_COPY, DRAFT_COPY } from "./quotas";
 export const faqs = [
   [
     "Does it fit a 15-person team?",
-    "Yes. Team includes up to 25 users per workspace and 5 GB of uploads, with fair use for CPU and database resources. For more users, storage or resources, contact us at info@productivity-boost.com before signing up.",
+    `Yes. ${MEMBER_COPY} ${STORAGE_COPY} Fair use applies to CPU and database resources. Contact info@productivity-boost.com for more resources.`,
   ],
   [
     "What is BookStack, and who is BookHost for?",
@@ -25,7 +26,7 @@ export const faqs = [
   ],
   [
     "How does document intake work?",
-    "Document intake is available now in beta. Upload a PDF, DOCX, Markdown or TXT file to get a draft with a summary, tags and a reviewer checklist. Check and edit the suggestion; only a team owner or admin can approve publication to BookStack. The trial includes 20 drafts in total; Team includes 300 drafts per month. Files can be up to 10 MB and 60,000 extracted characters; scanned PDFs need OCR first. AI output can contain mistakes.",
+    `Document intake is available now in beta. Upload a PDF, DOCX, Markdown or TXT file to get a draft with a summary, tags and a reviewer checklist. Check and edit the suggestion; only a team owner or admin can approve publication to BookStack. ${DRAFT_COPY} Files can be up to 10 MB and 60,000 extracted characters; scanned PDFs need OCR first. AI output can contain mistakes.`,
   ],
   [
     "Who can see drafts, and what is still planned?",
@@ -54,7 +55,7 @@ export const benefits = [
   [
     "03",
     "Review before it becomes team knowledge",
-    "Document intake is available now (beta). Upload a document, check its suggested summary, tags and reviewer checklist, then have a team owner or admin approve the page for BookStack. Includes 20 drafts during the trial and 300 per month on Team.",
+    `Document intake is available now (beta). Upload a document, check its suggested summary, tags and reviewer checklist, then have a team owner or admin approve the page for BookStack. ${DRAFT_COPY}`,
   ],
 ];
 export const steps = [
@@ -76,6 +77,6 @@ export const steps = [
   [
     "3",
     "Approve and publish",
-    "A team owner or admin approves the draft to create a page in BookStack. The destination book determines who can read it. Your trial includes 20 drafts; Team includes 300 drafts per month.",
+    `A team owner or admin approves the draft to create a page in BookStack. The destination book determines who can read it. ${DRAFT_COPY}`,
   ],
 ];

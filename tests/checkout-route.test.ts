@@ -111,3 +111,9 @@ it("resumes with the same customer and no second trial", async () => {
   expect(params.subscription_data).not.toHaveProperty("trial_settings");
   state.previous = false;
 });
+
+it('persists a team reservation and sends a durable Stripe idempotency key', async () => {
+ state.status='';
+ await POST(request());
+ expect(state.create).toHaveBeenLastCalledWith(expect.any(Object),{idempotencyKey:expect.stringContaining('bookhost:team:')});
+});

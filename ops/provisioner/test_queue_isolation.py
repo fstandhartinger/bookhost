@@ -68,3 +68,18 @@ class LimitsFallbackTest(unittest.TestCase):
                 self.assertEqual(worker.limits(), {})
                 self.assertEqual(worker.reserved_test_prefixes(), worker.DEFAULT_RESERVED_TEST_PREFIXES)
 
+
+class CriticalIsolationTests(QueueIsolationTests):
+    def test_acceptance_must_not_process_legacy_null(self):
+        with patch.dict(worker.os.environ, {'PROVISIONER_INSTANCE':'acceptance'}):
+            db, command = self.run_worker_for(('id','customer-team','a@example.org','pending','running',None))
+        command.assert_not_called()
+        self.assertFalse(any('UPDATE tenants' in c.args[0] for c in db.execute.call_args_list))
+
+    def test_all_queue_reads_and_writes_are_scoped_including_stale_cleanup(self):
+        db, _ = self.run_worker_for(('id','customer-team','a@example.org','pending','running','production'))
+        for call in db.execute.call_args_list:
+            sql=call.args[0]
+            if sql.startswith(('SELECT','UPDATE tenants')):
+                self.assertIn("COALESCE(provisioner_instance,'production')",sql)
+                self.assertIn('production',call.args[1])

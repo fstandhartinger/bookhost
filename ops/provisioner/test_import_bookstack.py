@@ -139,3 +139,13 @@ class DumpExecutionTests(unittest.TestCase):
                     self.assertIn('DROP TABLE `old_table`',sql.call_args.args[1])
 
 if __name__=='__main__': unittest.main()
+
+class MissingFilesTests(unittest.TestCase):
+    def test_missing_attachment_and_image_abort_import_before_resume(self):
+        fixture=ImportTests(); fixture.setUp()
+        try:
+            with patch.object(im.tenant,'php',return_value=b'{"missing_count":2,"examples":["files/missing.pdf","uploads/images/missing.png"]}'):
+                with self.assertRaisesRegex(RuntimeError,'2.*files/missing.pdf.*backup.enc'):
+                    fixture.go()
+            self.assertIn('rollback',fixture.events)
+        finally: fixture.doCleanups()

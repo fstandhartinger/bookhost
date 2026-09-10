@@ -31,6 +31,16 @@ export default function Home() {
             checklist, then approve it as an owner or admin for BookStack.{" "}
             {DRAFT_COPY}
           </p>
+          {/* People arriving from the BookStack installation docs already run
+              their own instance; their first question is whether they can bring
+              it. The answer used to be the nineteenth link on this page. */}
+          <p className="mt-5 text-sm leading-6">
+            Already running BookStack yourself?{" "}
+            <a href="/migrate" className="underline">
+              See what moving an existing instance involves
+            </a>
+            .
+          </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <ActionButton>Start my 14-day free trial</ActionButton>
             <div>
@@ -43,16 +53,6 @@ export default function Home() {
               </p>
             </div>
           </div>
-          {/* People arriving from the BookStack installation docs already run
-              their own instance; their first question is whether they can bring
-              it. The answer used to be the nineteenth link on this page. */}
-          <p className="mt-5 text-sm leading-6">
-            Already running BookStack yourself?{" "}
-            <a href="/migrate" className="underline">
-              See what moving an existing instance involves
-            </a>
-            .
-          </p>
           <PaymentNote />
           <p className="mt-4 text-xs text-slate-600">
             14 days free · No card required · Cancel monthly

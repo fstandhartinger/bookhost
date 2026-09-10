@@ -71,3 +71,11 @@ it("tells migrating teams they can keep their own domain", async () => {
   const sections = [...source.matchAll(/eyebrow">(\d\d) \//g)].map((m) => m[1]);
   expect(sections).toEqual([...new Set(sections)]);
 });
+
+it("states that customers can export everything again", async () => {
+  const source = await import("node:fs/promises").then((fs) =>
+    fs.readFile("app/migrate/page.tsx", "utf8"),
+  );
+  expect(source).toContain("You can take everything back out");
+  expect(source).toMatch(/database dump and an archive/);
+});

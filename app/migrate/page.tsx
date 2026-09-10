@@ -101,7 +101,18 @@ tar -czf bookstack-files.tar.gz -C /config/www uploads files`}</code></pre>
           </p>
         </section>
         <section>
-          <p className="eyebrow">06 / KNOW THE BOUNDARIES</p>
+          <p className="eyebrow">06 / LEAVING AGAIN</p>
+          <h2>You can take everything back out</h2>
+          <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-600">
+            Ask us at any time and we hand you the same two files this page
+            asks you for: a database dump and an archive of your uploads and
+            attachments, plus a manifest with counts and checksums. They
+            restore into any BookStack installation, so leaving is the same
+            procedure in reverse.
+          </p>
+        </section>
+        <section>
+          <p className="eyebrow">07 / KNOW THE BOUNDARIES</p>
           <h2>What we do not migrate today</h2>
           <ul className="checklist mt-6">
             <li>Two-factor authentication (MFA) and external sign-in methods (LDAP, SAML, OIDC) require separate assessment and recovery or reconfiguration before cutover.</li>

@@ -24,8 +24,8 @@ it("rejects a third upload before reading its body and releases slots once", asy
       },
     ],
   } as never);
-  const first = acquireSlot()!,
-    second = acquireSlot()!;
+  const first = acquireSlot("team-a")!,
+    second = acquireSlot("team-b")!;
   try {
     const response = await POST(
       new Request(
@@ -44,9 +44,9 @@ it("rejects a third upload before reading its body and releases slots once", asy
     first();
     second();
   }
-  const a = acquireSlot()!,
-    b = acquireSlot()!;
-  expect(acquireSlot()).toBeNull();
+  const a = acquireSlot("team-a")!,
+    b = acquireSlot("team-b")!;
+  expect(acquireSlot("team-c")).toBeNull();
   a();
   b();
 });

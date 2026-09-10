@@ -68,7 +68,7 @@ export async function POST(request: Request) {
       user,
       new URL(request.url).searchParams.get("tenant") || "",
     );
-    release = acquireSlot();
+    release = acquireSlot(tenant.team_id);
     if (!release)
       throw new IntakeError(
         "Two documents are already processing. Try again shortly.",

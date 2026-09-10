@@ -6,6 +6,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "",
     "/pricing",
     "/reliability",
+    "/migrate",
     "/blog",
     "/legal/impressum",
     "/legal/datenschutz",

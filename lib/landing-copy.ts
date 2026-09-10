@@ -21,7 +21,7 @@ export const faqs = [
   ],
   [
     "Can you migrate our existing BookStack instance?",
-    "Contact us before switching anything off. We will assess your version, data size, attachments, authentication and custom changes, then agree the scope, any separate cost and the cutover approach before work starts. Migration is not advertised as an automatic one-click import or as included for every existing setup. Keep your current instance and backup until the migrated content and permissions have been checked.",
+    "Contact us before switching anything off. We will assess your version, data size, attachments, authentication and custom changes, then agree the scope, any separate cost and the cutover approach before work starts. Migration is not advertised as an automatic one-click import or as included for every existing setup. Keep your current instance and backup until the migrated content and permissions have been checked. The full procedure, the two files we need and what we do not migrate are on our migration page: https://bookhost.co/migrate",
   ],
   [
     "How does document intake work?",

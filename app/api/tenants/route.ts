@@ -1,7 +1,7 @@
 import { NEW_TENANT_DOMAIN } from "@/lib/config";
 import { auth } from "@/auth";
 import { transaction } from "@/lib/db";
-import { validateSlug } from "@/lib/slug";
+import { isReservedTestSlug, validateSlug } from "@/lib/slug";
 import { sameOrigin } from "@/lib/security";
 export async function POST(request: Request) {
   if (!sameOrigin(request))
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const slug = typeof body.slug === "string" ? body.slug.trim() : "";
   const error = validateSlug(slug);
-  if (error) return Response.json({ error }, { status: 400 });
+  if (error) return Response.json({ error }, { status: isReservedTestSlug(slug) ? 422 : 400 });
   const name =
     typeof body.name === "string" ? body.name.trim().slice(0, 100) : "";
   try {

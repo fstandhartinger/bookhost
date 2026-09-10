@@ -80,7 +80,11 @@ export async function OnboardingChecklist({
               href={
                 step.name === "bookstack" && steps[1].done
                   ? `/api/bookstack/open?team=${teamId}`
-                  : step.href
+                  : // Page links stay on the team this dashboard shows;
+                    // in-page anchors keep their fragment.
+                    step.href.startsWith("/")
+                    ? `${step.href}?team=${teamId}`
+                    : step.href
               }
               target={
                 step.name === "bookstack" && steps[1].done

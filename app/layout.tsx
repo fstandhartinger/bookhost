@@ -14,6 +14,13 @@ export const metadata: Metadata = {
   description: PRODUCT_DESCRIPTION,
   metadataBase: new URL(PUBLIC_BASE_URL),
   alternates: { canonical: "./" },
+  // Ownership proof for Google Search Console. Not a secret; it must stay in
+  // place or the property loses its verification.
+  verification: {
+    google:
+      process.env.GOOGLE_SITE_VERIFICATION ||
+      "zD0UR835omd9e1sn_LPETAddu4sJLQPxVMNlfFQtC1g",
+  },
   openGraph: {
     type: "website",
     locale: "en_US",

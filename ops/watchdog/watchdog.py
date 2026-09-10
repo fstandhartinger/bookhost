@@ -25,6 +25,25 @@ LOG = ROOT / 'watchdog.log'
 LABELS = ['Control-Plane', 'Demo', 'Tenant-Logins', 'Bereitstellung', 'Backups', 'Host und Worker', 'Dokument-Eingang']
 
 
+def provisioning_state(db):
+    """Overdue work plus tenants whose actual state contradicts what was ordered.
+
+    A failed provisioning is terminal: the worker skips such rows, and every
+    other watchdog query looks at running tenants only. Without this the tenant
+    of a paying customer could vanish from all lists, and an earlier alert would
+    even be followed by "recovered" although nothing had recovered.
+    """
+    stranded = db.get('stranded') or []
+    unsuspended = db.get('unsuspended') or []
+    detail = f"überfällig: provisioning={db['provisioning']}, pending={db['pending']}"
+    if stranded:
+        detail += '; GESTRANDET (soll laufen, tut es nicht): ' + ', '.join(stranded)
+    if unsuspended:
+        detail += '; nicht ausgesetzt (soll ausgesetzt sein, laeuft weiter): ' + ', '.join(unsuspended)
+    ok = db['provisioning'] == 0 and db['pending'] == 0 and not stranded and not unsuspended
+    return ok, detail
+
+
 def stamp(now):
     return dt.datetime.fromtimestamp(now, dt.timezone.utc).isoformat(timespec='seconds')
 
@@ -79,7 +98,12 @@ SELECT json_build_object(
  'running', COALESCE((SELECT json_agg(json_build_object('slug',slug,'host',COALESCE(to_jsonb(tenants)->>'host',slug||'.wissen.app.mintapis.com')) ORDER BY slug) FROM tenants WHERE status='running'), '[]'::json),
  'provisioning', (SELECT count(*) FROM tenants WHERE status='provisioning' AND updated_at < now()-interval '20 minutes'),
  'pending', (SELECT count(*) FROM tenants WHERE status='pending' AND created_at < now()-interval '15 minutes'),
- 'drafting', (SELECT count(*) FROM intake_items WHERE status='drafting' AND updated_at < now()-interval '30 minutes'));
+ 'drafting', (SELECT count(*) FROM intake_items WHERE status='drafting' AND updated_at < now()-interval '30 minutes'),
+ 'stranded', COALESCE((SELECT json_agg(slug ORDER BY slug) FROM tenants
+   WHERE desired_state='running' AND status NOT IN ('running','pending','provisioning')), '[]'::json),
+ 'unsuspended', COALESCE((SELECT json_agg(slug ORDER BY slug) FROM tenants
+   WHERE desired_state='suspended' AND status='running'
+     AND updated_at < now()-interval '30 minutes'), '[]'::json));
 ROLLBACK;
 """
     with tempfile.TemporaryDirectory(prefix='wissen-watchdog-tls-') as tmp:
@@ -240,8 +264,7 @@ def checks():
             failed.append(slug)
         return db is not None and not failed, f'{len(running)} running; fehlgeschlagen: ' + (', '.join(failed) or 'keine')
     check(LABELS[2], tenants)
-    check(LABELS[3], lambda: (db['provisioning'] == 0 and db['pending'] == 0,
-                            f"überfällig: provisioning={db['provisioning']}, pending={db['pending']}"))
+    check(LABELS[3], lambda: provisioning_state(db))
     def backups():
         failed = []
         pending = []

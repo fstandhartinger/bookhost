@@ -39,3 +39,12 @@ class IntakeTokenTests(unittest.TestCase):
                 self.assertTrue(values['BOOKSTACK_API_SECRET'].startswith('v1:'))
                 self.assertNotIn(first[0], (tenant / '.env').read_text())
                 self.assertEqual(os.stat(tenant / '.env').st_mode & 0o777, 0o600)
+
+    def test_worker_token_write_is_scoped_to_its_instance(self):
+        from unittest.mock import MagicMock
+        db=MagicMock()
+        with patch.object(token,'ensure_token',return_value=('fixture-id','ciphertext')):
+            token.store_token(db,'tenant-id','fixture',instance='acceptance')
+        sql,params=db.execute.call_args.args
+        self.assertIn("COALESCE(provisioner_instance,'production')=%s",sql)
+        self.assertEqual(params,('fixture-id','ciphertext','tenant-id','acceptance'))

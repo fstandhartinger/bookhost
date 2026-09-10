@@ -60,35 +60,37 @@ def capacity():
 
 
 def once():
+    instance = os.environ.get('PROVISIONER_INSTANCE', 'production')
     dsn=env_read(Path('/home/flori/ventures2/bookstack/work/.app.env'))['DATABASE_URL_LOCAL']
     with psycopg.connect(dsn,autocommit=True) as db:
-        db.execute((HERE/'schema.sql').read_text())
+        # Schema bootstrap is operator/production work, never a test queue mutation.
+        if instance == 'production':
+            db.execute((HERE/'schema.sql').read_text())
         # run-worker.sh flock spans the whole command: no live worker is reclaimed.
-        stale=db.execute("SELECT id,slug FROM tenants WHERE status='provisioning' AND updated_at < now()-interval '20 minutes'").fetchall()
+        stale=db.execute("SELECT id,slug FROM tenants WHERE COALESCE(provisioner_instance,'production')=%s AND status='provisioning' AND updated_at < now()-interval '20 minutes'",(instance,)).fetchall()
         for ident,slug in stale:
             try:
                 if valid_slug(slug) or slug=='demo':
                     if (ROOT/slug/'docker-compose.yml').exists(): command('deprovision',slug)
             except Exception:
                 print('Timeout cleanup failed; retry next run',flush=True); continue
-            db.execute("UPDATE tenants SET status='failed',error='timeout',updated_at=now() WHERE id=%s AND status='provisioning'",(ident,))
-        rows=db.execute("SELECT id,slug,admin_email,status,desired_state,provisioner_instance FROM tenants WHERE status IN ('pending','running','suspended') ORDER BY created_at").fetchall()
-        instance = os.environ.get('PROVISIONER_INSTANCE', 'production')
+            db.execute("UPDATE tenants SET status='failed',error='timeout',updated_at=now() WHERE COALESCE(provisioner_instance,'production')=%s AND id=%s AND status='provisioning'",(instance,ident,))
+        rows=db.execute("SELECT id,slug,admin_email,status,desired_state,provisioner_instance FROM tenants WHERE COALESCE(provisioner_instance,'production')=%s AND status IN ('pending','running','suspended') ORDER BY created_at",(instance,)).fetchall()
         for tenant_row in rows:
             ident,slug,email,status,desired = tenant_row[:5]
             provisioner_instance = tenant_row[5] if len(tenant_row) > 5 else None
-            if provisioner_instance is not None and provisioner_instance != instance:
+            if (provisioner_instance or 'production') != instance:
                 print('Tenant skipped; provisioner instance mismatch: '+slug,flush=True)
                 continue
             if status == 'pending' and is_reserved_test_slug(slug):
-                db.execute("UPDATE tenants SET status='failed',error='Reserved test slug; provision manually in an isolated checkout',updated_at=now() WHERE id=%s AND status='pending'",(ident,))
+                db.execute("UPDATE tenants SET status='failed',error='Reserved test slug; provision manually in an isolated checkout',updated_at=now() WHERE COALESCE(provisioner_instance,'production')=%s AND id=%s AND status='pending'",(instance,ident,))
                 print('Tenant rejected; reserved test slug: '+slug,flush=True)
                 continue
             existing=(ROOT/slug/'.initialized').exists() if valid_slug(slug) or slug=='demo' else False
             # Existing operator-owned demo is allowed only for lifecycle actions.
             if not valid_slug(slug) and not (slug=='demo' and existing and status!='pending'):
                 if status=='pending':
-                    db.execute("UPDATE tenants SET status='failed',error='Invalid or reserved slug: use 3-30 lowercase letters/digits, single hyphens, no restore prefix',updated_at=now() WHERE id=%s AND status='pending'",(ident,))
+                    db.execute("UPDATE tenants SET status='failed',error='Invalid or reserved slug: use 3-30 lowercase letters/digits, single hyphens, no restore prefix',updated_at=now() WHERE COALESCE(provisioner_instance,'production')=%s AND id=%s AND status='pending'",(instance,ident,))
                 continue
             path=ROOT/slug
             # A paid resume must never silently create an empty replacement or
@@ -99,41 +101,41 @@ def once():
             if destroyed or missing_resume:
                 try:
                     if (path/'docker-compose.yml').exists(): command('deprovision',slug)
-                    db.execute("UPDATE tenants SET status='failed',error='workspace_unavailable',updated_at=now() WHERE id=%s",(ident,))
+                    db.execute("UPDATE tenants SET status='failed',error='workspace_unavailable',updated_at=now() WHERE COALESCE(provisioner_instance,'production')=%s AND id=%s",(instance,ident,))
                 except Exception: print('Unavailable workspace cleanup failed; retry next run',flush=True)
                 continue
             if desired=='suspended':
                 try:
                     if (path/'docker-compose.yml').exists(): command('deprovision',slug)
-                    db.execute("UPDATE tenants SET status='suspended',error=NULL,updated_at=now() WHERE id=%s AND status IN ('running','pending','suspended')",(ident,))
+                    db.execute("UPDATE tenants SET status='suspended',error=NULL,updated_at=now() WHERE COALESCE(provisioner_instance,'production')=%s AND id=%s AND status IN ('running','pending','suspended')",(instance,ident,))
                 except Exception: print('Suspend failed; retry next run',flush=True)
                 continue
             # Honor legacy status=suspended before resume, also stopping any remnants.
             if status=='suspended' and (path/'docker-compose.yml').exists(): command('deprovision',slug)
             if status not in ('pending','suspended'): continue
             if not capacity(): continue
-            row=db.execute("UPDATE tenants SET status='provisioning',error=NULL,updated_at=now() WHERE id=%s AND status=%s AND desired_state='running' RETURNING id",(ident,status)).fetchone()
+            row=db.execute("UPDATE tenants SET status='provisioning',error=NULL,updated_at=now() WHERE COALESCE(provisioner_instance,'production')=%s AND id=%s AND status=%s AND desired_state='running' RETURNING id",(instance,ident,status)).fetchone()
             if not row: continue
             try:
                 command('provision',slug,email)
                 try:
-                    store_token(db, ident, slug)
+                    store_token(db, ident, slug, instance=instance)
                 except Exception:
                     print("Intake token setup failed; healthy tenant remains available", flush=True)
                 values=env_read(path/'.env')
                 # The persisted APP_URL also preserves legacy hosts on resume.
                 host=urlsplit(values['APP_URL']).hostname
                 if existing:
-                    db.execute("UPDATE tenants SET status='running',host=%s,bookstack_url=%s,error=NULL,updated_at=now() WHERE id=%s AND status='provisioning'",(host,values['APP_URL'],ident))
+                    db.execute("UPDATE tenants SET status='running',host=%s,bookstack_url=%s,error=NULL,updated_at=now() WHERE COALESCE(provisioner_instance,'production')=%s AND id=%s AND status='provisioning'",(host,values['APP_URL'],instance,ident))
                 else:
-                    db.execute("UPDATE tenants SET status='running',host=%s,bookstack_url=%s,initial_password=%s,error=NULL,updated_at=now() WHERE id=%s AND status='provisioning'",(host,values['APP_URL'],values['BOOKSTACK_ADMIN_PASSWORD'],ident))
+                    db.execute("UPDATE tenants SET status='running',host=%s,bookstack_url=%s,initial_password=%s,error=NULL,updated_at=now() WHERE COALESCE(provisioner_instance,'production')=%s AND id=%s AND status='provisioning'",(host,values['APP_URL'],values['BOOKSTACK_ADMIN_PASSWORD'],instance,ident))
                 # Billing may change desired_state while provision runs; next pass reconciles.
                 print('Tenant running: '+slug,flush=True)
             except Exception:
                 try:
                     if (path/'docker-compose.yml').exists(): command('deprovision',slug)
                 finally:
-                    db.execute("UPDATE tenants SET status='failed',error='Provisioning failed; inspect tenant locally and retry pending',updated_at=now() WHERE id=%s AND status='provisioning'",(ident,))
+                    db.execute("UPDATE tenants SET status='failed',error='Provisioning failed; inspect tenant locally and retry pending',updated_at=now() WHERE COALESCE(provisioner_instance,'production')=%s AND id=%s AND status='provisioning'",(instance,ident,))
                 print('Tenant failed; diagnostics withheld',flush=True)
             return
 

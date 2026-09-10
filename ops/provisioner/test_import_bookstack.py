@@ -40,6 +40,8 @@ class ImportTests(unittest.TestCase):
             else:
                 p=patch.object(im,name,side_effect=lambda *a,_n=name,_v=value,**k: (self.events.append(_n),_v)[1])
             setattr(self,'mock_'+name,p.start()); self.addCleanup(p.stop)
+        self.php_patch=patch.object(im.tenant,'php',return_value=b'{"missing_count":0,"examples":[]}')
+        self.php_patch.start()
         self.compose=patch.object(im.tenant,'compose',return_value=b'bookstack\ndb\n').start()
         patch.object(im.tenant,'service_recovered').start()
         self.addCleanup(patch.stopall)
@@ -91,6 +93,7 @@ class ImportTests(unittest.TestCase):
         with self.assertRaises(ValueError): self.go()
         self.assertNotIn('backup',self.events)
     def test_php_uid(self):
+        self.php_patch.stop()
         with patch.object(tenant,'compose') as c:
             tenant.php(self.path,'echo 1;')
             self.assertIn('1000:1000',c.call_args.args)
@@ -139,3 +142,35 @@ class DumpExecutionTests(unittest.TestCase):
                     self.assertIn('DROP TABLE `old_table`',sql.call_args.args[1])
 
 if __name__=='__main__': unittest.main()
+
+class MissingFilesTests(unittest.TestCase):
+    def test_missing_attachment_and_image_abort_import_before_resume(self):
+        fixture=ImportTests(); fixture.setUp()
+        try:
+            with patch.object(im.tenant,'php',return_value=b'{"missing_count":2,"examples":["files/missing.pdf","uploads/images/missing.png"]}'):
+                with self.assertRaisesRegex(RuntimeError,'2.*files/missing.pdf.*backup.enc'):
+                    fixture.go()
+            self.assertIn('rollback',fixture.events)
+        finally: fixture.doCleanups()
+
+class MissingFilesOverrideTests(unittest.TestCase):
+    def test_explicit_override_logs_missing_count_and_backup(self):
+        fixture=ImportTests(); fixture.setUp()
+        try:
+            with patch.object(im.tenant,'php',return_value=b'{"missing_count":2,"examples":["files/missing.pdf","uploads/images/missing.png"]}'), patch('sys.stdout',new_callable=io.StringIO) as output:
+                result=fixture.go(allow_missing_files=True)
+            self.assertEqual(result['file_check']['missing_count'],2)
+            self.assertTrue(result['allow_missing_files'])
+            self.assertIn('--allow-missing-files',output.getvalue())
+            self.assertIn('backup.enc',output.getvalue())
+            self.assertNotIn('rollback',fixture.events)
+        finally: fixture.doCleanups()
+
+    def test_cli_reports_failure_exit_one_with_backup(self):
+        with patch('sys.argv',['import-bookstack.py','customer','--sql','dump.sql','--files','files.tar.gz']), patch.object(im,'import_bookstack',side_effect=RuntimeError('Missing local files: 2; Recovery archive: backup.enc')), patch('sys.stderr',new_callable=io.StringIO) as output:
+            self.assertEqual(im.main(),1)
+        self.assertIn('Recovery archive: backup.enc',output.getvalue())
+
+    def test_validation_failure_cannot_be_overridden(self):
+        with patch.object(im.tenant,'php',return_value=b'not valid json'):
+            with self.assertRaises(ValueError): im.verify_local_files(Path('/unused'),True)

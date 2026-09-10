@@ -254,3 +254,18 @@ own normal startup still runs; this command does not rewrite stored content URLs
 The owner separately updates the control-plane tenant host/bookstack_url and
 DEMO_URL when switching the public demo. If Compose fails, files retain the
 requested state and the command fails: fix the cause and repeat the command.
+
+### Critical review safeguards
+
+Every queue read/write, including stale provisioning cleanup and token persistence,
+uses `COALESCE(provisioner_instance,'production')` to restrict the worker to its
+configured instance. Legacy NULL belongs only to production. Non-production
+workers require an already migrated schema and do not run schema bootstrap.
+
+`import-bookstack.py` checks every local attachment and image reference as the
+application UID before leaving maintenance. Missing/unreadable files abort with
+counts and example paths, restore the pre-import backup, and return exit code 1.
+Explicit link attachments are excluded. `--allow-missing-files` accepts a known
+incomplete import and logs the exception alongside the backup path. It does not
+suppress malformed verification results or other import errors. This checks
+presence/readability, not matching content hashes or file sizes.

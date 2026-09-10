@@ -20,6 +20,11 @@ export const metadata: Metadata = {
     google:
       process.env.GOOGLE_SITE_VERIFICATION ||
       "zD0UR835omd9e1sn_LPETAddu4sJLQPxVMNlfFQtC1g",
+    other: {
+      "msvalidate.01":
+        process.env.BING_SITE_VERIFICATION ||
+        "A10068AB02B05DAA5C1E1C0915123CFD",
+    },
   },
   openGraph: {
     type: "website",

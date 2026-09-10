@@ -3,6 +3,8 @@ set +x
 set -euo pipefail
 umask 077
 here=$(dirname "$(readlink -f "$0")")
+. "$here/../provisioner/consumer-lock.sh"
+consumer_lock watchdog 30
 exec bash -lc '
 set +x
 set -euo pipefail

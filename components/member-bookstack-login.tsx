@@ -2,7 +2,6 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { RevealPassword } from "./tenant-form";
-import { TENANT_DOMAIN } from "@/lib/config";
 export type MemberLogin = {
   bookstack_user_id: number | null;
   bookstack_role: string;
@@ -12,12 +11,12 @@ export type MemberLogin = {
 export function MemberBookStackLogin({
   teamId,
   email,
-  slug,
+  host,
   login,
 }: {
   teamId: string;
   email: string;
-  slug: string;
+  host: string;
   login?: MemberLogin | null;
 }) {
   const router = useRouter();
@@ -75,7 +74,7 @@ export function MemberBookStackLogin({
       </p>
       <a
         className="button-secondary mt-4"
-        href={`https://${slug}.${TENANT_DOMAIN}`}
+        href={`https://${host}`}
         target="_blank"
         rel="noopener noreferrer"
       >

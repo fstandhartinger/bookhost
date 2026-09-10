@@ -71,7 +71,7 @@ def database():
     query = """BEGIN READ ONLY;
 SET LOCAL statement_timeout = '15s';
 SELECT json_build_object(
- 'running', COALESCE((SELECT json_agg(slug ORDER BY slug) FROM tenants WHERE status='running'), '[]'::json),
+ 'running', COALESCE((SELECT json_agg(json_build_object('slug',slug,'host',COALESCE(to_jsonb(tenants)->>'host',slug||'.wissen.app.mintapis.com')) ORDER BY slug) FROM tenants WHERE status='running'), '[]'::json),
  'provisioning', (SELECT count(*) FROM tenants WHERE status='provisioning' AND updated_at < now()-interval '20 minutes'),
  'pending', (SELECT count(*) FROM tenants WHERE status='pending' AND created_at < now()-interval '15 minutes'),
  'drafting', (SELECT count(*) FROM intake_items WHERE status='drafting' AND updated_at < now()-interval '30 minutes'));
@@ -147,7 +147,11 @@ def checks():
     check(LABELS[1], lambda: (http('https://demo.wissen.app.mintapis.com/'), 'HTTP 200'))
     try:
         db = database()
-        running = db['running']
+        rows = [row if isinstance(row, dict) else {'slug': row} for row in db['running']]
+        running = [row['slug'] for row in rows]
+        hosts = {row['slug']: row.get('host') or row['slug'] + '.wissen.app.mintapis.com' for row in rows}
+        if any(len(host) > 253 or not re.fullmatch(r'(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?', host) for host in hosts.values()):
+            raise ValueError('Invalid host')
         if any(not re.fullmatch(r'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?', slug) for slug in running):
             raise ValueError('Invalid slug')
     except Exception:
@@ -157,7 +161,7 @@ def checks():
         failed = []
         for slug in running:
             try:
-                if http(f'https://{slug}.wissen.app.mintapis.com/login'):
+                if http(f'https://{hosts[slug]}/login'):
                     continue
             except Exception:
                 pass

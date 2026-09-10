@@ -7,6 +7,7 @@ import subprocess
 import time
 import sys
 from pathlib import Path
+from urllib.parse import urlsplit
 import psycopg
 from tenant import HERE, ROOT, env_read, valid_slug, compose
 from bookstack_api_token import store_token
@@ -84,10 +85,12 @@ def once():
                 except Exception:
                     print("Intake token setup failed; healthy tenant remains available", flush=True)
                 values=env_read(path/'.env')
+                # The persisted APP_URL also preserves legacy hosts on resume.
+                host=urlsplit(values['APP_URL']).hostname
                 if existing:
-                    db.execute("UPDATE tenants SET status='running',bookstack_url=%s,error=NULL,updated_at=now() WHERE id=%s AND status='provisioning'",(values['APP_URL'],ident))
+                    db.execute("UPDATE tenants SET status='running',host=%s,bookstack_url=%s,error=NULL,updated_at=now() WHERE id=%s AND status='provisioning'",(host,values['APP_URL'],ident))
                 else:
-                    db.execute("UPDATE tenants SET status='running',bookstack_url=%s,initial_password=%s,error=NULL,updated_at=now() WHERE id=%s AND status='provisioning'",(values['APP_URL'],values['BOOKSTACK_ADMIN_PASSWORD'],ident))
+                    db.execute("UPDATE tenants SET status='running',host=%s,bookstack_url=%s,initial_password=%s,error=NULL,updated_at=now() WHERE id=%s AND status='provisioning'",(host,values['APP_URL'],values['BOOKSTACK_ADMIN_PASSWORD'],ident))
                 # Billing may change desired_state while provision runs; next pass reconciles.
                 print('Tenant running: '+slug,flush=True)
             except Exception:

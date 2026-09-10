@@ -127,3 +127,15 @@ describe("cohort semantics", () => {
       expect(classifyVisit(visit)).not.toBe("external");
   });
 });
+
+it("treats tenant subdomains as own referrers without matching unrelated domains", () => {
+  expect(classifyVisit({ referrer_host: "new-team.bookhost.co" })).toBe(
+    "internal",
+  );
+  expect(
+    classifyVisit({ referrer_host: "old-team.wissen.app.mintapis.com" }),
+  ).toBe("internal");
+  expect(classifyVisit({ referrer_host: "fakebookhost.co" })).not.toBe(
+    "internal",
+  );
+});

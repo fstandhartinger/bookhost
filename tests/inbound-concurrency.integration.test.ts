@@ -83,7 +83,7 @@ beforeAll(async () => {
     );
     fixture.tenant = (
       await db.query(
-        "INSERT INTO tenants(team_id,slug,status,desired_state) VALUES($1,$2,'running','running') RETURNING id",
+        "INSERT INTO tenants(team_id,slug,host,status,desired_state) VALUES($1,$2,$2||'.wissen.app.mintapis.com','running','running') RETURNING id",
         [team, fixture.slug],
       )
     ).rows[0].id;

@@ -1,3 +1,5 @@
+import { tenantHost } from "@/lib/tenant-host";
+import { NEW_TENANT_DOMAIN } from "@/lib/config";
 import { OnboardingChecklist } from "@/components/onboarding-checklist";
 import React from "react";
 import { cookies } from "next/headers";
@@ -14,7 +16,6 @@ import { PasswordForm } from "@/components/password-form";
 import { auth, signOut } from "@/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { TENANT_DOMAIN } from "@/lib/config";
 import { ActionButton } from "@/components/action-button";
 import { TenantForm, RevealPassword } from "@/components/tenant-form";
 import { RefreshStatus } from "@/components/refresh-status";
@@ -85,7 +86,7 @@ export default async function Dashboard({
   const tenant = team
     ? (
         await db.query(
-          "SELECT id,slug,status,desired_state,updated_at,admin_email,(initial_password IS NOT NULL) AS has_password FROM tenants WHERE team_id=$1",
+          "SELECT id,slug,host,status,desired_state,updated_at,admin_email,(initial_password IS NOT NULL) AS has_password FROM tenants WHERE team_id=$1",
           [team.id],
         )
       ).rows[0]
@@ -329,7 +330,7 @@ export default async function Dashboard({
                 </ActionButton>
               )}
               <p className="mt-4 break-all text-sm font-medium">
-                {tenant.slug}.{TENANT_DOMAIN}
+                {tenantHost(tenant)}
               </p>
               {!delayed &&
                 ["pending", "provisioning", "restoring"].includes(status) && (
@@ -353,7 +354,7 @@ export default async function Dashboard({
                       key={`${team.id}:${session.user.id}`}
                       teamId={team.id}
                       email={user?.email || session.user.email || ""}
-                      slug={tenant.slug}
+                      host={tenantHost(tenant)}
                       login={memberLogin}
                     />
                   )}
@@ -404,7 +405,7 @@ export default async function Dashboard({
                 Choose your team’s address. We’ll prepare a dedicated workspace
                 for you.
               </p>
-              <TenantForm teamName={team.name} />
+              <TenantForm teamName={team.name} domain={NEW_TENANT_DOMAIN} />
             </>
           ) : (
             <>

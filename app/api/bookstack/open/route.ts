@@ -1,8 +1,8 @@
+import { tenantHost } from "@/lib/tenant-host";
 import { auth } from "@/auth";
 import { db, transaction } from "@/lib/db";
 import { billingEligible } from "@/lib/trial";
 import { onboarding } from "@/lib/onboarding";
-import { TENANT_DOMAIN } from "@/lib/config";
 export async function GET(request: Request) {
   const session = await auth();
   if (!session?.user?.id)
@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   const {
     rows: [tenant],
   } = await db.query(
-    `SELECT n.slug,n.status,n.desired_state FROM tenants n
+    `SELECT n.slug,n.host,n.status,n.desired_state FROM tenants n
     JOIN memberships m ON m.team_id=n.team_id WHERE n.team_id=$1 AND m.user_id=$2`,
     [teamId, session.user.id],
   );
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
   return new Response(null, {
     status: 302,
     headers: {
-      Location: `https://${tenant.slug}.${TENANT_DOMAIN}`,
+      Location: `https://${tenantHost(tenant)}`,
       "Cache-Control": "no-store",
     },
   });

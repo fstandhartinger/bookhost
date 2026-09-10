@@ -20,7 +20,7 @@ vi.mock("@/lib/intake/access", async (original) => ({
     team_id: "team",
     subscription_status: "trialing",
   }),
-  clientFor: async () => new BookStack("demo", "id", "secret"),
+  clientFor: async () => new BookStack("demo.wissen.app.mintapis.com", "id", "secret"),
 }));
 import { BookStack } from "@/lib/intake/bookstack";
 import { POST } from "@/app/api/intake/route";

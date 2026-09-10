@@ -118,7 +118,7 @@ describe("BookStack client", () => {
       );
     vi.stubGlobal("fetch", fetcher);
     expect(
-      await new BookStack("demo", "test-id", "test-secret").list("books"),
+      await new BookStack("demo.wissen.app.mintapis.com", "test-id", "test-secret").list("books"),
     ).toHaveLength(2);
     expect(fetcher.mock.calls[1][0]).toBe(
       "https://demo.wissen.app.mintapis.com/api/books?count=500&offset=500",
@@ -136,7 +136,7 @@ describe("BookStack client", () => {
       .mockResolvedValueOnce(Response.json({ id: 42 }));
     vi.stubGlobal("fetch", fetcher);
     expect(
-      await new BookStack("demo", "id", "secret").publish(
+      await new BookStack("demo.wissen.app.mintapis.com", "id", "secret").publish(
         "Guide",
         "<p>Text</p>",
         ["guide"],
@@ -164,7 +164,7 @@ describe("BookStack client", () => {
         .mockResolvedValueOnce(Response.json({ id: 3, book_id: 2 })),
     );
     await expect(
-      new BookStack("demo", "id", "secret").validateTarget(1, 3),
+      new BookStack("demo.wissen.app.mintapis.com", "id", "secret").validateTarget(1, 3),
     ).rejects.toThrow("does not belong");
   });
   it("does not leak provider responses or retry a rate limit", async () => {
@@ -173,7 +173,7 @@ describe("BookStack client", () => {
       .mockResolvedValue(new Response("private internals", { status: 429 }));
     vi.stubGlobal("fetch", fetcher);
     await expect(
-      new BookStack("demo", "id", "secret").list("books"),
+      new BookStack("demo.wissen.app.mintapis.com", "id", "secret").list("books"),
     ).rejects.toThrow("rate limit");
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
@@ -250,7 +250,7 @@ describe("Upload destinations", () => {
     const fetcher = vi.fn().mockResolvedValue(Response.json({ id: 17, name }));
     vi.stubGlobal("fetch", fetcher);
     await expect(
-      new BookStack("demo", "id", "secret").uploadTarget(fields, filename),
+      new BookStack("demo.wissen.app.mintapis.com", "id", "secret").uploadTarget(fields, filename),
     ).resolves.toEqual({ book: { id: 17, name }, chapter: null });
     expect(fetcher).toHaveBeenCalledWith(
       "https://demo.wissen.app.mintapis.com/api/books",
@@ -266,7 +266,7 @@ describe("Upload destinations", () => {
       vi.fn().mockResolvedValue(new Response("private", { status: 403 })),
     );
     await expect(
-      new BookStack("demo", "id", "secret").uploadTarget(
+      new BookStack("demo.wissen.app.mintapis.com", "id", "secret").uploadTarget(
         { book_id: "new" },
         "guide.md",
       ),
@@ -278,7 +278,7 @@ describe("Upload destinations", () => {
       .mockResolvedValue(Response.json({ id: 5, name: "Existing" }));
     vi.stubGlobal("fetch", fetcher);
     await expect(
-      new BookStack("demo", "id", "secret").uploadTarget(
+      new BookStack("demo.wissen.app.mintapis.com", "id", "secret").uploadTarget(
         { book_id: "5" },
         "guide.md",
       ),
@@ -296,7 +296,7 @@ describe("Upload destinations", () => {
       const fetcher = vi.fn();
       vi.stubGlobal("fetch", fetcher);
       await expect(
-        new BookStack("demo", "id", "secret").uploadTarget(fields, "guide.md"),
+        new BookStack("demo.wissen.app.mintapis.com", "id", "secret").uploadTarget(fields, "guide.md"),
       ).rejects.toThrow();
       expect(fetcher).not.toHaveBeenCalled();
     },

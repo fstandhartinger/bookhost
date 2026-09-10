@@ -35,7 +35,7 @@ def decrypt(value, slug, key):
 
 
 def api_valid(slug, ident, secret):
-    request = urllib.request.Request(f'https://{slug}.wissen.app.mintapis.com/api/books?count=1', headers={'Authorization': f'Token {ident}:{secret}'})
+    request = urllib.request.Request(env_read(ROOT / slug / '.env')['APP_URL'].rstrip('/') + '/api/books?count=1', headers={'Authorization': f'Token {ident}:{secret}'})
     try:
         with urllib.request.urlopen(request, timeout=20) as response:
             return response.status == 200

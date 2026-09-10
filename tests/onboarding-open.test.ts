@@ -39,7 +39,12 @@ it("does not track a suspended workspace", async () => {
   mocks.query
     .mockResolvedValueOnce({
       rows: [
-        { slug: "fixture", status: "running", desired_state: "suspended" },
+        {
+          slug: "fixture",
+          host: "fixture.wissen.app.mintapis.com",
+          status: "running",
+          desired_state: "suspended",
+        },
       ],
     })
     .mockResolvedValueOnce({ rows: [{ status: "active" }] });
@@ -49,7 +54,14 @@ it("does not track a suspended workspace", async () => {
 it("tracks an available workspace and redirects only to its tenant host", async () => {
   mocks.query
     .mockResolvedValueOnce({
-      rows: [{ slug: "fixture", status: "running", desired_state: "running" }],
+      rows: [
+        {
+          slug: "fixture",
+          host: "fixture.wissen.app.mintapis.com",
+          status: "running",
+          desired_state: "running",
+        },
+      ],
     })
     .mockResolvedValueOnce({
       rows: [

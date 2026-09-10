@@ -47,6 +47,10 @@ only appropriate under the same external lock.
 
 A start requires at least 20 GiB available according to df and fewer running
 BookStack tenant containers than `MAX_TENANTS` in `limits.env` (default 15).
+
+`limits.env` is operator configuration and is intentionally untracked; copy
+`limits.env.example` and adjust it. Releases (`release.sh <ref>`) therefore never
+collide with local operator values, and a missing file falls back to the defaults.
 Capacity deferrals retain pending state and emit one notice per hour across cron
 processes. Restores do not count against admission. This is a minimum disk/tenant
 admission check, not a complete RAM/storage quota system.

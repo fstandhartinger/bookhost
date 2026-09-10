@@ -53,6 +53,19 @@ it("removal deletes managed remote account with ownership migration before losin
     [team, user],
   );
 });
+it("removal from one team leaves the person signed in for their other teams", async () => {
+  // A member of someone else's team can own a paid workspace themselves. Being
+  // removed over there must not end the session for their own team.
+  await manageTeam(owner, { teamId: team, userId: user, action: "remove" });
+  const bumped = m.query.mock.calls.some((call) =>
+    String(call[0]).includes("session_version=session_version+1"),
+  );
+  expect(bumped).toBe(false);
+  expect(m.query).toHaveBeenCalledWith(
+    expect.stringContaining("DELETE FROM memberships"),
+    [team, user],
+  );
+});
 it("failed remote removal still removes membership and persists a retryable error", async () => {
   m.request.mockRejectedValue(new Error("upstream secret"));
   await expect(

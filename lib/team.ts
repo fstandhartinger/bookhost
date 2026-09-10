@@ -137,10 +137,11 @@ export async function manageTeam(
         "UPDATE team_invites SET revoked_at=now() WHERE team_id=$1 AND created_by=$2 AND revoked_at IS NULL",
         [team.id, data.userId],
       );
-      await c.query(
-        "UPDATE users SET session_version=session_version+1 WHERE id=$1",
-        [data.userId],
-      );
+      // No session_version bump here. The session token carries no team or
+      // role, so every page and route resolves both from the database on each
+      // request: deleting the membership already ends the access. Bumping the
+      // counter would sign the person out of every team at once, including a
+      // workspace of their own that this removal has nothing to do with.
     }
     return { ok: true };
   });

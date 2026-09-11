@@ -223,7 +223,7 @@ it.skipIf(!enabled)(
   },
 );
 it.skipIf(!enabled).each(["remove", "role"])(
-  "%s revokes the member's invites and sessions",
+  "%s revokes the member's invites and access without a global sign-out",
   async (action) => {
     const owner = await user(),
       admin = await user(),
@@ -247,12 +247,23 @@ it.skipIf(!enabled).each(["remove", "role"])(
         )
       ).rows[0].revoked_at,
     ).toBeTruthy();
+    // 4688435: losing one team is not a global sign-out. The session token
+    // carries neither team nor role, so access ends through the membership
+    // row that every request reads, not through the session counter.
     expect(
       await sessionToken({
         sub: admin.id,
         session_version: admin.session_version,
       }),
-    ).toBeNull();
+    ).not.toBeNull();
+    expect(
+      (
+        await db.query(
+          "SELECT role FROM memberships WHERE team_id=$1 AND user_id=$2",
+          [teamId, admin.id],
+        )
+      ).rows.map((r: { role: string }) => r.role),
+    ).toEqual(action === "remove" ? [] : ["member"]);
     await expect(
       joinTeam(token, owner.id, {}, owner.session_version),
     ).rejects.toMatchObject({ status: 410 });

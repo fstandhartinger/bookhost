@@ -67,8 +67,10 @@ def provisioning_state(db):
     # We promise the customer two working days in the receipt. One day open is
     # the point at which somebody still has time to keep that promise.
     unpaid = db.get('unpaid_running') or []
-    if unpaid:
-        detail += '; BEZAHLUNG BEENDET, Workspace laeuft weiter: ' + ', '.join(unpaid)
+    # Say "keine" like the neighbouring clauses: a silent check cannot be told
+    # apart from one that is not running at all.
+    detail += '; Bezahlung beendet, Workspace laeuft weiter: ' + (
+        ', '.join(unpaid) if unpaid else 'keine')
     cancellations = db.get('cancellations') or []
     detail += '; Kuendigungen offen >24 h: ' + (
         ', '.join(str(c) for c in cancellations) if cancellations else 'keine')

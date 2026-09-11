@@ -16,6 +16,7 @@ class ProvisioningStateTests(unittest.TestCase):
         self.assertTrue(ok)
         self.assertEqual(detail, 'überfällig: provisioning=0, pending=0'
                          '; Testphase ohne Erinnerung: keine'
+                         '; Bezahlung beendet, Workspace laeuft weiter: keine'
                          '; Kuendigungen offen >24 h: keine')
 
     def test_overdue_work_stays_red(self):
@@ -109,17 +110,17 @@ class BillingStoppedButRunningTests(unittest.TestCase):
     def test_quiet_system_says_nothing_about_it(self):
         ok, detail = w.provisioning_state(self.base())
         self.assertTrue(ok)
-        self.assertNotIn('BEZAHLUNG BEENDET', detail)
+        self.assertIn('Bezahlung beendet, Workspace laeuft weiter: keine', detail)
 
     def test_a_cancelled_customer_still_running_is_named_and_red(self):
         ok, detail = w.provisioning_state(self.base(unpaid_running=['acme-wiki']))
         self.assertFalse(ok)
-        self.assertIn('BEZAHLUNG BEENDET', detail)
+        self.assertIn('Bezahlung beendet', detail)
         self.assertIn('acme-wiki', detail)
 
     def test_it_does_not_mask_the_other_findings(self):
         ok, detail = w.provisioning_state(
             self.base(unpaid_running=['a'], cancellations=[9], stranded=['s']))
         self.assertFalse(ok)
-        for needle in ('BEZAHLUNG BEENDET', 'Kuendigungen offen', 'GESTRANDET'):
+        for needle in ('Bezahlung beendet', 'Kuendigungen offen', 'GESTRANDET'):
             self.assertIn(needle, detail)

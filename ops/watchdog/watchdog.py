@@ -236,6 +236,23 @@ def overdue(column, minutes):
             f"OR {column} < now()-interval '{minutes} minutes')")
 
 
+def log_age(path, now, skew=300):
+    """Seconds since this log was last written, or None if that cannot be trusted.
+
+    The worker liveness check compares the log's age against three minutes. A
+    modification time in the future makes that age negative, so the check would
+    pass forever and a worker that had stopped would keep reading as healthy —
+    the same trap backup_time already refuses for archive timestamps. Small
+    skew is normal and tolerated; a stamp genuinely ahead of us is not evidence
+    that anything ran.
+    """
+    try:
+        written = path.stat().st_mtime
+    except OSError:
+        return None
+    return None if written > now + skew else now - written
+
+
 def version_state(log, now, stale=36 * 3600):
     """Whether the BookStack we run is still the current release.
 
@@ -416,8 +433,13 @@ def checks():
         disk = disk_state(ROOT)
         percent = disk['used_percent']
         count = running_tenants()
-        age = now - (ROOT / 'worker.log').stat().st_mtime
+        age = log_age(ROOT / 'worker.log', now)
         warning = 'WARNUNG: Plattenreserve knapp; ' if percent >= config['DISK_WARN_PERCENT'] else ''
+        if age is None:
+            return False, (warning + f"Platte={percent:.1f}%; frei={disk['free_gib']:.1f} GiB; "
+                           f'laufende Tenants={count}; Worker-Log: Alter nicht vertrauenswuerdig '
+                           '(fehlt oder Zeitstempel in der Zukunft); '
+                           + version_state(ROOT / 'bookstack-version.log', now))
         return percent < config['DISK_FAIL_PERCENT'] and age < 180, (
             warning + f"Platte={percent:.1f}%; frei={disk['free_gib']:.1f} GiB; "
             f'laufende Tenants={count}; Worker-Log={age:.0f}s alt; '

@@ -47,6 +47,19 @@ describe("public reliability evidence", () => {
       expect(checks).toContain(proof);
   });
 
+  // A customer reading both pages found the contradiction before we did: the
+  // hero sold the beta as available while /reliability told them to keep real
+  // data out of it. Whichever way that is resolved, the two must agree.
+  it("carries the intake data-protection caveat where the beta is advertised", () => {
+    const page = readFileSync("app/page.tsx", "utf8");
+    expect(page).toContain("Document intake (beta) available now.");
+    expect(page).toContain("use non-personal example documents only");
+    expect(page).toContain('href="/reliability#limits"');
+    const reliability = readFileSync("app/reliability/page.tsx", "utf8");
+    expect(reliability).toContain("non-personal example documents");
+    expect(reliability).toContain('id="limits"');
+  });
+
   // The rotation is our only claim no competitor makes, so it has to survive
   // edits — and it must not quietly grow into "we check every backup".
   it("states the nightly rotation together with the limit that it is a rotation", async () => {

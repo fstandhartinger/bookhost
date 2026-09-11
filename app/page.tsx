@@ -30,7 +30,20 @@ export default function Home() {
             <strong>Document intake (beta) available now.</strong> Upload a
             document, review the draft with its summary, tags and reviewer
             checklist, then approve it as an owner or admin for BookStack.{" "}
-            {DRAFT_COPY}
+            {DRAFT_COPY}{" "}
+            {/* /reliability tells readers to keep personal data out of the beta
+                until the processor agreement and transfer safeguards are
+                documented. Selling the feature here without that sentence
+                invites someone to upload a staff handbook on day one. */}
+            <strong>
+              While the beta runs, use non-personal example documents only:
+            </strong>{" "}
+            the data protection prerequisites for drafting with an external
+            model are not documented yet — see{" "}
+            <a className="underline" href="/reliability#limits">
+              what we do and do not promise
+            </a>
+            .
           </p>
           {/* People arriving from the BookStack installation docs already run
               their own instance; their first question is whether they can bring

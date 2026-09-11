@@ -27,6 +27,23 @@ LOG = ROOT / 'watchdog.log'
 LABELS = ['Control-Plane', 'Demo', 'Tenant-Logins', 'Bereitstellung', 'Backups', 'Host und Worker', 'Dokument-Eingang']
 
 
+def background_state(db):
+    """Stuck drafts, and whether the hourly in-application job is still running.
+
+    That job lives in a setInterval inside the application, logs its failures to
+    the console and swallows them. It deletes expired rate limits on every pass,
+    so a row still present two hours after it expired is the only sign from
+    outside that it stopped — otherwise the first evidence would be a trial
+    ending without its notice.
+    """
+    stale = db.get('stale_cleanup') or 0
+    detail = (f"drafting >30min: {db['drafting']}; "
+              f'abgelaufene Ratenlimits aelter als 2 h: {stale}')
+    if stale:
+        detail += ' — der stuendliche Job in der Anwendung raeumt nicht mehr auf'
+    return db['drafting'] == 0 and not stale, detail
+
+
 def provisioning_state(db):
     """Overdue work plus tenants whose actual state contradicts what was ordered.
 
@@ -112,6 +129,10 @@ SELECT json_build_object(
  'unsuspended', COALESCE((SELECT json_agg(slug ORDER BY slug) FROM tenants
    WHERE desired_state='suspended' AND status='running'
      AND updated_at < now()-interval '30 minutes'), '[]'::json),
+ -- The hourly in-application job deletes expired rate limits on every pass.
+ -- A row still here two hours after it expired means that job is not running,
+ -- which is otherwise invisible until a trial ends unreminded.
+ 'stale_cleanup', (SELECT count(*) FROM rate_limits WHERE expires_at < now()-interval '2 hours'),
  -- A trial that runs out while nobody was told is a customer lost in silence.
  -- The hourly job writes the notice; nothing until now checked that it did.
  'unreminded', COALESCE((SELECT json_agg(t.name ORDER BY t.name) FROM subscriptions s
@@ -466,7 +487,7 @@ def checks():
             f'laufende Tenants={count}; Worker-Log={age:.0f}s alt; '
             + version_state(ROOT / 'bookstack-version.log', now))
     check(LABELS[5], host)
-    check(LABELS[6], lambda: (db['drafting'] == 0, f"drafting >30min: {db['drafting']}"))
+    check(LABELS[6], lambda: background_state(db))
     return results
 
 

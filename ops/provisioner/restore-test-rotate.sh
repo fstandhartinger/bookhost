@@ -15,7 +15,7 @@ here=$(dirname "$(readlink -f "$0")")
 consumer_lock restore-test-rotate 1800
 . "$here/limits.env"
 
-log="$PROVISIONER_STATE_DIR/../restore-test.log"
+log="$PROVISIONER_STATE_DIR/restore-test.log"
 stamp() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 
 # Oldest tested first; a tenant with no line at all sorts ahead of every date.

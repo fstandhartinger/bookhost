@@ -112,9 +112,16 @@ export function TeamPanel({
           </li>
         ))}
       </ul>
+      {/* Someone still has wiki access after being removed from the team.
+          Styled like the urgent billing notice: a plain paragraph in a busy
+          page is easy to walk past, and this one needs the owner to act. */}
       {revocations.map((r) => (
-        <div key={r.user_id} role="alert" className="mt-4">
-          <p>
+        <div
+          key={r.user_id}
+          role="alert"
+          className="mt-4 rounded-xl border border-red-300 bg-red-50 p-5 text-red-900"
+        >
+          <p className="font-medium">
             BookStack access removal incomplete: {r.email}. {r.revocation_error}
           </p>
           <button

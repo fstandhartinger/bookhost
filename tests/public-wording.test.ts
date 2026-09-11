@@ -187,3 +187,15 @@ it("keeps the honest caveat next to the restore evidence", async () => {
   expect(post).toContain("we do not currently restore-test every");
   expect(post).toMatch(/matched by SHA-256/);
 });
+
+it("makes an incomplete wiki access removal impossible to walk past", async () => {
+  // Removing someone from the team does not always remove an account that
+  // existed before the invitation. The owner has to act, so the notice needs
+  // the same weight as an urgent billing warning, not a plain line of text.
+  const fs = await import("node:fs/promises");
+  const source = await fs.readFile("components/team-panel.tsx", "utf8");
+  const block = source.slice(source.indexOf("revocations.map"));
+  expect(block).toContain('role="alert"');
+  expect(block).toContain("border-red-300");
+  expect(block).toContain("Retry access removal");
+});

@@ -14,7 +14,8 @@ class ProvisioningStateTests(unittest.TestCase):
     def test_quiet_system_is_green(self):
         ok, detail = w.provisioning_state(snapshot())
         self.assertTrue(ok)
-        self.assertEqual(detail, 'überfällig: provisioning=0, pending=0')
+        self.assertEqual(detail, 'überfällig: provisioning=0, pending=0'
+                         '; Testphase ohne Erinnerung: keine')
 
     def test_overdue_work_stays_red(self):
         self.assertFalse(w.provisioning_state(snapshot(provisioning=1))[0])
@@ -41,3 +42,28 @@ class ProvisioningStateTests(unittest.TestCase):
     def test_missing_keys_do_not_crash_an_older_snapshot(self):
         ok, _ = w.provisioning_state({'provisioning': 0, 'pending': 0})
         self.assertTrue(ok)
+
+
+class UnremindedTrialTests(unittest.TestCase):
+    """A trial must not run out while nobody told the customer."""
+
+    def base(self, **extra):
+        state = {'provisioning': 0, 'pending': 0, 'stranded': [], 'unsuspended': []}
+        state.update(extra)
+        return state
+
+    def test_no_trial_about_to_end_is_reported_as_none(self):
+        ok, detail = w.provisioning_state(self.base())
+        self.assertTrue(ok)
+        self.assertIn('Testphase ohne Erinnerung: keine', detail)
+
+    def test_a_trial_without_a_notice_fails_the_check_and_is_named(self):
+        ok, detail = w.provisioning_state(self.base(unreminded=['Acme handbook']))
+        self.assertFalse(ok)
+        self.assertIn('Acme handbook', detail)
+
+    def test_it_does_not_mask_the_other_findings(self):
+        ok, detail = w.provisioning_state(self.base(stranded=['s1'], unreminded=['t1']))
+        self.assertFalse(ok)
+        self.assertIn('GESTRANDET', detail)
+        self.assertIn('t1', detail)

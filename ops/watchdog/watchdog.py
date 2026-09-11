@@ -42,7 +42,13 @@ def provisioning_state(db):
         detail += '; GESTRANDET (soll laufen, tut es nicht): ' + ', '.join(stranded)
     if unsuspended:
         detail += '; nicht ausgesetzt (soll ausgesetzt sein, laeuft weiter): ' + ', '.join(unsuspended)
-    ok = db['provisioning'] == 0 and db['pending'] == 0 and not stranded and not unsuspended
+    # Within two days of a trial running out, a team without a payment method
+    # must already hold a trial_ending notice. If the hourly job stopped, this
+    # is the only place it shows before the workspace suspends itself.
+    unreminded = db.get('unreminded') or []
+    detail += '; Testphase ohne Erinnerung: ' + (', '.join(unreminded) if unreminded else 'keine')
+    ok = (db['provisioning'] == 0 and db['pending'] == 0
+          and not stranded and not unsuspended and not unreminded)
     return ok, detail
 
 
@@ -105,7 +111,16 @@ SELECT json_build_object(
    WHERE desired_state='running' AND status NOT IN ('running','pending','provisioning')), '[]'::json),
  'unsuspended', COALESCE((SELECT json_agg(slug ORDER BY slug) FROM tenants
    WHERE desired_state='suspended' AND status='running'
-     AND updated_at < now()-interval '30 minutes'), '[]'::json));
+     AND updated_at < now()-interval '30 minutes'), '[]'::json),
+ -- A trial that runs out while nobody was told is a customer lost in silence.
+ -- The hourly job writes the notice; nothing until now checked that it did.
+ 'unreminded', COALESCE((SELECT json_agg(t.name ORDER BY t.name) FROM subscriptions s
+   JOIN teams t ON t.id=s.team_id
+   WHERE s.status='trialing' AND NOT s.has_payment_method
+     AND s.trial_end IS NOT NULL
+     AND s.trial_end BETWEEN now() AND now()+interval '2 days'
+     AND NOT EXISTS (SELECT 1 FROM notifications n
+       WHERE n.user_id=t.owner_user_id AND n.kind LIKE 'trial_ending%')), '[]'::json));
 ROLLBACK;
 """
     query = (query

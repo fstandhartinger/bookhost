@@ -47,6 +47,25 @@ describe("public reliability evidence", () => {
       expect(checks).toContain(proof);
   });
 
+  // The rotation is our only claim no competitor makes, so it has to survive
+  // edits — and it must not quietly grow into "we check every backup".
+  it("states the nightly rotation together with the limit that it is a rotation", async () => {
+    const checks = section(await html(), "restore-checks");
+    expect(checks).toMatch(/datetime="2026-09-11"/i);
+    expect(checks).toContain("scheduled nightly");
+    expect(checks).toContain(
+      "rotation, not a check of every backup of every workspace every night",
+    );
+    const post = readFileSync(
+      "content/blog/how-we-test-every-bookstack-backup-restore.md",
+      "utf8",
+    );
+    expect(post).toContain("It is now scheduled nightly");
+    expect(post).toContain(
+      "not a check of every backup of every workspace every night",
+    );
+  });
+
   it("links from the landing backup benefit alongside the existing blog link", () => {
     const markup = renderToStaticMarkup(createElement(Home));
     const benefit = markup.match(

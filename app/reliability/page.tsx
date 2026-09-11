@@ -104,6 +104,21 @@ export default function Reliability() {
               content type, were checked.
             </p>
             <p>
+              <strong>
+                <time dateTime="2026-09-11">11 September 2026</time> — checks
+                on a schedule:
+              </strong>{" "}
+              Until this date a restore check ran when we started one. It is now
+              scheduled nightly and picks the workspace whose last check is the
+              oldest, so every workspace comes round in turn. That is a
+              rotation, not a check of every backup of every workspace every
+              night, and it does not change the limits above. The first two runs
+              of that rotation, started by hand to verify it, restored a demo
+              workspace of 16 pages in four books and a test workspace, each
+              serving its login page and a content page over HTTP; the live
+              instances kept running and the temporary resources were removed.
+            </p>
+            <p>
               The live demo’s before-and-after fingerprints were identical in
               both tests. The isolated test resources were removed afterwards.
             </p>

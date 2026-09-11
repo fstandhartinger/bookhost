@@ -30,6 +30,8 @@ Using the backed-up images keeps the exercise focused on recovery of that versio
 
 The script compares restored **page count, book count, book titles and the latest page title** against the measurements saved with the backup. It checks those values both before and after application startup and verifies database migrations. That can catch an empty import, missing records or a startup that changes the expected content. The [restore-test entry point](https://github.com/fstandhartinger/bookstack-ops/blob/main/ops/provisioner/restore-test.sh) invokes this shared restore implementation.
 
+Updated 11 September 2026: until this date the restore check ran when somebody started it. It is now scheduled nightly and picks the workspace whose last check is the oldest, so every workspace comes round in turn. That is a rotation, not a check of every backup of every workspace every night, and it does not change the limits below. Each run appends one line — workspace and result — to a log, so a run that fails is visible rather than silent.
+
 A passing check has limits. It does not compare every page body, open every image, download every attachment or exercise each user’s permissions. Those would be useful additional acceptance checks. We do not automate an interactive login in this procedure, and we do not claim that matching counts alone proves complete application correctness.
 
 ## What remains unfinished

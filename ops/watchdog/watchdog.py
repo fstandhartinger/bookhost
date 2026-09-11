@@ -236,6 +236,34 @@ def overdue(column, minutes):
             f"OR {column} < now()-interval '{minutes} minutes')")
 
 
+def version_state(log, now, stale=36 * 3600):
+    """Whether the BookStack we run is still the current release.
+
+    The landing page promises we handle security updates. The image tag is
+    pinned in one line and nothing bumps it, so a release could pass unnoticed.
+    The daily check writes its verdict into its own file; this puts that verdict
+    into the line an operator actually reads. Like the offsite line it does not
+    turn the check red — a lag needs a decision, not an alarm every ten minutes
+    — but a check that stopped running is reported as such rather than as ok.
+    """
+    try:
+        text = log.read_text(errors='replace').strip()
+        age = now - log.stat().st_mtime
+    except OSError:
+        return 'BookStack-Version: nie geprueft'
+    if not text:
+        return 'BookStack-Version: ohne Ausgabe'
+    last = text.splitlines()[-1]
+    stunden = int(age // 3600)
+    if age >= stale:
+        return f'BookStack-Version: seit {stunden} h nicht geprueft'
+    if 'ZURUECK' in last:
+        return f'BookStack-Version: ZURUECK ({last.strip()[:90]})'
+    if 'FEHLER' in last:
+        return f'BookStack-Version: Pruefung fehlgeschlagen ({last.strip()[:70]})'
+    return f'BookStack-Version: aktuell, geprueft vor {stunden} h'
+
+
 def offsite_state(log, now):
     """What the nightly offsite copy last did — it logs where nobody looks.
 
@@ -392,7 +420,8 @@ def checks():
         warning = 'WARNUNG: Plattenreserve knapp; ' if percent >= config['DISK_WARN_PERCENT'] else ''
         return percent < config['DISK_FAIL_PERCENT'] and age < 180, (
             warning + f"Platte={percent:.1f}%; frei={disk['free_gib']:.1f} GiB; "
-            f'laufende Tenants={count}; Worker-Log={age:.0f}s alt')
+            f'laufende Tenants={count}; Worker-Log={age:.0f}s alt; '
+            + version_state(ROOT / 'bookstack-version.log', now))
     check(LABELS[5], host)
     check(LABELS[6], lambda: (db['drafting'] == 0, f"drafting >30min: {db['drafting']}"))
     return results

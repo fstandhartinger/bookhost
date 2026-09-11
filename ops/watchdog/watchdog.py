@@ -300,6 +300,27 @@ def log_age(path, now, skew=300):
     return None if written > now + skew else now - written
 
 
+def tenant_capacity_state(count, limit, warn_at=0.8):
+    """How close we are to refusing the next customer a workspace.
+
+    The capacity guard lives in the worker, so it refuses *after* someone has
+    been through checkout: their workspace simply queues while the dashboard
+    says it will be ready shortly. The watchdog counted running tenants but
+    never compared that count with the limit, so the first sign would have been
+    a customer already waiting. Warn while there is still room to raise the
+    limit or add disk; go red at the ceiling, because from there the next
+    signup queues without anybody having decided that.
+    """
+    if not limit or limit <= 0:
+        return True, f'laufende Tenants={count} (Grenze unbekannt)'
+    text = f'laufende Tenants={count}/{limit:g}'
+    if count >= limit:
+        return False, text + ' — VOLL: die naechste Anmeldung wartet in der Schlange'
+    if count >= limit * warn_at:
+        return True, text + ' — WARNUNG: Kapazitaet fast erschoepft'
+    return True, text
+
+
 def stripe_config_state(log, now, stale=36 * 3600):
     """Whether the daily Stripe configuration check last passed.
 
@@ -512,16 +533,17 @@ def checks():
         percent = disk['used_percent']
         count = running_tenants()
         age = log_age(ROOT / 'worker.log', now)
+        capacity_ok, capacity = tenant_capacity_state(count, config.get('MAX_TENANTS'))
         warning = 'WARNUNG: Plattenreserve knapp; ' if percent >= config['DISK_WARN_PERCENT'] else ''
         if age is None:
             return False, (warning + f"Platte={percent:.1f}%; frei={disk['free_gib']:.1f} GiB; "
-                           f'laufende Tenants={count}; Worker-Log: Alter nicht vertrauenswuerdig '
+                           + capacity + '; Worker-Log: Alter nicht vertrauenswuerdig '
                            '(fehlt oder Zeitstempel in der Zukunft); '
                            + version_state(ROOT / 'bookstack-version.log', now) + '; '
             + stripe_config_state(ROOT / 'stripe-config.log', now))
-        return percent < config['DISK_FAIL_PERCENT'] and age < 180, (
+        return percent < config['DISK_FAIL_PERCENT'] and age < 180 and capacity_ok, (
             warning + f"Platte={percent:.1f}%; frei={disk['free_gib']:.1f} GiB; "
-            f'laufende Tenants={count}; Worker-Log={age:.0f}s alt; '
+            + capacity + f'; Worker-Log={age:.0f}s alt; '
             + version_state(ROOT / 'bookstack-version.log', now) + '; '
             + stripe_config_state(ROOT / 'stripe-config.log', now))
     check(LABELS[5], host)

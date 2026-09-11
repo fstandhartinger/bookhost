@@ -6,7 +6,7 @@ author: "Florian Standhartinger"
 tags: ["BookStack", "Backups", "Operations"]
 ---
 
-A backup file is evidence that something was written. It is not yet evidence that a team can recover its wiki. BookHost has an automated restore-check procedure that rebuilds a BookStack instance in a temporary, isolated stack. We run these checks as a separate verification step: **we do not currently restore-test every daily backup automatically**. We have tested a demo restore, and the implementation is public in our [operations documentation](https://github.com/fstandhartinger/bookstack-ops/tree/main/ops/provisioner).
+A backup file is evidence that something was written. It is not yet evidence that a team can recover its wiki. BookHost has an automated restore-check procedure that rebuilds a BookStack instance in a temporary, isolated stack. We run these checks as a separate verification step: **we do not currently restore-test every daily backup automatically**. Our most recent check, on 10 September 2026, restored one of our own workspaces from that morning's archive. The book and page counts matched the manifest written at backup time, three uploaded files matched by SHA-256, and the rebuilt instance served its login page, a content page with the right title and an image. The live workspace kept running throughout; its containers had the same start time before and after. The implementation is public in our [operations documentation](https://github.com/fstandhartinger/bookstack-ops/tree/main/ops/provisioner).
 
 ## Start with a consistent backup
 

@@ -175,3 +175,15 @@ it("says what a restore cannot bring back", async () => {
   expect(source).toMatch(/last nightly\s+backup/);
   expect(source).toMatch(/up to a day of changes/);
 });
+
+it("keeps the honest caveat next to the restore evidence", async () => {
+  // The post may state what we verified, but never without saying that not
+  // every nightly backup is restore-tested automatically.
+  const fs = await import("node:fs/promises");
+  const post = await fs.readFile(
+    "content/blog/how-we-test-every-bookstack-backup-restore.md",
+    "utf8",
+  );
+  expect(post).toContain("we do not currently restore-test every");
+  expect(post).toMatch(/matched by SHA-256/);
+});

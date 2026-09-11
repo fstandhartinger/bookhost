@@ -4,3 +4,4 @@ node_modules/
 *.log
 coverage/
 *.tsbuildinfo
+__pycache__/

@@ -6,11 +6,20 @@ event simply never arrives. On 2026-09-11 `customer.updated` and `invoice.paid`
 were missing, so a customer who added a card during the trial would have stayed
 recorded as having none and kept receiving the dunning notice.
 
+It also validates our own billing portal configuration. Without STRIPE_PORTAL_CONFIG
+Stripe falls back to the account-wide default, which every other venture can
+change, so we must keep our own configuration (bpc_1UDXEdCozVR51OgarqW4Y669)
+complete.
+
 Read-only. Needs STRIPE_SECRET_KEY in the environment. Exits 1 on a mismatch.
 """
 import os, re, sys, json, urllib.request, pathlib
 
 ENDPOINT_URL = "https://bookhost.co/api/stripe/webhook"
+PORTAL_CONFIG_URL = (
+    "https://api.stripe.com/v1/billing_portal/configurations/"
+    "bpc_1UDXEdCozVR51OgarqW4Y669"
+)
 BILLING = pathlib.Path(__file__).resolve().parent.parent / "lib" / "billing.ts"
 
 
@@ -34,10 +43,8 @@ def subscribed_events(key):
     sys.exit("FEHLER: kein Webhook-Endpoint fuer " + ENDPOINT_URL)
 
 
-def main():
-    key = os.environ.get("STRIPE_SECRET_KEY")
-    if not key:
-        sys.exit("FEHLER: STRIPE_SECRET_KEY fehlt (source ../.env)")
+def check_webhook(key):
+    """Webhook check: every handled event must be subscribed live."""
     handled = handled_events(BILLING.read_text())
     subscribed = subscribed_events(key)
     missing = sorted(handled - subscribed - {"*"})
@@ -50,6 +57,56 @@ def main():
             print("  FEHLT bei Stripe, wird aber behandelt: " + name)
         return 1
     print("OK: jedes behandelte Ereignis ist abonniert.")
+    return 0
+
+
+def portal_problems(key):
+    """Violations in our own portal configuration, one entry per violation."""
+    request = urllib.request.Request(
+        PORTAL_CONFIG_URL,
+        headers={"Authorization": "Bearer " + key},
+    )
+    with urllib.request.urlopen(request, timeout=20) as response:
+        config = json.load(response)
+    problems = []
+    if config.get("active") is not True:
+        problems.append("Portal-Konfiguration ist nicht aktiv")
+    features = config.get("features") or {}
+    payment_update = features.get("payment_method_update") or {}
+    # without this a customer cannot attach a card at all
+    if payment_update.get("enabled") is not True:
+        problems.append("payment_method_update ist deaktiviert, Kunden koennen keine Karte hinterlegen")
+    profile = config.get("business_profile") or {}
+    if not profile.get("privacy_policy_url"):
+        problems.append("business_profile.privacy_policy_url ist leer")
+    if not profile.get("terms_of_service_url"):
+        problems.append("business_profile.terms_of_service_url ist leer")
+    return_url = config.get("default_return_url") or ""
+    if not return_url.startswith("https://bookhost.co"):
+        problems.append("default_return_url zeigt nicht auf https://bookhost.co: " + (return_url or "(leer)"))
+    return problems
+
+
+def check_portal(key):
+    """Portal check: our own billing portal configuration must be complete."""
+    problems = portal_problems(key)
+    for problem in problems:
+        print("  Portal: " + problem)
+    if problems:
+        return 1
+    print("OK: eigene Portal-Konfiguration ist aktiv und vollstaendig.")
+    return 0
+
+
+def main():
+    key = os.environ.get("STRIPE_SECRET_KEY")
+    if not key:
+        sys.exit("FEHLER: STRIPE_SECRET_KEY fehlt (source ../.env)")
+    webhook = check_webhook(key)
+    # run the portal check even if the webhook check already failed
+    portal = check_portal(key)
+    if webhook or portal:
+        return 1
     return 0
 
 

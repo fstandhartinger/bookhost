@@ -40,7 +40,7 @@ export function correlationId() {
 }
 
 /** Log only explicitly allow-listed operational context, never the caught value. */
-export function reportError(diagnostic: Diagnostic) {
+export function reportError(diagnostic: Diagnostic): void {
   const record = {
     event: diagnostic.event,
     phase: diagnostic.phase,
@@ -54,4 +54,29 @@ export function reportError(diagnostic: Diagnostic) {
       : {}),
   };
   console.error(JSON.stringify(record));
+
+  // Keep module initialization, synchronous query failures and rejected writes
+  // inside the same detached promise chain. Diagnostics must not break requests.
+  void import("./db")
+    .then(({ db }) =>
+      db.query(
+        `INSERT INTO error_reports
+          (event, phase, correlation_id, error_category, team_id, session_id)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          record.event,
+          record.phase,
+          record.correlation_id,
+          record.error_category,
+          record.team_id &&
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+            record.team_id,
+          )
+            ? record.team_id
+            : null,
+          record.session_id ?? null,
+        ],
+      ),
+    )
+    .catch(() => {});
 }

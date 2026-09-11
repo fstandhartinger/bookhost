@@ -18,7 +18,11 @@ const sub = {
     data: [{ price: { id: "price_team" }, current_period_end: 1800000000 }],
   },
 } as Stripe.Subscription;
-function mockDb(duplicate = false, status = "trialing") {
+function mockDb(
+  duplicate = false,
+  status = "trialing",
+  customerSubs: string[] = [],
+) {
   const query = vi.fn(async (sql: string) => {
     if (sql.startsWith("INSERT INTO stripe_events"))
       return {
@@ -27,6 +31,11 @@ function mockDb(duplicate = false, status = "trialing") {
       };
     if (sql.startsWith("SELECT id FROM teams"))
       return { rows: [{ id: "team_1" }], rowCount: 1 };
+    if (sql.startsWith("SELECT s.stripe_subscription_id FROM subscriptions s"))
+      return {
+        rows: customerSubs.map((id) => ({ stripe_subscription_id: id })),
+        rowCount: customerSubs.length,
+      };
     if (sql.startsWith("SELECT * FROM effective_subscriptions"))
       return {
         rows: [{ ...sub, status, trial_end: new Date(sub.trial_end! * 1000) }],
@@ -133,6 +142,55 @@ describe("webhook processing", () => {
     );
     expect(result).toBeNull();
     expect(query.mock.calls.length).toBe(3);
+  });
+  it("customer.updated re-syncs the subscription with the customer expanded", async () => {
+    const { client } = mockDb(false, "trialing", ["sub_a", "sub_b"]);
+    const retrieve = vi.fn(async () => sub);
+    const api = {
+      subscriptions: { retrieve },
+    } as unknown as Pick<Stripe, "subscriptions">;
+    await handleStripeEvent(
+      client,
+      {
+        id: "evt_customer_updated",
+        type: "customer.updated",
+        data: { object: { id: "cus_1" } },
+      } as Stripe.Event,
+      api,
+    );
+    expect(retrieve).toHaveBeenCalledTimes(2);
+    expect(retrieve).toHaveBeenCalledWith("sub_a", { expand: ["customer"] });
+    expect(retrieve).toHaveBeenCalledWith("sub_b", { expand: ["customer"] });
+  });
+  it("a card added at customer level flips has_payment_method", async () => {
+    const { query, client } = mockDb(false, "trialing", ["sub_1"]);
+    const retrieve = vi.fn(
+      async () =>
+        ({
+          ...sub,
+          customer: {
+            id: "cus_1",
+            invoice_settings: { default_payment_method: "pm_test" },
+          },
+        }) as unknown as Stripe.Subscription,
+    );
+    const api = {
+      subscriptions: { retrieve },
+    } as unknown as Pick<Stripe, "subscriptions">;
+    await handleStripeEvent(
+      client,
+      {
+        id: "evt_card_added",
+        type: "customer.updated",
+        data: { object: { id: "cus_1" } },
+      } as Stripe.Event,
+      api,
+    );
+    const upsert = query.mock.calls.find(([sql]) =>
+      String(sql).startsWith("INSERT INTO subscriptions"),
+    );
+    expect(upsert?.[0]).toContain("ON CONFLICT(stripe_subscription_id)");
+    expect((upsert as unknown as [string, unknown[]])?.[1][8]).toBe(true);
   });
 });
 

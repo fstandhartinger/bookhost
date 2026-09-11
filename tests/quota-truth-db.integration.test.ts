@@ -18,12 +18,16 @@ describe.skipIf(process.env.QUOTA_DB_TEST !== "1")("quota SQL contract", () => {
     ).rows[0].id;
     tenant = (
       await db.query(
-        "INSERT INTO tenants(team_id,slug,host) VALUES($1,$2,'example.invalid') RETURNING id",
-        [team, `q-${crypto.randomUUID()}`],
+        "INSERT INTO tenants(team_id,slug,host) VALUES($1,$2,$3) RETURNING id",
+        [team, `q-${crypto.randomUUID()}`, `q-${crypto.randomUUID()}.invalid`],
       )
     ).rows[0].id;
   });
   afterAll(async () => {
+    // tenants has no foreign key to teams, so deleting the team leaves the
+    // tenant behind. With a unique host that made this file pass exactly once
+    // per database and fail on every later run.
+    if (tenant) await db.query("DELETE FROM tenants WHERE id=$1", [tenant]);
     if (team) await db.query("DELETE FROM teams WHERE id=$1", [team]);
     if (user) await db.query("DELETE FROM users WHERE id=$1", [user]);
     await db.end();

@@ -300,6 +300,31 @@ def log_age(path, now, skew=300):
     return None if written > now + skew else now - written
 
 
+def stripe_config_state(log, now, stale=36 * 3600):
+    """Whether the daily Stripe configuration check last passed.
+
+    It guards three things nobody would otherwise notice: that every webhook
+    event the code handles is subscribed, that the billing portal uses our own
+    configuration rather than the shared account default, and that live
+    subscriptions carry the VAT the pricing page promises. The run appends its
+    exit code; a log that stopped growing is reported as such rather than as ok.
+    """
+    try:
+        text = log.read_text(errors='replace').strip()
+        age = now - log.stat().st_mtime
+    except OSError:
+        return 'Stripe-Konfiguration: nie geprueft'
+    codes = [line for line in text.splitlines() if line.startswith('EXIT=')]
+    stunden = int(age // 3600)
+    if not codes:
+        return 'Stripe-Konfiguration: ohne Ergebniszeile'
+    if age >= stale:
+        return f'Stripe-Konfiguration: seit {stunden} h nicht geprueft'
+    if codes[-1] != 'EXIT=0':
+        return f'Stripe-Konfiguration: BEANSTANDET ({codes[-1]})'
+    return f'Stripe-Konfiguration: ok, geprueft vor {stunden} h'
+
+
 def version_state(log, now, stale=36 * 3600):
     """Whether the BookStack we run is still the current release.
 
@@ -492,11 +517,13 @@ def checks():
             return False, (warning + f"Platte={percent:.1f}%; frei={disk['free_gib']:.1f} GiB; "
                            f'laufende Tenants={count}; Worker-Log: Alter nicht vertrauenswuerdig '
                            '(fehlt oder Zeitstempel in der Zukunft); '
-                           + version_state(ROOT / 'bookstack-version.log', now))
+                           + version_state(ROOT / 'bookstack-version.log', now) + '; '
+            + stripe_config_state(ROOT / 'stripe-config.log', now))
         return percent < config['DISK_FAIL_PERCENT'] and age < 180, (
             warning + f"Platte={percent:.1f}%; frei={disk['free_gib']:.1f} GiB; "
             f'laufende Tenants={count}; Worker-Log={age:.0f}s alt; '
-            + version_state(ROOT / 'bookstack-version.log', now))
+            + version_state(ROOT / 'bookstack-version.log', now) + '; '
+            + stripe_config_state(ROOT / 'stripe-config.log', now))
     check(LABELS[5], host)
     check(LABELS[6], lambda: background_state(db))
     return results

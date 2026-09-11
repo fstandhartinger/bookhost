@@ -95,3 +95,31 @@ class OpenCancellationTests(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn('GESTRANDET', detail)
         self.assertIn('Kuendigungen offen', detail)
+
+
+class BillingStoppedButRunningTests(unittest.TestCase):
+    """The order itself never being updated is invisible to the other checks."""
+
+    def base(self, **extra):
+        state = {'provisioning': 0, 'pending': 0, 'stranded': [], 'unsuspended': [],
+                 'unreminded': [], 'cancellations': [], 'unpaid_running': []}
+        state.update(extra)
+        return state
+
+    def test_quiet_system_says_nothing_about_it(self):
+        ok, detail = w.provisioning_state(self.base())
+        self.assertTrue(ok)
+        self.assertNotIn('BEZAHLUNG BEENDET', detail)
+
+    def test_a_cancelled_customer_still_running_is_named_and_red(self):
+        ok, detail = w.provisioning_state(self.base(unpaid_running=['acme-wiki']))
+        self.assertFalse(ok)
+        self.assertIn('BEZAHLUNG BEENDET', detail)
+        self.assertIn('acme-wiki', detail)
+
+    def test_it_does_not_mask_the_other_findings(self):
+        ok, detail = w.provisioning_state(
+            self.base(unpaid_running=['a'], cancellations=[9], stranded=['s']))
+        self.assertFalse(ok)
+        for needle in ('BEZAHLUNG BEENDET', 'Kuendigungen offen', 'GESTRANDET'):
+            self.assertIn(needle, detail)

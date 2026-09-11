@@ -66,12 +66,15 @@ def provisioning_state(db):
     detail += '; Testphase ohne Erinnerung: ' + (', '.join(unreminded) if unreminded else 'keine')
     # We promise the customer two working days in the receipt. One day open is
     # the point at which somebody still has time to keep that promise.
+    unpaid = db.get('unpaid_running') or []
+    if unpaid:
+        detail += '; BEZAHLUNG BEENDET, Workspace laeuft weiter: ' + ', '.join(unpaid)
     cancellations = db.get('cancellations') or []
     detail += '; Kuendigungen offen >24 h: ' + (
         ', '.join(str(c) for c in cancellations) if cancellations else 'keine')
     ok = (db['provisioning'] == 0 and db['pending'] == 0
           and not stranded and not unsuspended and not unreminded
-          and not cancellations)
+          and not cancellations and not unpaid)
     return ok, detail
 
 
@@ -139,6 +142,18 @@ SELECT json_build_object(
  -- A row still here two hours after it expired means that job is not running,
  -- which is otherwise invisible until a trial ends unreminded.
  'stale_cleanup', (SELECT count(*) FROM rate_limits WHERE expires_at < now()-interval '2 hours'),
+ -- The mirror of 'unsuspended': that one catches a tenant contradicting what was
+ -- ordered, this one catches the order itself never being updated. If the
+ -- webhook that ends a subscription never arrives, desired_state stays running
+ -- and somebody who cancelled keeps a workspace, with nothing contradicting
+ -- itself for the other check to notice. Only unambiguous cases, and only after
+ -- an hour, so the gap between webhook and sync is not reported as a fault.
+ 'unpaid_running', COALESCE((SELECT json_agg(te.slug ORDER BY te.slug) FROM tenants te
+   JOIN subscriptions s ON s.team_id=te.team_id
+   WHERE te.desired_state='running'
+     AND (s.status IN ('canceled','incomplete_expired')
+          OR (s.status='trialing' AND s.trial_end IS NOT NULL AND s.trial_end < now()))
+     AND s.updated_at < now()-interval '1 hour'), '[]'::json),
  -- The cancellation form issues a receipt promising action within two working
  -- days. Nothing has ever read that table; an unhandled row is a promise we are
  -- already breaking, and the customer has a legal claim to it being kept.

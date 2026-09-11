@@ -300,6 +300,12 @@ def offsite_state(log, now):
         return 'Offsite: ohne Ausgabe'
     last = text.splitlines()[-1]
     stunden = int(age // 3600)
+    # "Never set up" and "set up and broken" are different situations and need
+    # different reactions: one waits for a decision about where the copies go,
+    # the other is an incident. Reporting both as FEHLER every ten minutes
+    # trains an operator to scroll past the line that would matter.
+    if 'not configured' in last:
+        return 'Offsite: nicht eingerichtet — kein Ziel gewaehlt (offenes Gate, kein Ausfall)'
     if 'ERROR' in last:
         return f'Offsite: FEHLER seit {stunden} h ({last[:80]})'
     return f'Offsite: ok vor {stunden} h'

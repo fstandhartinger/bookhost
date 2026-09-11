@@ -27,11 +27,13 @@ class OffsiteStateTests(unittest.TestCase):
         self.assertEqual(w.offsite_state(self.log, self.now), 'Offsite: nie gelaufen')
 
     def test_last_run_failed_is_named_with_its_age(self):
-        self.write('OFFSITE ERROR Storage Box not configured\n', age_hours=19)
+        # Deliberately not the "not configured" message: that one is an open
+        # gate waiting on a destination decision, and has its own line.
+        self.write('OFFSITE ERROR connection closed by remote host\n', age_hours=19)
         state = w.offsite_state(self.log, self.now)
         self.assertIn('FEHLER', state)
         self.assertIn('19 h', state)
-        self.assertIn('Storage Box not configured', state)
+        self.assertIn('connection closed by remote host', state)
 
     def test_a_successful_run_is_named_too(self):
         self.write('OFFSITE OK 3 Archive kopiert\n', age_hours=2)
@@ -46,3 +48,27 @@ class OffsiteStateTests(unittest.TestCase):
     def test_empty_log_is_not_silently_fine(self):
         self.write('')
         self.assertEqual(w.offsite_state(self.log, self.now), 'Offsite: ohne Ausgabe')
+
+
+class OffsiteNotConfiguredTests(unittest.TestCase):
+    """A gate nobody opened yet must not read like a system that broke."""
+
+    def setUp(self):
+        self.dir = pathlib.Path(tempfile.mkdtemp())
+        self.log = self.dir / 'offsite.log'
+        self.now = time.time()
+        self.addCleanup(shutil.rmtree, self.dir, ignore_errors=True)
+
+    def test_missing_destination_is_named_as_an_open_gate(self):
+        self.log.write_text(
+            'OFFSITE ERROR Storage Box not configured: work/.storagebox.env missing\n')
+        line = w.offsite_state(self.log, self.now)
+        self.assertIn('nicht eingerichtet', line)
+        self.assertNotIn('FEHLER', line)
+
+    def test_a_real_failure_is_still_reported_as_one(self):
+        # The distinction must not swallow an actual incident.
+        self.log.write_text('OFFSITE ERROR connection refused\n')
+        line = w.offsite_state(self.log, self.now)
+        self.assertIn('FEHLER', line)
+        self.assertNotIn('nicht eingerichtet', line)

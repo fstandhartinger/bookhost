@@ -6,7 +6,8 @@ event simply never arrives. On 2026-09-11 `customer.updated` and `invoice.paid`
 were missing, so a customer who added a card during the trial would have stayed
 recorded as having none and kept receiving the dunning notice.
 
-It also validates our own billing portal configuration. Without STRIPE_PORTAL_CONFIG
+It also validates our own billing portal configuration and that live
+subscriptions actually carry German VAT. Without STRIPE_PORTAL_CONFIG
 Stripe falls back to the account-wide default, which every other venture can
 change, so we must keep our own configuration (bpc_1UDXEdCozVR51OgarqW4Y669)
 complete.
@@ -16,6 +17,7 @@ Read-only. Needs STRIPE_SECRET_KEY in the environment. Exits 1 on a mismatch.
 import os, re, sys, json, urllib.request, pathlib
 
 ENDPOINT_URL = "https://bookhost.co/api/stripe/webhook"
+PRICE = "price_1UDXEdCozVR51OgaQQhQdPmx"
 PORTAL_CONFIG_URL = (
     "https://api.stripe.com/v1/billing_portal/configurations/"
     "bpc_1UDXEdCozVR51OgarqW4Y669"
@@ -95,7 +97,44 @@ def check_portal(key):
     if problems:
         return 1
     print("OK: eigene Portal-Konfiguration ist aktiv und vollstaendig.")
+    vat = vat_problems(key)
+    for problem in vat:
+        print("  UMSATZSTEUER: " + problem)
+    if vat:
+        return 1
+    print("OK: alle laufenden Abonnements tragen 19 % USt. auf einen Nettopreis.")
     return 0
+
+
+def vat_problems(key):
+    """Every live subscription must carry exactly one exclusive 19 % VAT rate.
+
+    The rate is attached from STRIPE_TAX_RATE_DE, and the checkout silently
+    omits it when that variable is missing. The customer would then pay 39 euro
+    instead of the 46,41 the pricing page promises, we would owe the VAT out of
+    that, and nothing would say so. This checks the outcome in Stripe rather
+    than our own copy of the environment.
+    """
+    request = urllib.request.Request(
+        "https://api.stripe.com/v1/subscriptions?limit=100&status=all",
+        headers={"Authorization": "Bearer " + key},
+    )
+    with urllib.request.urlopen(request, timeout=20) as response:
+        subscriptions = json.load(response).get("data", [])
+    problems = []
+    for sub in subscriptions:
+        if sub.get("status") not in ("trialing", "active", "past_due"):
+            continue
+        items = (sub.get("items") or {}).get("data") or [{}]
+        price = items[0].get("price") or {}
+        if price.get("id") != PRICE:
+            continue
+        rates = sub.get("default_tax_rates") or []
+        if len(rates) != 1 or rates[0].get("percentage") != 19.0 or rates[0].get("inclusive"):
+            problems.append("%s ohne korrekten 19-%%-Satz (%d Saetze)" % (sub.get("id"), len(rates)))
+        if price.get("tax_behavior") != "exclusive":
+            problems.append("%s: Preis ist nicht 'exclusive'" % sub.get("id"))
+    return problems
 
 
 def main():

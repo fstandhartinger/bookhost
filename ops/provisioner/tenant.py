@@ -509,7 +509,25 @@ def backup(path, hot=False, keep=False, nightly=False):
         print('BACKUP '+('hot' if hot else 'cold')+' '+str(final))
         return final
 
-def restore(path, src=None):
+def retarget_image(compose, image):
+    """Point the BookStack service at another image, for an upgrade rehearsal.
+
+    The landing page promises we handle security updates, and the image tag is
+    pinned in one line. Rehearsing an upgrade means running a customer's own
+    data against the new image in isolation first, so BookStack's migrations run
+    somewhere harmless before they run on a wiki someone depends on.
+    """
+    if not re.fullmatch(r'lscr\.io/linuxserver/bookstack:[A-Za-z0-9._-]+', image or ''):
+        raise ValueError('Refusing an image that is not a linuxserver BookStack tag')
+    named = [name for name, service in compose['services'].items()
+             if 'bookstack' in str(service.get('image', ''))]
+    if len(named) != 1:
+        raise ValueError('Cannot identify the BookStack service')
+    compose['services'][named[0]]['image'] = image
+    return named[0]
+
+
+def restore(path, src=None, image=None):
     choices=[Path(src)] if src is not None else sorted(p for p in (path/'backups').iterdir() if p.suffix in {'.age','.enc'} and p.with_suffix(p.suffix+'.hmac').exists())
     if not choices: raise ValueError('No complete encrypted backup')
     src=choices[-1]
@@ -525,6 +543,7 @@ def restore(path, src=None):
         for service in saved['services'].values():
             service['networks']=['private']; service['labels']={'traefik.enable':'false'}
             service.pop('ports',None); service.pop('container_name',None)
+        if image: print('REHEARSAL image='+image+' service='+retarget_image(saved,image))
         (tmp/'docker-compose.yml').write_text(json.dumps(saved))
         run(['sudo','-n','tar','-xzf',str(tmp/'bookstack.tar.gz'),'-C',str(tmp)])
         compose(tmp,'up','-d','--wait','db'); sql(tmp,(tmp/'database.sql').read_text())
@@ -601,6 +620,8 @@ def main():
         elif action=='backup':
             backup(path, hot='--hot' in sys.argv[3:], keep='--no-retention' in sys.argv[3:], nightly='--nightly' in sys.argv[3:])
         elif action=='restore-test': restore(path)
+        elif action=='upgrade-rehearsal':
+            restore(path, image=(sys.argv[3] if len(sys.argv)>3 else IMAGE))
         else: raise ValueError('Unknown action')
 if __name__=='__main__':
     try: main()

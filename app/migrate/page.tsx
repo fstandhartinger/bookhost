@@ -118,7 +118,20 @@ tar -czf bookstack-files.tar.gz -C /config/www uploads files`}</code></pre>
           <p className="eyebrow">07 / KNOW THE BOUNDARIES</p>
           <h2>What we do not migrate today</h2>
           <ul className="checklist mt-6">
-            <li>Two-factor authentication (MFA) and external sign-in methods (LDAP, SAML, OIDC) require separate assessment and recovery or reconfiguration before cutover.</li>
+            {/* The old wording — "require separate assessment and recovery or
+                reconfiguration" — read as negotiable. We set no auth variables
+                on a workspace at all, so there is nothing to negotiate: a team
+                that depends on single sign-on has to know that before it starts
+                a migration, not after. */}
+            <li>
+              LDAP, SAML and OIDC single sign-on are <strong>not available</strong>{" "}
+              on BookHost today, and neither is enforced two-factor
+              authentication inside the workspace. Workspaces use BookStack&rsquo;s
+              own email-and-password sign-in; local password hashes from your
+              existing instance are preserved, so those users keep their
+              passwords. If your team signs in through a directory or identity
+              provider, this is not the right time to move.
+            </li>
             <li>S3 and other external file storage is not imported.</li>
             <li>We review very old BookStack versions before starting.</li>
             <li>Custom server extensions do not run on our hosting.</li>

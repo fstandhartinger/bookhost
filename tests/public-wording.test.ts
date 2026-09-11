@@ -10,7 +10,13 @@ describe("public wording matches implemented behaviour", () => {
   it("A05 app/migrate/page.tsx 1", async () => {
     const text = await readFile("app/migrate/page.tsx", "utf8");
     expect(text).not.toContain("External login methods such as LDAP, SAML and OIDC need to be configured again on the new instance.");
-    expect(text).toContain("Two-factor authentication (MFA) and external sign-in methods (LDAP, SAML, OIDC) require separate assessment and recovery or reconfiguration before cutover.");
+    // Its replacement still implied the outcome was negotiable. We set no auth
+    // variables on a workspace at all, so the page says so plainly instead. If
+    // single sign-on ever ships, rewrite this test rather than softening it.
+    expect(text).not.toContain("require separate assessment and recovery or reconfiguration before cutover.");
+    expect(text).toContain("LDAP, SAML and OIDC single sign-on are <strong>not available</strong>");
+    expect(text).toContain("local password hashes from your");
+    expect(text).toContain("this is not the right time to move.");
   });
   it("A06 app/migrate/page.tsx 2", async () => {
     const text = await readFile("app/migrate/page.tsx", "utf8");

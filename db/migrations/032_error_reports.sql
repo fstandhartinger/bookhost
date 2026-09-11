@@ -1,5 +1,5 @@
 -- Persist only the allow-listed, pseudonymized diagnostic context.
-CREATE TABLE error_reports (
+CREATE TABLE IF NOT EXISTS error_reports (
   id bigserial PRIMARY KEY,
   ts timestamptz NOT NULL DEFAULT now(),
   event text NOT NULL,
@@ -10,4 +10,4 @@ CREATE TABLE error_reports (
   session_id text
 );
 
-CREATE INDEX error_reports_ts_idx ON error_reports (ts DESC);
+CREATE INDEX IF NOT EXISTS error_reports_ts_idx ON error_reports (ts DESC);

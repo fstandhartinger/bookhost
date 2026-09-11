@@ -21,7 +21,8 @@ export default function Home() {
           </h1>
           <p className="lede">
             Give your team a private BookStack workspace with managed hosting,
-            daily backups and reviewed document intake, available now in beta.
+            daily backups we restore-test on a schedule, and reviewed document
+            intake, available now in beta.
             Start with 14 days free, no card required; continue for €39/month
             plus applicable VAT.
           </p>

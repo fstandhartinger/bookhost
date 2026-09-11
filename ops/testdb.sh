@@ -23,11 +23,18 @@ sudo docker run -d --rm --name "$NAME" \
   -e POSTGRES_PASSWORD=testpw -e POSTGRES_DB=bookhost_test \
   -p "127.0.0.1:${PORT}:5432" postgres:16-alpine >/dev/null
 
-for _ in $(seq 1 30); do
-  sudo docker exec "$NAME" pg_isready -U postgres >/dev/null 2>&1 && break
+# pg_isready inside the container reports ready while initdb is still running
+# its temporary server, which then restarts and drops the connection. Wait for a
+# real client connection from here instead.
+ready=0
+for _ in $(seq 1 45); do
+  if PGPASSWORD=testpw psql -q -h 127.0.0.1 -p "$PORT" -U postgres -d bookhost_test -c 'SELECT 1' >/dev/null 2>&1; then
+    ready=1
+    break
+  fi
   sleep 2
 done
-sudo docker exec "$NAME" pg_isready -U postgres >/dev/null || { echo "Datenbank startet nicht"; exit 1; }
+[ "$ready" = 1 ] || { echo "Datenbank nimmt keine Verbindungen an"; exit 1; }
 
 # The production TLS variables must not leak into a plain local connection.
 export DATABASE_URL="$URL"

@@ -15,7 +15,8 @@ class ProvisioningStateTests(unittest.TestCase):
         ok, detail = w.provisioning_state(snapshot())
         self.assertTrue(ok)
         self.assertEqual(detail, 'überfällig: provisioning=0, pending=0'
-                         '; Testphase ohne Erinnerung: keine')
+                         '; Testphase ohne Erinnerung: keine'
+                         '; Kuendigungen offen >24 h: keine')
 
     def test_overdue_work_stays_red(self):
         self.assertFalse(w.provisioning_state(snapshot(provisioning=1))[0])
@@ -48,7 +49,8 @@ class UnremindedTrialTests(unittest.TestCase):
     """A trial must not run out while nobody told the customer."""
 
     def base(self, **extra):
-        state = {'provisioning': 0, 'pending': 0, 'stranded': [], 'unsuspended': []}
+        state = {'provisioning': 0, 'pending': 0, 'stranded': [], 'unsuspended': [],
+                 'cancellations': []}
         state.update(extra)
         return state
 
@@ -67,3 +69,29 @@ class UnremindedTrialTests(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn('GESTRANDET', detail)
         self.assertIn('t1', detail)
+
+
+class OpenCancellationTests(unittest.TestCase):
+    """The receipt promises two working days; an open row is a broken promise."""
+
+    def base(self, **extra):
+        state = {'provisioning': 0, 'pending': 0, 'stranded': [], 'unsuspended': [],
+                 'unreminded': [], 'cancellations': []}
+        state.update(extra)
+        return state
+
+    def test_nothing_open_is_green(self):
+        ok, detail = w.provisioning_state(self.base())
+        self.assertTrue(ok)
+        self.assertIn('Kuendigungen offen >24 h: keine', detail)
+
+    def test_an_open_request_fails_the_check_and_names_it(self):
+        ok, detail = w.provisioning_state(self.base(cancellations=[17]))
+        self.assertFalse(ok)
+        self.assertIn('17', detail)
+
+    def test_it_does_not_hide_the_other_findings(self):
+        ok, detail = w.provisioning_state(self.base(stranded=['s1'], cancellations=[4]))
+        self.assertFalse(ok)
+        self.assertIn('GESTRANDET', detail)
+        self.assertIn('Kuendigungen offen', detail)

@@ -64,8 +64,14 @@ def provisioning_state(db):
     # is the only place it shows before the workspace suspends itself.
     unreminded = db.get('unreminded') or []
     detail += '; Testphase ohne Erinnerung: ' + (', '.join(unreminded) if unreminded else 'keine')
+    # We promise the customer two working days in the receipt. One day open is
+    # the point at which somebody still has time to keep that promise.
+    cancellations = db.get('cancellations') or []
+    detail += '; Kuendigungen offen >24 h: ' + (
+        ', '.join(str(c) for c in cancellations) if cancellations else 'keine')
     ok = (db['provisioning'] == 0 and db['pending'] == 0
-          and not stranded and not unsuspended and not unreminded)
+          and not stranded and not unsuspended and not unreminded
+          and not cancellations)
     return ok, detail
 
 
@@ -133,6 +139,11 @@ SELECT json_build_object(
  -- A row still here two hours after it expired means that job is not running,
  -- which is otherwise invisible until a trial ends unreminded.
  'stale_cleanup', (SELECT count(*) FROM rate_limits WHERE expires_at < now()-interval '2 hours'),
+ -- The cancellation form issues a receipt promising action within two working
+ -- days. Nothing has ever read that table; an unhandled row is a promise we are
+ -- already breaking, and the customer has a legal claim to it being kept.
+ 'cancellations', COALESCE((SELECT json_agg(id ORDER BY created_at) FROM cancellation_requests
+   WHERE handled_at IS NULL AND created_at < now()-interval '24 hours'), '[]'::json),
  -- A trial that runs out while nobody was told is a customer lost in silence.
  -- The hourly job writes the notice; nothing until now checked that it did.
  'unreminded', COALESCE((SELECT json_agg(t.name ORDER BY t.name) FROM subscriptions s

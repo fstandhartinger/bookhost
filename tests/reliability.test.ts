@@ -47,6 +47,15 @@ describe("public reliability evidence", () => {
       expect(checks).toContain(proof);
   });
 
+  // The cancellation route is legally required to be easy to find. It lives in
+  // the footer; leaving it out of the sitemap made it the one public page search
+  // engines were never told about.
+  it("lists the cancellation route in the sitemap", () => {
+    const urls = sitemap().map((entry) => entry.url);
+    expect(urls).toContain(`${baseUrl()}/cancel`);
+    expect(urls).toContain(`${baseUrl()}/legal/agb`);
+  });
+
   // A customer reading both pages found the contradiction before we did: the
   // hero sold the beta as available while /reliability told them to keep real
   // data out of it. Whichever way that is resolved, the two must agree.

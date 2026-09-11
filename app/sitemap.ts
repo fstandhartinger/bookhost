@@ -14,6 +14,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/legal/avv",
     "/privacy",
     "/terms",
+    // Germany requires the cancellation route to be permanently available and
+    // easy to reach (§312k BGB). It was linked in the footer but missing here,
+    // so search engines had no reason to know it exists.
+    "/cancel",
   ];
   return [
     // Static pages have no maintained modification date; do not invent one.

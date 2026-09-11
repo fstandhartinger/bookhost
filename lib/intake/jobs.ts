@@ -95,6 +95,10 @@ export async function recoverIntake() {
   await db.query(
     "DELETE FROM intake_items WHERE created_at<now()-interval '30 days'",
   );
+  // The privacy notice promises application logs are deleted after 14 days, and
+  // the persisted error diagnostics are application logs. Without this the table
+  // would grow for ever and outlive what we told customers.
+  await db.query("DELETE FROM error_reports WHERE ts<now()-interval '14 days'");
 }
 const globalJobs = globalThis as unknown as {
   intakeTimer?: ReturnType<typeof setInterval>;

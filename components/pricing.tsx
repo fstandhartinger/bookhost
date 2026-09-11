@@ -24,7 +24,10 @@ export function Pricing() {
         <div className="price-card">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-semibold">Team</h3>
-            <span className="badge">14 days free</span>
+            <div className="flex items-center gap-2">
+              <span className="badge">14 days free</span>
+              <span className="badge">No setup fee</span>
+            </div>
           </div>
           <p className="my-6">
             <strong className="text-5xl font-semibold tracking-tight">

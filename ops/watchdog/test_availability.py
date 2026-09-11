@@ -25,7 +25,7 @@ class AvailabilityTests(unittest.TestCase):
             '2026-09-09T19:10:02+00:00 Backups: ok — keine',
             '2026-09-09T19:10:02+00:00 Demo: ok — HTTP 200',
         ])
-        counts, first, last, _ = a.read(self.log)
+        counts, first, last, _, _free = a.read(self.log)
         self.assertEqual(counts[('Backups', 'fail')], 1)
         self.assertEqual(counts[('Backups', 'ok')], 1)
         self.assertEqual(counts[('Demo', 'ok')], 1)
@@ -45,7 +45,7 @@ class AvailabilityTests(unittest.TestCase):
             '2026-09-09T19:00:02+00:00 Backups: ok — keine',
             '2026-09-09T20:00:02+00:00 WAECHTER STUMM — keine Waechterzeile seit 60 Minuten',
         ])
-        counts, _, _, gaps = a.read(self.log)
+        counts, _, _, gaps, _free = a.read(self.log)
         self.assertEqual(sum(counts.values()), 1)
         self.assertEqual(gaps, [])
 
@@ -54,7 +54,7 @@ class AvailabilityTests(unittest.TestCase):
             '2026-09-09T19:00:02+00:00 Backups: ok — keine',
             '2026-09-09T23:00:02+00:00 Backups: ok — keine',
         ])
-        _, _, _, gaps = a.read(self.log)
+        _, _, _, gaps, _free = a.read(self.log)
         self.assertEqual(len(gaps), 1)
         self.assertIn('LUECKE', a.report(*a.read(self.log)))
 
@@ -72,3 +72,24 @@ class AvailabilityTests(unittest.TestCase):
         self.write(['kaputt', '2026-09-09T19:00:02+00:00 Backups: ok — keine'])
         counts, *_ = a.read(self.log)
         self.assertEqual(sum(counts.values()), 1)
+
+    def test_disk_trend_shows_the_dip_and_the_recovery(self):
+        # A single reading during the nightly dump looked like a collapse and
+        # produced a false alarm. The series has to show both ends.
+        self.write([
+            '2026-09-11T02:30:02+00:00 Host und Worker: ok — Platte=90.0%; frei=45.0 GiB',
+            '2026-09-11T03:30:02+00:00 Host und Worker: ok — Platte=92.4%; frei=29.9 GiB',
+            '2026-09-11T04:30:02+00:00 Host und Worker: ok — Platte=89.3%; frei=44.3 GiB',
+        ])
+        text = a.report(*a.read(self.log))
+        self.assertIn('Tiefstand 29.9 GiB', text)
+        self.assertIn('zuletzt 44.3 GiB', text)
+        self.assertIn('Hoechststand 45.0 GiB', text)
+
+    def test_a_real_breach_of_the_floor_is_named(self):
+        self.write(['2026-09-11T03:30:02+00:00 Host und Worker: ok — Platte=97.0%; frei=12.5 GiB'])
+        self.assertIn('UNTER DER GRENZE', a.report(*a.read(self.log)))
+
+    def test_without_disk_lines_nothing_is_invented(self):
+        self.write(['2026-09-11T03:30:02+00:00 Backups: ok — keine'])
+        self.assertNotIn('Platte frei', a.report(*a.read(self.log)))

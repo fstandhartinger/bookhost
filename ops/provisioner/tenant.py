@@ -405,7 +405,11 @@ def restore_http_probe(path):
     title=re.search(r'<title[^>]*>\s*(.*?)\s*</title>',login,re.I|re.S)
     if not status.startswith('HTTP/') or ' 200 ' not in status or not title or not title.group(1).strip():
         raise RuntimeError('Restore HTTP login probe failed')
-    page=sql(path,"SELECT p.id,p.name,p.slug,b.slug FROM entities p JOIN entities b ON b.id=p.book_id AND b.type='book' WHERE p.type='page' ORDER BY p.updated_at DESC,p.id DESC LIMIT 1;").splitlines()[0].split('\t')
+    # Skip the recycle bin: a trashed page still sits in `entities`, but its URL
+    # answers 404, and curl -f then fails the whole restore check. Moving one
+    # stale book out of the demo on 2026-09-11 was enough to make every demo
+    # restore fail until this was noticed.
+    page=sql(path,"SELECT p.id,p.name,p.slug,b.slug FROM entities p JOIN entities b ON b.id=p.book_id AND b.type='book' WHERE p.type='page' AND p.deleted_at IS NULL AND b.deleted_at IS NULL ORDER BY p.updated_at DESC,p.id DESC LIMIT 1;").splitlines()[0].split('\t')
     page_body=curl(['-fsS','http://bookstack/books/'+page[3]+'/page/'+page[2]])
     page_title=re.search(r'<title[^>]*>\s*(.*?)\s*</title>',page_body,re.I|re.S)
     if not page_title or page[1] not in page_body:

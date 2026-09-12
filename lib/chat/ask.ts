@@ -1,5 +1,12 @@
-import { retrieve, absoluteUrl, type Passage, type WikiClient } from "./retrieval";
+import {
+  retrieve,
+  absoluteUrl,
+  queryTerms,
+  type Passage,
+  type WikiClient,
+} from "./retrieval";
 import { answerQuestion, NO_ANSWER, type ChatSource } from "./answer";
+import { extractiveAnswer } from "./synthesize";
 
 export type AskMode = "extractive" | "ai";
 export type AskResult = {
@@ -8,6 +15,8 @@ export type AskResult = {
   sources: ChatSource[];
   refused: boolean;
   mode: AskMode;
+  /** The search terms behind the result, for highlighting in the reader. */
+  terms: string[];
 };
 
 function toSources(passages: Passage[], base: string): ChatSource[] {
@@ -29,6 +38,7 @@ export async function askWiki(
   client: WikiClient,
   question: string,
 ): Promise<AskResult> {
+  const terms = queryTerms(question);
   const passages = await retrieve(client, question);
   if (!passages.length)
     return {
@@ -37,15 +47,22 @@ export async function askWiki(
       sources: [],
       refused: true,
       mode: "extractive",
+      terms,
     };
-  if (!aiEnabled())
+  if (!aiEnabled()) {
+    const extract = extractiveAnswer(passages, terms);
     return {
       question,
-      answer: passages[0].text,
-      sources: toSources(passages, client.base),
+      answer: extract.answer,
+      sources: toSources(
+        passages.filter((_passage, index) => extract.citations.includes(index + 1)),
+        client.base,
+      ),
       refused: false,
       mode: "extractive",
+      terms,
     };
+  }
   const result = await answerQuestion(question, passages);
   return {
     question,
@@ -56,5 +73,6 @@ export async function askWiki(
     })),
     refused: result.refused,
     mode: "ai",
+    terms,
   };
 }

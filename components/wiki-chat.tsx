@@ -14,8 +14,29 @@ type Answer = {
   sources: Source[];
   refused: boolean;
   mode: "extractive" | "ai";
+  terms?: string[];
   quota?: { remaining: number; limit: number } | null;
 };
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Wrap the question's search terms wherever they appear, so hits stand out. */
+function highlight(text: string, terms: string[] | undefined, keyPrefix: string) {
+  if (!terms?.length) return text;
+  const pattern = new RegExp(`(${terms.map(escapeRegExp).join("|")})`, "gi");
+  const lookup = new Set(terms.map((term) => term.toLowerCase()));
+  return text.split(pattern).map((part, index) =>
+    lookup.has(part.toLowerCase()) ? (
+      <mark key={`${keyPrefix}-${index}`} className="rounded bg-amber-100 px-0.5">
+        {part}
+      </mark>
+    ) : (
+      <span key={`${keyPrefix}-${index}`}>{part}</span>
+    ),
+  );
+}
 export function WikiChat({
   tenants,
 }: {
@@ -116,22 +137,20 @@ export function WikiChat({
       )}
       {result && (
         <div className="price-card space-y-5">
-          <h2 className="text-2xl">
-            {result.mode === "ai" ? "Answer" : "Best matching passage"}
-          </h2>
+          <h2 className="text-2xl">Answer</h2>
           {result.mode === "extractive" && !result.refused && (
             <p className="rounded-lg bg-slate-50 p-3 text-xs leading-5 text-slate-600">
               AI-written summaries are not enabled yet: the provider agreement
               and transfer documents are still being completed. Until then
-              BookHost shows the matching passages themselves, so every claim
-              stays traceable to a page.
+              BookHost assembles the matching sentences from your own pages,
+              each with its source number, so every claim stays traceable.
             </p>
           )}
           <p className="whitespace-pre-wrap text-base leading-7">
             {result.answer.split(/(\[\d+\])/).map((part, index) => {
               const match = part.match(/^\[(\d+)\]$/);
               const source = match ? result.sources[Number(match[1]) - 1] : null;
-              if (!source) return <span key={index}>{part}</span>;
+              if (!source) return highlight(part, result.terms, `a-${index}`);
               return source.url ? (
                 <a
                   key={index}
@@ -176,7 +195,9 @@ export function WikiChat({
                     {source.section && (
                       <span className="text-slate-500"> › {source.section}</span>
                     )}
-                    <p className="mt-1 text-slate-600">{source.excerpt}</p>
+                    <p className="mt-1 text-slate-600">
+                      {highlight(source.excerpt, result.terms, `s-${index}`)}
+                    </p>
                   </li>
                 ))}
               </ol>

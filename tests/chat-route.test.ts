@@ -39,6 +39,7 @@ beforeEach(() => {
     sources: [],
     refused: false,
     mode: "extractive",
+    terms: [],
   });
 });
 

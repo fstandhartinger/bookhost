@@ -158,27 +158,30 @@ export async function retrieve(
     const candidates = sections.length
       ? sections
       : [{ heading: null as string | null, text: html.replace(/\s+/g, " ") }];
-    let best: { heading: string | null; text: string; score: number } | null = null;
-    for (const section of candidates) {
-      const score = scoreSection(section.heading, section.text, terms);
-      if (!best || score > best.score)
-        best = { heading: section.heading, text: section.text, score };
-    }
-    if (!best || best.score <= 0) return;
+    const matches = candidates
+      .map((section) => ({
+        heading: section.heading,
+        text: section.text,
+        score: scoreSection(section.heading, section.text, terms),
+      }))
+      .filter((section) => section.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 2);
     const url =
       result.url && result.url.startsWith("/") ? result.url : null;
-    scored.push({
-      pageId: result.id,
-      pageName: name,
-      bookId:
-        detail.status === "fulfilled"
-          ? detail.value.book_id ?? null
-          : result.book_id ?? null,
-      section: best.heading,
-      url,
-      text: excerpt(best.text, terms),
-      score: best.score - index * 0.01,
-    });
+    for (const match of matches)
+      scored.push({
+        pageId: result.id,
+        pageName: name,
+        bookId:
+          detail.status === "fulfilled"
+            ? detail.value.book_id ?? null
+            : result.book_id ?? null,
+        section: match.heading,
+        url,
+        text: excerpt(match.text, terms),
+        score: match.score - index * 0.01,
+      });
   });
   return scored.sort((a, b) => b.score - a.score).slice(0, limit);
 }

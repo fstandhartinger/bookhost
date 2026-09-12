@@ -6,6 +6,7 @@ import {
 } from "@/lib/chat/retrieval";
 import { parseChatAnswer } from "@/lib/chat/answer";
 import { askWiki } from "@/lib/chat/ask";
+import { extractiveAnswer, splitSentences } from "@/lib/chat/synthesize";
 import type { Passage } from "@/lib/chat/retrieval";
 
 afterEach(() => {
@@ -113,6 +114,73 @@ describe("retrieval", () => {
   });
 });
 
+describe("extractive answer", () => {
+  const passage = (over: Partial<Passage> = {}): Passage => ({
+    pageId: 1,
+    pageName: "P",
+    bookId: null,
+    section: null,
+    url: null,
+    text: "",
+    score: 1,
+    ...over,
+  });
+
+  it("splits collapsed text into sentences and drops tiny fragments", () => {
+    expect(
+      splitSentences("OK. The deploy token lives here. Run the deploy script."),
+    ).toEqual(["The deploy token lives here.", "Run the deploy script."]);
+  });
+
+  it("quotes matching sentences from several pages in reading order", () => {
+    const result = extractiveAnswer(
+      [
+        passage({
+          section: "Setup",
+          text: "…the deploy token lives here. Monthly invoices are separate.",
+        }),
+        passage({
+          section: "Rollout",
+          text: "Run the deploy script before every release.",
+        }),
+      ],
+      ["deploy"],
+    );
+    expect(result.citations).toEqual([1, 2]);
+    expect(result.answer).toBe(
+      "the deploy token lives here. [1] Run the deploy script before every release. [2]",
+    );
+  });
+
+  it("quotes a repeated sentence only once", () => {
+    const result = extractiveAnswer(
+      [
+        passage({ text: "Restart the deploy service. Keep the logs." }),
+        passage({ text: "Restart the deploy service. Then verify the logs." }),
+      ],
+      ["deploy"],
+    );
+    expect(result.answer.match(/Restart the deploy service\./g)).toHaveLength(1);
+    expect(result.citations).toEqual([1]);
+  });
+
+  it("falls back to the first passage when no sentence matches", () => {
+    const result = extractiveAnswer(
+      [passage({ text: "Nothing relevant here at all." })],
+      ["deploy"],
+    );
+    expect(result.answer).toBe("Nothing relevant here at all. [1]");
+    expect(result.citations).toEqual([1]);
+  });
+
+  it("returns nothing without passages", () => {
+    expect(extractiveAnswer([], ["deploy"])).toEqual({
+      answer: "",
+      citations: [],
+    });
+  });
+});
+
 describe("answer parsing", () => {
   const passages = [{ pageId: 1, pageName: "P", section: "S" } as Passage];
   it("keeps only citations that exist and refuses otherwise", () => {
@@ -152,6 +220,9 @@ describe("ask wiki", () => {
     const result = await askWiki(client(), "how do I deploy");
     expect(result.mode).toBe("extractive");
     expect(result.refused).toBe(false);
+    expect(result.answer).toContain("deploy script");
+    expect(result.answer).toContain("[1]");
+    expect(result.terms).toContain("deploy");
     expect(result.sources[0].url).toBe(
       "https://wiki.example/books/handbook/page/deploy",
     );

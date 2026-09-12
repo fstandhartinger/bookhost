@@ -202,13 +202,16 @@ export default function Home() {
         </div>
       </section>
       <section className="mb-16 rounded-2xl bg-[#e8edde] p-8">
-        <p className="eyebrow">ROADMAP · PLANNED</p>
-        <h2>Email intake and permission-aware answers.</h2>
+        <p className="eyebrow">AVAILABLE NOW · ROADMAP</p>
+        <h2>Ask your wiki, and what is still planned.</h2>
         <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-600">
-          These features are not available today. We plan to add email
-          submission and answers based only on sources the requesting person can
-          access. There is no committed release date. The document upload and
-          review beta is available now.
+          &ldquo;Ask your wiki&rdquo; is available now in beta to workspace
+          owners and admins: it searches your own workspace, answers only from
+          the pages it found, and shows the page and section behind every
+          result. Email submission, AI-written summaries and answers scoped to
+          each member&rsquo;s own BookStack permissions are planned with no
+          committed release date. The document upload and review beta is
+          available now.
         </p>
       </section>
       <div className="border-y border-ink/10">

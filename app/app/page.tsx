@@ -51,6 +51,7 @@ export default async function Dashboard({
   const team = teams.find((t) => t.id === activeId) || teams[0];
   // Carry the shown team so document intake cannot land on a different one.
   const intakeHref = team ? `/app/intake?team=${team.id}` : "/app/intake";
+  const chatHref = team ? `/app/chat?team=${team.id}` : "/app/chat";
   const isOwner = !team || team.owner_user_id === session.user.id;
   const userId = session.user.id;
   const ownsTeam = teams.some((t) => t.owner_user_id === userId);
@@ -426,6 +427,11 @@ export default async function Dashboard({
                   >
                     Document intake (beta)
                   </a>
+                  {canManage && (
+                    <a className="button-secondary mt-3" href={chatHref}>
+                      Ask your wiki (beta)
+                    </a>
+                  )}
                   {!isOwner && (
                     <MemberBookStackLogin
                       key={`${team.id}:${session.user.id}`}

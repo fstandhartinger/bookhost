@@ -34,7 +34,7 @@ export const faqs = [
   ],
   [
     "Who can see drafts, and what is still planned?",
-    "Intake is a shared inbox for your BookHost dashboard team: all team members can see its drafts and available destinations. It does not mirror each person's BookStack permissions. Only workspace owners/admins can publish; members can upload and review. BookStack page permissions apply after publication. Email intake and permission-aware AI answers are planned and are not available today. There is no committed release date.",
+    "Intake is a shared inbox for your BookHost dashboard team: all team members can see its drafts and available destinations. It does not mirror each person's BookStack permissions. Only workspace owners/admins can publish; members can upload and review. BookStack page permissions apply after publication. A beta \"Ask your wiki\" is available now to workspace owners and admins: it finds the matching pages and shows the page and section behind each one. Email intake, AI-written summaries and answers scoped to each member's own BookStack permissions are planned and are not available today. There is no committed release date for the planned parts.",
   ],
   [
     "Do I need a card for the trial, and will I be charged automatically?",

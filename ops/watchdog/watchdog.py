@@ -317,6 +317,24 @@ def log_age(path, now, skew=300):
     return None if written > now + skew else now - written
 
 
+def retention_state(oldest_hours, keep_days=7, slack_hours=24):
+    """Whether the seven-day backup rotation we promise publicly still happens.
+
+    /reliability says archives older than seven days are removed at the next
+    daily retention run. The retention job prints nothing on success, so its log
+    stays empty whether it runs or not, and until an archive actually ages past
+    the window there is no evidence either way. The oldest archive we still hold
+    is that evidence.
+    """
+    if oldest_hours is None:
+        return True, 'aeltestes Archiv: keines'
+    tage = oldest_hours / 24
+    text = f'aeltestes Archiv: {tage:.1f} d'
+    if oldest_hours > keep_days * 24 + slack_hours:
+        return False, text + f' — aelter als {keep_days} d, Aufbewahrung greift nicht'
+    return True, text
+
+
 def tenant_capacity_state(count, limit, warn_at=0.8):
     """How close we are to refusing the next customer a workspace.
 
@@ -521,6 +539,7 @@ def checks():
     def backups():
         failed = []
         pending = []
+        oldest = None
         key = backup_key()
         for slug in running:
             tenant = ROOT / slug
@@ -535,14 +554,18 @@ def checks():
                     failed.append(slug)
             elif ages[0] >= 26 * 3600:
                 failed.append(slug)
+            if ages:
+                oldest = ages[-1] if oldest is None else max(oldest, ages[-1])
         errors = recent_backup_errors(ROOT / 'backup.log', now)
         fallbacks = recent_backup_fallbacks(ROOT / 'backup.log', now)
         detail = ('signaturgeprueft; ' if key else 'Signatur UNGEPRUEFT (Schluessel nicht lesbar); ')
         detail += f'fehlend/veraltet: {", ".join(failed) or "keine"}'
+        retention_ok, retention_text = retention_state(None if oldest is None else oldest / 3600)
+        detail += '; ' + retention_text
         detail += '; ' + offsite_state(ROOT / 'offsite.log', now)
         if pending:
             detail += '; ausstehend: ' + ', '.join(pending)
-        return db is not None and not failed and not errors, detail + f'; ERROR letzte 24h={errors}; fallback cold letzte 24h={fallbacks}'
+        return db is not None and not failed and not errors and retention_ok, detail + f'; ERROR letzte 24h={errors}; fallback cold letzte 24h={fallbacks}'
     check(LABELS[4], backups)
     def host():
         config = thresholds(capacity_limits())

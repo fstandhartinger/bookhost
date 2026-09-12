@@ -161,17 +161,19 @@ export default function Reliability() {
             </p>
             <p>We do not offer a contractual availability commitment.</p>
             <p>
-              {/* Until the wiki chat beta shipped on 12 September this page
-                  could say that nothing reached Chutes unless somebody uploaded
-                  a file. Chat sends passages from pages that already exist,
-                  which is exactly the case where a wiki holds people's names. */}
+              {/* The blanket "nothing is sent without an upload" sentence was
+                  removed when chat shipped, but its first replacement said
+                  passages go to Chutes today. They do not: synthesis is behind
+                  WIKI_CHAT_LLM and ships off. Say what holds in both states. */}
               &ldquo;Ask your wiki&rdquo; is available in beta to workspace owners
-              and admins. A question sends that question and passages from your
-              own pages to Chutes; it needs no upload, so a workspace can reach
-              the same external model without anyone uploading a file. The same
-              limit applies as for intake: until a provider DPA and international
-              transfer safeguards are documented, use it only on workspaces
-              without personal data.
+              and admins. It searches your own pages and shows the passages it
+              found. The AI synthesis on top of that stays switched off until a
+              provider DPA and international transfer safeguards are documented:
+              while it is off, asking a question sends nothing to Chutes. If we
+              switch it on, the question and those passages go to the same
+              external model as intake — with no upload involved — and the same
+              limit applies as there: use it only on workspaces without personal
+              data.
             </p>
             <p>
               Document intake is available in beta. Each upload sends extracted text,

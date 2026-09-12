@@ -61,14 +61,19 @@ describe("public reliability evidence", () => {
   // shipped. Both pages must say what actually leaves the workspace.
   it("says that the wiki chat beta also sends passages to the external model", async () => {
     const reliability = readFileSync("app/reliability/page.tsx", "utf8");
-    expect(reliability).not.toContain("this feature sends nothing to Chutes");
-    expect(reliability).toContain("it needs no upload");
-    expect(reliability).toContain("without personal data");
+    // Synthesis is behind WIKI_CHAT_LLM and ships off, so neither page may
+    // claim passages go to Chutes today — nor may either page go back to the
+    // blanket "nothing is sent without an upload".
+    const flatReliability = reliability.replace(/\s+/g, " ");
+    expect(flatReliability).not.toContain("this feature sends nothing to Chutes");
+    expect(flatReliability).toContain("while it is off, asking a question sends nothing to Chutes");
+    expect(flatReliability).toContain("with no upload involved");
+    expect(flatReliability).toContain("without personal data");
     const home = readFileSync("app/page.tsx", "utf8");
     // JSX wraps the sentence across lines; compare on the collapsed text.
     const flat = home.replace(/\s+/g, " ");
-    expect(flat).toContain("to the same external model as intake");
-    expect(flat).toContain("use them only on workspaces without personal data");
+    expect(flat).toContain("today a question sends nothing to an external model");
+    expect(flat).toContain("use the betas only on workspaces without personal data");
   });
 
   // A customer reading both pages found the contradiction before we did: the
@@ -171,7 +176,7 @@ describe("public reliability evidence", () => {
     // The "without an upload nothing is sent" sentence was removed when the
     // wiki chat beta made it untrue. What has to stay is what is actually sent.
     expect(limits).not.toContain("Without an upload");
-    expect(limits).toContain("it needs no upload");
+    expect(limits).toContain("with no upload involved");
     expect(limits).toContain('href="/legal/datenschutz"');
   });
 

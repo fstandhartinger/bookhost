@@ -15,6 +15,7 @@ const state = vi.hoisted(() => ({
       url: "https://checkout.stripe.com/fixture",
     }),
   failQuery: "",
+  sql: [] as string[],
 }));
 vi.mock("@/auth", () => ({
   auth: async () => ({ user: { id: "owner", email: "owner@example.invalid" } }),
@@ -30,6 +31,7 @@ vi.mock("@/lib/db", () => ({
     fn({ query: async () => ({ rows: [], rowCount: 0 }) }),
   db: {
     query: async (sql: string) => {
+      state.sql.push(sql);
       if (state.failQuery && sql.includes(state.failQuery))
         throw Object.assign(
           new Error("secret=sk_test_never_log token=private-upstream-body"),
@@ -60,6 +62,7 @@ beforeEach(() => {
   state.create.mockClear();
   state.customer = "cus_existing";
   state.failQuery = "";
+  state.sql = [];
   process.env.STRIPE_PRICE_TEAM = "price_fixture";
 });
 
@@ -183,4 +186,34 @@ it("persists a team reservation and sends a durable Stripe idempotency key", asy
   expect(state.create).toHaveBeenLastCalledWith(expect.any(Object), {
     idempotencyKey: expect.stringContaining("bookhost:team:"),
   });
+});
+
+// The portfolio's ready-to-earn job walks this route every three hours. Without
+// an opt-out its probes count as purchase intent, which makes the funnel
+// meaningless the moment real visitors arrive. The header is what we told that
+// job's owner to send, so it has to actually suppress the event.
+it("does not record a checkout_start when analytics are opted out", async () => {
+  state.status = "";
+  await POST(
+    new Request("http://localhost/api/checkout", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    }),
+  );
+  const counted = state.sql.some((sql) => sql.includes("'checkout_start'"));
+  expect(counted).toBe(true);
+
+  state.sql = [];
+  await POST(
+    new Request("http://localhost/api/checkout", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-wissen-no-analytics": "1",
+      },
+      body: "{}",
+    }),
+  );
+  expect(state.sql.some((sql) => sql.includes("'checkout_start'"))).toBe(false);
 });

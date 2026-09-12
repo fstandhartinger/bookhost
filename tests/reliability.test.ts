@@ -56,12 +56,26 @@ describe("public reliability evidence", () => {
     expect(urls).toContain(`${baseUrl()}/legal/agb`);
   });
 
+  // Our only capability no competitor in the sponsor row offers was missing
+  // from the page where people decide to pay. It must stay, and it must stay
+  // truthful about the summary not being on yet.
+  it("offers the wiki answers on the pricing page, with their limit", () => {
+    const pricing = readFileSync("components/pricing.tsx", "utf8").replace(
+      /\s+/g,
+      " ",
+    );
+    expect(pricing).toContain("Ask your wiki");
+    expect(pricing).toContain("names the page and section behind every answer");
+    expect(pricing).toContain("ask only about non-personal content");
+  });
+
   // The wiki chat beta reaches the same external model without any upload, so
   // "without an upload nothing goes to Chutes" stopped being true the night it
   // shipped. Both pages must say what actually leaves the workspace.
   it("says that the wiki chat beta also sends passages to the external model", async () => {
     const reliability = readFileSync("app/reliability/page.tsx", "utf8");
-    // Synthesis is behind WIKI_CHAT_LLM and ships off, so neither page may
+
+  // Synthesis is behind WIKI_CHAT_LLM and ships off, so neither page may
     // claim passages go to Chutes today — nor may either page go back to the
     // blanket "nothing is sent without an upload".
     const flatReliability = reliability.replace(/\s+/g, " ");

@@ -64,6 +64,16 @@ export function Pricing() {
             </li>
             <li>Seven-day backup retention and restore help</li>
             <li>Reviewed document intake — available now (beta)</li>
+            {/* The one thing none of the hosts in our sponsor row offer, and it
+                was missing from the page where people decide. Stated at what it
+                actually does today: passages with their page and section, no
+                AI summary yet. */}
+            <li>
+              &ldquo;Ask your wiki&rdquo; — available now (beta) for owners and
+              admins: it names the page and section behind every answer.
+              AI-written summaries follow once the data protection documents are
+              complete; until then ask only about non-personal content.
+            </li>
             <li>{DRAFT_COPY}</li>
             <li>Summary, tags and reviewer checklist for each draft</li>
             <li>Owner/admin approval before publication to BookStack</li>

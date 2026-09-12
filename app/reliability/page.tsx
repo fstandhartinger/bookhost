@@ -161,9 +161,21 @@ export default function Reliability() {
             </p>
             <p>We do not offer a contractual availability commitment.</p>
             <p>
+              {/* Until the wiki chat beta shipped on 12 September this page
+                  could say that nothing reached Chutes unless somebody uploaded
+                  a file. Chat sends passages from pages that already exist,
+                  which is exactly the case where a wiki holds people's names. */}
+              &ldquo;Ask your wiki&rdquo; is available in beta to workspace owners
+              and admins. A question sends that question and passages from your
+              own pages to Chutes; it needs no upload, so a workspace can reach
+              the same external model without anyone uploading a file. The same
+              limit applies as for intake: until a provider DPA and international
+              transfer safeguards are documented, use it only on workspaces
+              without personal data.
+            </p>
+            <p>
               Document intake is available in beta. Each upload sends extracted text,
-              not the original file, to Chutes for AI drafting. Without an upload,
-              this feature sends nothing to Chutes. Source text is removed on
+              not the original file, to Chutes for AI drafting. Source text is removed on
               publication or rejection; intake records and drafts are deleted
               after 30 days from creation in the next hourly cleanup. Technical
               availability does not establish a provider DPA or international

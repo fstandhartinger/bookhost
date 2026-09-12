@@ -71,7 +71,7 @@ describe("public wording matches implemented behaviour", () => {
   it("A01 app/reliability/page.tsx 12", async () => {
     const text = await readFile("app/reliability/page.tsx", "utf8");
     expect(text).not.toContain("Document intake is a beta feature. AI processing remains disabled\n              while we do not have a documented data processing agreement with\n              the model provider and the required safeguards for international\n              transfers. See our");
-    expect(text).toContain("Document intake is available in beta. Each upload sends extracted text,\n              not the original file, to Chutes for AI drafting. Without an upload,\n              this feature sends nothing to Chutes. Source text is removed on\n              publication or rejection; intake records and drafts are deleted\n              after 30 days from creation in the next hourly cleanup. Technical\n              availability does not establish a provider DPA or international\n              transfer safeguards. Until those prerequisites are documented, use\n              only non-personal example documents. See our");
+    expect(text).toContain("Document intake is available in beta. Each upload sends extracted text,\n              not the original file, to Chutes for AI drafting. Source text is removed on");
   });
   it("A07 content/legal/avv.md 13", async () => {
     const text = await readFile("content/legal/avv.md", "utf8");

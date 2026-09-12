@@ -56,6 +56,21 @@ describe("public reliability evidence", () => {
     expect(urls).toContain(`${baseUrl()}/legal/agb`);
   });
 
+  // The wiki chat beta reaches the same external model without any upload, so
+  // "without an upload nothing goes to Chutes" stopped being true the night it
+  // shipped. Both pages must say what actually leaves the workspace.
+  it("says that the wiki chat beta also sends passages to the external model", async () => {
+    const reliability = readFileSync("app/reliability/page.tsx", "utf8");
+    expect(reliability).not.toContain("this feature sends nothing to Chutes");
+    expect(reliability).toContain("it needs no upload");
+    expect(reliability).toContain("without personal data");
+    const home = readFileSync("app/page.tsx", "utf8");
+    // JSX wraps the sentence across lines; compare on the collapsed text.
+    const flat = home.replace(/\s+/g, " ");
+    expect(flat).toContain("to the same external model as intake");
+    expect(flat).toContain("use them only on workspaces without personal data");
+  });
+
   // A customer reading both pages found the contradiction before we did: the
   // hero sold the beta as available while /reliability told them to keep real
   // data out of it. Whichever way that is resolved, the two must agree.
@@ -153,7 +168,10 @@ describe("public reliability evidence", () => {
     expect(limits).toContain("Document intake is available in beta");
     expect(limits).not.toContain("AI processing remains disabled");
     expect(limits).toContain("Each upload sends extracted text, not the original file, to Chutes");
-    expect(limits).toContain("Without an upload");
+    // The "without an upload nothing is sent" sentence was removed when the
+    // wiki chat beta made it untrue. What has to stay is what is actually sent.
+    expect(limits).not.toContain("Without an upload");
+    expect(limits).toContain("it needs no upload");
     expect(limits).toContain('href="/legal/datenschutz"');
   });
 

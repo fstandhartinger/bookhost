@@ -208,7 +208,10 @@ export default function Home() {
           &ldquo;Ask your wiki&rdquo; is available now in beta to workspace
           owners and admins: it searches your own workspace, answers only from
           the pages it found, and shows the page and section behind every
-          result. Email submission, AI-written summaries and answers scoped to
+          result. It sends your question and the passages it found to the same
+          external model as intake, so the same limit applies: while the betas
+          run, use them only on workspaces without personal data. Email
+          submission, AI-written summaries and answers scoped to
           each member&rsquo;s own BookStack permissions are planned with no
           committed release date. The document upload and review beta is
           available now.

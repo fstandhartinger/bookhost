@@ -59,6 +59,27 @@ describe("Checkout parameters", () => {
       checkoutParams({ price: "p", url: "https://x", email: "a@b.com" })
         .customer_email,
     ).toBe("a@b.com"));
+  it("brands the Checkout header as BookHost", () =>
+    expect(
+      checkoutParams({ price: "price_team", url: "https://wissen.example" })
+        .branding_settings,
+    ).toEqual({ display_name: "BookHost" }));
+  it("keeps the BookHost header on resume sessions", () =>
+    expect(
+      checkoutParams({
+        price: "price_team",
+        url: "https://wissen.example",
+        resume: true,
+      }).branding_settings,
+    ).toEqual({ display_name: "BookHost" }));
+  it("keeps the BookHost header for existing customers", () =>
+    expect(
+      checkoutParams({
+        price: "price_team",
+        url: "https://wissen.example",
+        customer: "cus_fixture",
+      }).branding_settings,
+    ).toEqual({ display_name: "BookHost" }));
 });
 
 it("names the operating company on the payment page", () => {

@@ -1,4 +1,8 @@
 import type Stripe from "stripe";
+// stripe-node 18.5 types lack branding_settings (added upstream in 19.0.0).
+type BrandedSessionCreateParams = Stripe.Checkout.SessionCreateParams & {
+  branding_settings?: { display_name?: string };
+};
 export function checkoutParams({
   price,
   url,
@@ -17,7 +21,7 @@ export function checkoutParams({
   utmSource?: string | null;
   noAnalytics?: boolean;
   resume?: boolean;
-}): Stripe.Checkout.SessionCreateParams {
+}): BrandedSessionCreateParams {
   return {
     mode: "subscription",
     line_items: [{ price, quantity: 1 }],
@@ -40,6 +44,10 @@ export function checkoutParams({
         ...(teamId ? { team_id: teamId } : {}),
       },
     },
+    // The Stripe account is shared with other products, so its header defaults
+    // to the account name. This only overrides the Checkout header; receipts
+    // and emails still show the account name (custom_text names the operator).
+    branding_settings: { display_name: "BookHost" },
     // The Stripe account is shared with our other products, so its name in the
     // Checkout header is not the one the visitor just read on our site. Saying
     // who operates BookHost removes that surprise at the moment of payment.

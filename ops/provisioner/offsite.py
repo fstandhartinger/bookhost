@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Encrypted-only Storage Box replication. Never emit credentials or SSH diagnostics."""
+"""Encrypted-only off-site replication (R2 or Storage Box). Never emit credentials or diagnostics."""
 import base64
 import datetime
 import fcntl
@@ -28,6 +28,11 @@ def stamp(name):
     return datetime.datetime.strptime(match[1], '%Y%m%dT%H%M%SZ').replace(tzinfo=datetime.timezone.utc).timestamp()
 
 
+def check_name(name):
+    # Only timestamped archives or their sidecars are ever downloaded.
+    stamp(name[:-5] if name.endswith('.hmac') else name)
+
+
 def authenticate(src):
     mac = hmac.new(tenant.KEY.read_bytes(), digestmod=hashlib.sha256)
     with src.open('rb') as stream:
@@ -37,7 +42,7 @@ def authenticate(src):
         raise ValueError('Backup authentication failed')
 
 
-class Storage:
+class StorageBox:
     def __init__(self):
         config = WORK/'.storagebox.env'
         if not config.is_file():
@@ -84,8 +89,11 @@ class Storage:
     def remote(self, *args):
         return self.command([*self.ssh,self.target,shlex.join(args)])
 
-    def names(self, path):
-        return self.remote('ls','-1',path).splitlines()
+    def names(self, slug=None):
+        if slug is None:
+            self.remote('mkdir','-p',REMOTE)  # a fresh box has no top-level dir yet
+            return self.remote('ls','-1',REMOTE).splitlines()
+        return self.remote('ls','-1',REMOTE+'/'+slug).splitlines()
 
     def upload(self, stage, slug):
         dest = REMOTE+'/'+slug
@@ -95,9 +103,78 @@ class Storage:
                       str(stage)+'/',self.target+':'+dest+'/'])
 
     def download(self, slug, name, dest):
-        stamp(name)
+        check_name(name)
         self.command(['rsync','-rt','--timeout=120','-e',shlex.join(self.ssh),
                       self.target+':'+REMOTE+'/'+slug+'/'+name,str(dest/name)])
+
+    def delete(self, slug, name):
+        self.remote('rm','--',REMOTE+'/'+slug+'/'+name)
+
+
+class R2Storage:
+    def __init__(self, client=None):
+        config = WORK/'.r2.env'
+        if not config.is_file():
+            raise ValueError('R2 not configured: work/.r2.env missing')
+        if config.stat().st_mode & 0o077:
+            raise ValueError('R2 config requires mode 0600')
+        env = tenant.env_read(config)
+        if not all(k in env for k in ('R2_ACCOUNT_ID','R2_ACCESS_KEY_ID','R2_SECRET_ACCESS_KEY','R2_BUCKET','R2_ENDPOINT')):
+            raise ValueError('R2 config incomplete')
+        if not re.fullmatch(r'https://[0-9a-f]{32}(\.eu)?\.r2\.cloudflarestorage\.com', env['R2_ENDPOINT']):
+            raise ValueError('Invalid R2 endpoint')
+        if not re.fullmatch(r'[a-z0-9][a-z0-9-]{2,62}', env['R2_BUCKET']):
+            raise ValueError('Invalid R2 bucket')
+        self.bucket = env['R2_BUCKET']
+        self._client = client
+        self._params = dict(endpoint_url=env['R2_ENDPOINT'], aws_access_key_id=env['R2_ACCESS_KEY_ID'],
+                            aws_secret_access_key=env['R2_SECRET_ACCESS_KEY'], region_name='auto')
+
+    @property
+    def client(self):
+        if self._client is None:
+            import boto3  # lazy: StorageBox-only hosts and tests need no boto3
+            self._client = boto3.client('s3', **self._params)
+        return self._client
+
+    def _call(self, operation, fn):
+        # SDK exception text can contain the access key id; keep it out of errors.
+        try:
+            return fn()
+        except Exception:
+            raise RuntimeError('R2 operation failed ('+operation+')') from None
+
+    def names(self, slug=None):
+        prefix = REMOTE+'/' if slug is None else REMOTE+'/'+slug+'/'
+        def collect():
+            found = []
+            params = dict(Bucket=self.bucket, Prefix=prefix)
+            if slug is None:
+                params['Delimiter'] = '/'  # roll up per-tenant prefixes
+            for page in self.client.get_paginator('list_objects_v2').paginate(**params):
+                if slug is None:
+                    found += [p['Prefix'][len(prefix):].strip('/') for p in page.get('CommonPrefixes', [])]
+                else:
+                    found += [o['Key'].rsplit('/',1)[-1] for o in page.get('Contents', []) if o['Key'] != prefix]
+            return found
+        return self._call('list_objects_v2', collect)
+
+    def upload(self, stage, slug):
+        for src in sorted(stage.iterdir()):
+            if src.is_symlink() or not src.is_file():
+                continue
+            self._call('upload_file', lambda src=src: self.client.upload_file(str(src), self.bucket, REMOTE+'/'+slug+'/'+src.name))
+
+    def download(self, slug, name, dest):
+        check_name(name)
+        self._call('download_file', lambda: self.client.download_file(self.bucket, REMOTE+'/'+slug+'/'+name, str(dest/name)))
+
+    def delete(self, slug, name):
+        self._call('delete_object', lambda: self.client.delete_object(Bucket=self.bucket, Key=REMOTE+'/'+slug+'/'+name))
+
+
+def storage():
+    return R2Storage() if (WORK/'.r2.env').exists() else StorageBox()
 
 
 def valid_slug(slug):
@@ -105,17 +182,15 @@ def valid_slug(slug):
 
 
 def prune(storage, slug, now):
-    names = set(storage.names(REMOTE+'/'+slug))
     # Only timestamped encrypted archives/sidecars in this service's namespace.
-    for name in sorted(names):
+    for name in sorted(storage.names(slug)):
         base = name[:-5] if name.endswith('.hmac') else name
         if ARCHIVE.fullmatch(base) and stamp(base) < now-30*86400:
-            storage.remote('rm','--',REMOTE+'/'+slug+'/'+name)
+            storage.delete(slug, name)
 
 
 def sync(storage):
     now = time.time()
-    storage.remote('mkdir','-p',REMOTE)
     locks = tenant.ROOT/'.locks'
     locks.mkdir(exist_ok=True)
     count = 0
@@ -140,41 +215,54 @@ def sync(storage):
                 if any(stage.iterdir()):
                     storage.upload(stage,path.name)
     # Also expire snapshots for tenants already purged locally.
-    for slug in storage.names(REMOTE):
+    for slug in storage.names():
         if valid_slug(slug):
             prune(storage,slug,now)
     print('OFFSITE SYNC OK archives='+str(count))
 
 
-def restore(storage, slug):
-    if not valid_slug(slug):
-        raise ValueError('Invalid tenant slug')
-    names = set(storage.names(REMOTE+'/'+slug))
+def download_newest(storage, slug, dest):
+    # Newest complete remote pair, downloaded into dest and authenticated there.
+    names = set(storage.names(slug))
     choices = sorted(n for n in names if ARCHIVE.fullmatch(n) and n+'.hmac' in names)
     if not choices:
         raise ValueError('No complete remote age backup')
+    name = choices[-1]
+    storage.download(slug,name,dest)
+    storage.download(slug,name+'.hmac',dest)
+    authenticate(dest/name)
+    return dest/name
+
+
+def restore(storage, slug):
+    if not valid_slug(slug):
+        raise ValueError('Invalid tenant slug')
     with tempfile.TemporaryDirectory(prefix='.offsite-restore-',dir=tenant.ROOT) as tmp:
-        dest = Path(tmp)
-        name = choices[-1]
-        storage.download(slug,name,dest)
-        # Sidecar download uses the same fixed filename, with no shell input from listing.
-        storage.command(['rsync','-rt','--timeout=120','-e',shlex.join(storage.ssh),
-                         storage.target+':'+REMOTE+'/'+slug+'/'+name+'.hmac',str(dest/(name+'.hmac'))])
-        authenticate(dest/name)
-        tenant.restore(tenant.ROOT/slug, src=dest/name)
+        tenant.restore(tenant.ROOT/slug, src=download_newest(storage,slug,Path(tmp)))
+
+
+def verify(storage, slug):
+    if not valid_slug(slug):
+        raise ValueError('Invalid tenant slug')
+    with tempfile.TemporaryDirectory(prefix='.offsite-verify-',dir=tenant.ROOT) as tmp:
+        src = download_newest(storage,slug,Path(tmp))
+        size = src.stat().st_size
+        print('OFFSITE VERIFY OK slug='+slug+' archive='+src.name+' bytes='+str(size))
 
 
 def main():
     tenant.ROOT.mkdir(parents=True,exist_ok=True)
     with (tenant.ROOT/'.offsite.lock').open('a') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX)
-        storage = Storage()
+        backend = storage()
         if sys.argv[1:] == ['sync']:
-            sync(storage)
+            sync(backend)
         elif len(sys.argv) == 3 and sys.argv[1] == 'restore':
-            restore(storage,sys.argv[2])
+            restore(backend,sys.argv[2])
+        elif len(sys.argv) == 3 and sys.argv[1] == 'verify':
+            verify(backend,sys.argv[2])
         else:
-            raise ValueError('Usage: offsite.py sync | restore <slug>')
+            raise ValueError('Usage: offsite.py sync | restore <slug> | verify <slug>')
 
 
 if __name__ == '__main__':

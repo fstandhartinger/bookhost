@@ -1,6 +1,8 @@
 import { beforeEach, expect, it, vi } from "vitest";
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
-vi.mock("@/lib/db", () => ({ db: { query: vi.fn() } }));
+vi.mock("@/lib/db", () => ({
+  db: { query: vi.fn(async () => ({ rows: [{ count: 1 }] })) },
+}));
 vi.mock("@/lib/intake/access", async (original) => ({
   ...(await original<typeof import("@/lib/intake/access")>()),
   workspace: vi.fn(),
@@ -39,6 +41,7 @@ beforeEach(() => {
     sources: [],
     refused: false,
     mode: "extractive",
+    retrieval: "lexical",
     terms: [],
   });
 });
@@ -70,6 +73,7 @@ it("answers extractively without charging the allowance", async () => {
   expect(response.status).toBe(200);
   const data = await response.json();
   expect(data.mode).toBe("extractive");
+  expect(data.retrieval).toBe("lexical");
   expect(data.quota).toBeNull();
   expect(chatQuota).not.toHaveBeenCalled();
 });

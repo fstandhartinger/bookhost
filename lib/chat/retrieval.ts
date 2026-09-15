@@ -1,3 +1,6 @@
+import { db } from "@/lib/db";
+import { embedTexts, embeddingsEnabledForTenant } from "./embeddings";
+
 export type WikiClient = {
   base: string;
   request: <T>(
@@ -5,6 +8,14 @@ export type WikiClient = {
     body?: unknown,
     method?: "DELETE" | "PUT",
   ) => Promise<T>;
+};
+
+/** Any pg Pool or PoolClient: the only surface retrieval needs. */
+export type DbClient = {
+  query: (
+    text: string,
+    values?: unknown[],
+  ) => Promise<{ rows: Record<string, unknown>[] }>;
 };
 
 export type Passage = {
@@ -193,4 +204,107 @@ export function absoluteUrl(base: string, path: string | null) {
   } catch {
     return null;
   }
+}
+
+export type RetrievalKind = "lexical" | "hybrid";
+export type HybridResult = {
+  passages: Passage[];
+  retrieval: RetrievalKind;
+};
+
+/** Below this cosine similarity a semantic hit is not worth citing. */
+const SEMANTIC_FLOOR = 0.3;
+
+type VectorRow = {
+  page_id: number;
+  page_name: string;
+  book_id: number | null;
+  section: string | null;
+  url: string | null;
+  chunk: string;
+  similarity: number;
+};
+
+/**
+ * Cosine nearest-neighbour search over the tenant's chunks. The tenant id is
+ * only ever a bound parameter, never part of the SQL text.
+ */
+export async function vectorSearch(
+  database: DbClient,
+  teamId: string,
+  embedding: number[],
+  limit = 8,
+): Promise<VectorRow[]> {
+  const result = await database.query(
+    `SELECT page_id,page_name,book_id,section,url,chunk,1-(embedding <=> $2) AS similarity FROM wiki_chunks WHERE team_id=$1 AND embedding IS NOT NULL ORDER BY embedding <=> $2 LIMIT ${limit}`,
+    [teamId, JSON.stringify(embedding)],
+  );
+  return result.rows
+    .map((row) => row as unknown as VectorRow)
+    .filter((row) => Number.isFinite(row.similarity));
+}
+
+/**
+ * Lexical retrieval first; for gated tenants the question is embedded and the
+ * semantic hits are merged in front of the lexical passages. Any embedding or
+ * index failure degrades to the pure lexical result, never to an error.
+ */
+export async function retrieveHybrid(
+  client: WikiClient,
+  teamId: string,
+  question: string,
+  database: DbClient = db,
+): Promise<HybridResult> {
+  const lexical = await retrieve(client, question, 6);
+  if (!embeddingsEnabledForTenant(teamId))
+    return { passages: lexical, retrieval: "lexical" };
+  let vector: number[] | null = null;
+  try {
+    vector = (await embedTexts([question]))?.[0] ?? null;
+  } catch {
+    vector = null;
+  }
+  if (!vector) return { passages: lexical, retrieval: "lexical" };
+  let hits: VectorRow[] = [];
+  try {
+    hits = await vectorSearch(database, teamId, vector, 8);
+  } catch {
+    hits = [];
+  }
+  const semantic = hits
+    .filter((hit) => hit.similarity >= SEMANTIC_FLOOR)
+    .slice(0, 8);
+  if (!semantic.length) return { passages: lexical, retrieval: "lexical" };
+  const keyOf = (pageId: number, section: string | null) =>
+    `${pageId}:${section ?? ""}`;
+  const seen = new Set<string>();
+  const semanticPassages: Passage[] = [];
+  for (const hit of semantic) {
+    const key = keyOf(hit.page_id, hit.section);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    semanticPassages.push({
+      pageId: hit.page_id,
+      pageName: hit.page_name,
+      bookId: hit.book_id ?? null,
+      section: hit.section,
+      url: hit.url,
+      text: hit.chunk,
+      // Semantic hits live in the upper score band, lexical in the lower one,
+      // so the combined order is stable no matter the raw score scales.
+      score: 0.5 + hit.similarity / 2,
+    });
+  }
+  const maxLexical = Math.max(1e-9, ...lexical.map((passage) => passage.score));
+  const lexicalPassages: Passage[] = [];
+  for (const passage of lexical) {
+    const key = keyOf(passage.pageId, passage.section);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    lexicalPassages.push({ ...passage, score: 0.5 * (passage.score / maxLexical) });
+  }
+  return {
+    passages: [...semanticPassages, ...lexicalPassages].slice(0, 6),
+    retrieval: "hybrid",
+  };
 }

@@ -1,8 +1,11 @@
 import {
   retrieve,
+  retrieveHybrid,
   absoluteUrl,
   queryTerms,
+  type DbClient,
   type Passage,
+  type RetrievalKind,
   type WikiClient,
 } from "./retrieval";
 import { answerQuestion, NO_ANSWER, type ChatSource } from "./answer";
@@ -15,8 +18,15 @@ export type AskResult = {
   sources: ChatSource[];
   refused: boolean;
   mode: AskMode;
+  /** Which retrieval path produced the passages. */
+  retrieval: RetrievalKind;
   /** The search terms behind the result, for highlighting in the reader. */
   terms: string[];
+};
+
+export type AskOptions = {
+  teamId?: string;
+  database?: DbClient;
 };
 
 function toSources(passages: Passage[], base: string): ChatSource[] {
@@ -37,9 +47,14 @@ export function aiEnabled() {
 export async function askWiki(
   client: WikiClient,
   question: string,
+  options: AskOptions = {},
 ): Promise<AskResult> {
   const terms = queryTerms(question);
-  const passages = await retrieve(client, question);
+  const hybrid = options.teamId
+    ? await retrieveHybrid(client, options.teamId, question, options.database)
+    : null;
+  const passages = hybrid ? hybrid.passages : await retrieve(client, question);
+  const retrieval = hybrid?.retrieval ?? "lexical";
   if (!passages.length)
     return {
       question,
@@ -47,6 +62,7 @@ export async function askWiki(
       sources: [],
       refused: true,
       mode: "extractive",
+      retrieval,
       terms,
     };
   if (!aiEnabled()) {
@@ -60,6 +76,7 @@ export async function askWiki(
       ),
       refused: false,
       mode: "extractive",
+      retrieval,
       terms,
     };
   }
@@ -73,6 +90,7 @@ export async function askWiki(
     })),
     refused: result.refused,
     mode: "ai",
+    retrieval,
     terms,
   };
 }

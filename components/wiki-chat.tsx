@@ -14,6 +14,7 @@ type Answer = {
   sources: Source[];
   refused: boolean;
   mode: "extractive" | "ai";
+  retrieval?: "lexical" | "hybrid";
   terms?: string[];
   quota?: { remaining: number; limit: number } | null;
 };
@@ -137,7 +138,14 @@ export function WikiChat({
       )}
       {result && (
         <div className="price-card space-y-5">
-          <h2 className="text-2xl">Answer</h2>
+          <h2 className="flex items-center gap-2 text-2xl">
+            Answer
+            {result.retrieval === "hybrid" && (
+              <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">
+                semantic search
+              </span>
+            )}
+          </h2>
           {result.mode === "extractive" && !result.refused && (
             <p className="rounded-lg bg-slate-50 p-3 text-xs leading-5 text-slate-600">
               AI-written summaries are not enabled yet: the provider agreement

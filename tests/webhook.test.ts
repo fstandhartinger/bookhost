@@ -128,6 +128,64 @@ describe("webhook processing", () => {
       expect.any(Array),
     );
   });
+  it("records one paid conversion only for a paid invoice", async () => {
+    const retrieve = vi.fn(async () => sub);
+    const api = {
+      subscriptions: { retrieve },
+    } as unknown as Pick<Stripe, "subscriptions">;
+    const { query, client } = mockDb();
+    const invoiceEvent = (
+      type: "invoice.paid" | "invoice.payment_failed",
+      amount_paid: number,
+    ) =>
+      ({
+        id: `evt_${type}_${amount_paid}`,
+        type,
+        data: {
+          object: {
+            amount_paid,
+            parent: {
+              subscription_details: { subscription: "sub_1" },
+            },
+          },
+        },
+      }) as unknown as Stripe.Event;
+
+    await handleStripeEvent(client, invoiceEvent("invoice.paid", 2500), api);
+    const paidInserts = query.mock.calls.filter(([sql]) =>
+      String(sql).startsWith("INSERT INTO events"),
+    );
+    expect(paidInserts).toHaveLength(1);
+    expect(paidInserts[0]?.[0]).toContain("paid_conversion");
+    expect((paidInserts[0] as unknown[] | undefined)?.[1]).toEqual(["sub_1"]);
+    expect(retrieve).toHaveBeenCalledTimes(1);
+
+    query.mockClear();
+    retrieve.mockClear();
+    await handleStripeEvent(client, invoiceEvent("invoice.paid", 0), api);
+    expect(
+      query.mock.calls.some(
+        ([sql]) =>
+          String(sql).startsWith("INSERT INTO events") &&
+          String(sql).includes("paid_conversion"),
+      ),
+    ).toBe(false);
+
+    query.mockClear();
+    retrieve.mockClear();
+    await handleStripeEvent(
+      client,
+      invoiceEvent("invoice.payment_failed", 0),
+      api,
+    );
+    expect(
+      query.mock.calls.some(
+        ([sql]) =>
+          String(sql).startsWith("INSERT INTO events") &&
+          String(sql).includes("paid_conversion"),
+      ),
+    ).toBe(false);
+  });
   it("does not claim an existing account by unverified Checkout email", async () => {
     const query = vi.fn(async () => ({ rows: [], rowCount: 0 }));
     const result = await syncCheckout(

@@ -79,7 +79,7 @@ it("keeps tables as ordered matrices, rejecting deletions, reordering and additi
     expect(() => parseDraft(render(rows), input)).toThrow("table");
 });
 it("corrects once on the same model and refuses a second invalid response without fallback", async () => {
-  vi.stubEnv("CHUTES_API_KEY", "unit-test");
+  vi.stubEnv("TENSORX_API_KEY", "unit-test");
   vi.stubEnv("INTAKE_MODELS", "default,fallback");
   const invalid = {
     ...valid,

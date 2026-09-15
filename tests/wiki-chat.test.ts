@@ -214,7 +214,7 @@ describe("ask wiki", () => {
       },
     });
 
-  it("answers extractively with citations and no provider call by default", async () => {
+  it("answers extractively with citations and makes zero outbound calls by default", async () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
     const result = await askWiki(client(), "how do I deploy");
@@ -229,11 +229,11 @@ describe("ask wiki", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it("only writes through the provider when explicitly enabled", async () => {
+  it("only writes through the configured provider when explicitly enabled", async () => {
     vi.stubEnv("WIKI_CHAT_LLM", "1");
-    vi.stubEnv("CHUTES_API_KEY", "test-key");
+    vi.stubEnv("TENSORX_API_KEY", "test-key");
     const fetchSpy = vi.fn(
-      async () =>
+      async (_url: string) =>
         new Response(
           JSON.stringify({
             choices: [
@@ -256,6 +256,14 @@ describe("ask wiki", () => {
     expect(result.mode).toBe("ai");
     expect(result.answer).toContain("deploy script");
     expect(fetchSpy).toHaveBeenCalledOnce();
+    expect(fetchSpy.mock.calls[0][0]).toBe(
+      "https://api.tensorx.ai/v1/chat/completions",
+    );
+    expect(
+      fetchSpy.mock.calls.filter(([url]) =>
+        String(url).includes("chutes.ai"),
+      ),
+    ).toHaveLength(0);
   });
 
   it("refuses when nothing in the wiki matches", async () => {

@@ -163,26 +163,27 @@ export default function Reliability() {
             <p>
               {/* The blanket "nothing is sent without an upload" sentence was
                   removed when chat shipped, but its first replacement said
-                  passages go to Chutes today. They do not: synthesis is behind
-                  WIKI_CHAT_LLM and ships off. Say what holds in both states. */}
+                  passages go to the external model today. They do not: synthesis
+                  is behind WIKI_CHAT_LLM and ships off. Say what holds in both
+                  states. */}
               &ldquo;Ask your wiki&rdquo; is available in beta to workspace owners
               and admins. It searches your own pages and shows the passages it
-              found. The AI synthesis on top of that stays switched off until a
-              provider DPA and international transfer safeguards are documented:
-              while it is off, asking a question sends nothing to Chutes. If we
-              switch it on, the question and those passages go to the same
-              external model as intake — with no upload involved — and the same
-              limit applies as there: use it only on workspaces without personal
-              data.
+              found. The AI synthesis on top of that ships switched off: while it
+              is off, asking a question sends nothing to TensorX. If we switch it
+              on, the question and those passages go to the same external model
+              as intake — with no upload involved — and the same limit applies
+              as there: use it only on workspaces without personal data, until
+              the updated processing conditions are independently verified.
             </p>
             <p>
               Document intake is available in beta. Each upload sends extracted text,
-              not the original file, to Chutes for AI drafting. Source text is removed on
+              not the original file, to TensorX (Ireland) for AI drafting. Source text is removed on
               publication or rejection; intake records and drafts are deleted
-              after 30 days from creation in the next hourly cleanup. Technical
-              availability does not establish a provider DPA or international
-              transfer safeguards. Until those prerequisites are documented, use
-              only non-personal example documents. See our{" "}
+              after 30 days from creation in the next hourly cleanup. TensorX&rsquo;s
+              documented GPU infrastructure is in Dublin and Helsinki, and its
+              vendor DPA provides zero retention of prompts and completions in
+              ephemeral processing. Until the updated processing conditions are
+              independently verified, use only non-personal example documents. See our{" "}
               <Link className="text-moss underline" href="/legal/datenschutz">
                 Privacy Policy
               </Link>{" "}

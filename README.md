@@ -91,7 +91,7 @@ Before public launch:
 - Configure SMTP or Google and exercise real email delivery / OAuth. Password return login is available independently; reset delivery is covered with a mocked SMTP transport until SMTP is configured.
 - Deploy through the operator and verify the live webhook, TLS and proxy header handling. This local acceptance test only creates, then expires, an unpaid live Checkout session.
 - Confirm actual provisioning, tenant isolation, backup retention and successful restore independently. The control plane does not verify those external services and does not promise already-tested restores.
-- Enable document intake only after migration 010, KMS/Chutes configuration and tenant API bootstrap below. Email intake and AI answers remain outside this slice.
+- Enable document intake only after migration 010, KMS/TensorX configuration and tenant API bootstrap below. Email intake and AI answers remain outside this slice.
 
 Legal Markdown comes from `content/legal`; raw HTML is not enabled. Relative legal-document links are normalized and GFM tables are supported.
 
@@ -120,8 +120,13 @@ both before storage/publication and in the preview.
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `INTAKE_KMS_KEY` | Yes, app and worker | 32 random bytes encoded as 64 hex characters; AES-256-GCM key. Keep stable and back it up separately from the database. |
-| `CHUTES_API_KEY` | Yes, app | Chutes server-side inference credential. Never expose as a public variable. |
-| `INTAKE_MODELS` | Optional, app | Comma-separated fast models (at most two). Default: `google/gemma-4-31B-turbo-TEE,deepseek-ai/DeepSeek-V3.2-TEE`. Verify availability against Chutes `/v1/models` before changing. |
+| `TENSORX_API_KEY` | Yes, app | TensorX (EU, Dublin) server-side inference credential for intake drafting and wiki chat. Never expose as a public variable. |
+| `INTAKE_MODELS` | Optional, app | Comma-separated TensorX model names (at most two). Default: `deepseek/deepseek-v4.1-flash,z-ai/glm-5.3-flash`. |
+| `INTAKE_BASE_URL` | Optional, app | OpenAI-compatible base URL for intake drafting. Default: `https://api.tensorx.ai/v1`. |
+| `INTAKE_API_KEY_ENV` | Optional, app | Name of the environment variable holding the intake API key. Default: `TENSORX_API_KEY`. |
+| `WIKI_CHAT_MODELS` | Optional, app | Comma-separated TensorX model names (at most two). Default: `deepseek/deepseek-v4.1-flash,z-ai/glm-5.3-flash`. |
+| `WIKI_CHAT_BASE_URL` | Optional, app | OpenAI-compatible base URL for wiki chat synthesis. Default: `https://api.tensorx.ai/v1`. |
+| `WIKI_CHAT_API_KEY_ENV` | Optional, app | Name of the environment variable holding the wiki chat API key. Default: `TENSORX_API_KEY`. |
 | `BOOKSTACK_API_ID` / `BOOKSTACK_API_SECRET` | Generated tenant files only | Both values in `tenants/<slug>/.env` are encrypted `v1:` envelopes, not directly usable API credentials. |
 | `INTAKE_LIVE_CHECK` | Test only | Set to `demo` to explicitly enable the operator acceptance script. Not needed at runtime. |
 
@@ -226,7 +231,7 @@ retain their independently configured retention period.
 
 `npm test` includes all four extraction formats, invalid uploads, prompt structure,
 HTML sanitization, authenticated encryption, state transitions, membership
-isolation/roles, Chutes fallbacks and mocked BookStack fetch calls.
+isolation/roles, TensorX provider calls and mocked BookStack fetch calls.
 `python -m unittest discover -s ops/provisioner -p 'test_*.py'` checks token
 idempotence/encryption as well as existing lifecycle tests.
 
@@ -237,7 +242,7 @@ intake variables. Run `INTAKE_LIVE_CHECK=demo node scripts/intake-live-check.mjs
 with the same DB/auth/KMS environment. This deliberately creates SQL test identities
 and short-lived signed test sessions without automating any login. It temporarily
 assigns the unowned running demo tenant to the test team, uploads Markdown, calls
-real Chutes, proves role/team denial, publishes and verifies the page via the
+real TensorX, proves role/team denial, publishes and verifies the page via the
 BookStack API. Its `finally` block restores `team_id=NULL` and removes all test
 users, memberships, intake items and rate-limit records. It leaves one useful demo
 page and writes a credential-free result under the operator work directory.
@@ -337,7 +342,7 @@ python3 ops/provisioner/verify-network.py demo e2e-iso
 
 The app-side receiver is `POST /api/intake/inbound`. See [the inbound webhook contract](docs/inbound-email-webhook.md) for exact JSON/HMAC signing, sender authentication responsibilities, limits, retry semantics, storage and acceptance commands. Apply idempotent migration `015_inbound_email.sql`. Set `INBOUND_WEBHOOK_SECRET` from a private operator secret file; set `INBOUND_EMAIL_ENABLED=true` only after the SMTP adapter and MX are verified. Unless this flag is exactly `true`, the receiver returns HTTP 403 (`Inbound email intake is disabled.`) before reading the body or accessing the database, and logs `inbound_email_disabled` without message contents. Direct admission, queue claims/start and deferred processing also enforce the flag; existing queued messages remain paused. The dashboard continues to show the workspace address as a preview. Owners/admins can manage additional sender addresses or exact domains under **Document intake → Send documents by e-mail**; current team members are always accepted. The existing draft quota and human publication approval apply. New mail items and documents are stored transactionally, with a five-second dispatcher into the existing extraction/draft pool. Run a single app process, as for existing intake limits.
 
-Real DB integration: `INTAKE_DB_TEST=1 npx vitest run tests/inbound-db.integration.test.ts` with the same app/local DB/TLS environment as above. The opt-in `INBOUND_LIVE_CHECK=demo node scripts/inbound-live-check.mjs` uses a production build on port 3989 and real Chutes calls, temporarily assigns an unassigned demo tenant, and cleans its test records. It sends no email and publishes no page.
+Real DB integration: `INTAKE_DB_TEST=1 npx vitest run tests/inbound-db.integration.test.ts` with the same app/local DB/TLS environment as above. The opt-in `INBOUND_LIVE_CHECK=demo node scripts/inbound-live-check.mjs` uses a production build on port 3989 and real TensorX calls, temporarily assigns an unassigned demo tenant, and cleans its test records. It sends no email and publishes no page.
 
 ## Operational watchdog
 
@@ -440,7 +445,7 @@ rolled-back schema. Set optional `INVITE_SCREENSHOT` to save a mobile screenshot
 
 ## Draft quality & eval
 
-Run `npm run eval:intake` with `CHUTES_API_KEY` available in the environment. `INTAKE_MODELS` optionally selects up to two Chutes models. The runner calls the production draft function on six fictional English/German documents, with at most twelve requests and no fallback or retries per model. It prints scores, latency and provider token counts and saves drafts plus checks in `eval/results/<timestamp>.json`.
+Run `npm run eval:intake` with `TENSORX_API_KEY` available in the environment. `INTAKE_MODELS` optionally selects up to two TensorX models. The runner calls the production draft function on six fictional English/German documents, with at most twelve requests and no fallback or retries per model. It prints scores, latency and provider token counts and saves drafts plus checks in `eval/results/<timestamp>.json`.
 
 Drafts preserve source order, exact figures, uncertainty and HTML tables, use source-specific English/German review headings with a parser check, and have titles of at most 80 characters. Empty sections are removed after sanitization. Human approval is still required: the automated fact checker is a lexical heuristic, not a guarantee of factual correctness. See [evaluation rules](eval/README.md) and [measured model comparison](eval/REPORT.md).
 

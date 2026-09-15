@@ -142,7 +142,7 @@ try {
       "unsigned curl 401",
       "foreign sender 403",
       "replay same IDs",
-      "real Chutes pipeline draft",
+      "real TensorX pipeline draft",
       "source email",
       "subject retained",
       "test records cleaned in finally",

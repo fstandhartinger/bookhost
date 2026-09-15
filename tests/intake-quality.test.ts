@@ -145,7 +145,7 @@ it("rejects more than twelve evaluation requests before calling a provider", asy
     execFileSync(process.execPath, ["eval/run.mjs"], {
       env: {
         ...process.env,
-        CHUTES_API_KEY: "unit-test",
+        TENSORX_API_KEY: "unit-test",
         INTAKE_MODELS: "a,b,c",
       },
       stdio: "pipe",

@@ -88,7 +88,7 @@ export function parseChatAnswer(raw: string, passages: Passage[]): ChatAnswer {
 export function chatModels() {
   return (
     process.env.WIKI_CHAT_MODELS ||
-    "deepseek-ai/DeepSeek-V3.2-TEE,google/gemma-4-31B-turbo-TEE"
+    "deepseek/deepseek-v4.1-flash,z-ai/glm-5.3-flash"
   )
     .split(",")
     .map((name) => name.trim())
@@ -96,35 +96,45 @@ export function chatModels() {
     .slice(0, 2);
 }
 
+function chatEndpoint() {
+  const base = (
+    process.env.WIKI_CHAT_BASE_URL || "https://api.tensorx.ai/v1"
+  ).replace(/\/+$/, "");
+  return `${base}/chat/completions`;
+}
+function chatApiKey() {
+  const name = process.env.WIKI_CHAT_API_KEY_ENV || "TENSORX_API_KEY";
+  return process.env[name];
+}
+
 export async function answerQuestion(
   question: string,
   passages: Passage[],
 ): Promise<ChatAnswer> {
-  if (!process.env.CHUTES_API_KEY)
+  const apiKey = chatApiKey();
+  if (!apiKey)
     throw new Error("Wiki answers are not configured. Contact support.");
   const models = chatModels();
+  const endpoint = chatEndpoint();
   for (const model of models) {
     const messages = buildChatPrompt(question, passages);
     for (let attempt = 0; attempt < 2; attempt++) {
       let response: Response;
       try {
-        response = await fetch(
-          "https://llm.chutes.ai/v1/chat/completions",
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${process.env.CHUTES_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model,
-              messages,
-              temperature: 0.1,
-              max_tokens: 900,
-            }),
-            signal: AbortSignal.timeout(60000),
+        response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
           },
-        );
+          body: JSON.stringify({
+            model,
+            messages,
+            temperature: 0.1,
+            max_tokens: 4000,
+          }),
+          signal: AbortSignal.timeout(60000),
+        });
       } catch {
         break;
       }

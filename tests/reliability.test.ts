@@ -70,17 +70,18 @@ describe("public reliability evidence", () => {
   });
 
   // The wiki chat beta reaches the same external model without any upload, so
-  // "without an upload nothing goes to Chutes" stopped being true the night it
-  // shipped. Both pages must say what actually leaves the workspace.
+  // "without an upload nothing goes to the external model" stopped being true
+  // the night it shipped. Both pages must say what actually leaves the
+  // workspace.
   it("says that the wiki chat beta also sends passages to the external model", async () => {
     const reliability = readFileSync("app/reliability/page.tsx", "utf8");
 
   // Synthesis is behind WIKI_CHAT_LLM and ships off, so neither page may
-    // claim passages go to Chutes today — nor may either page go back to the
+    // claim passages go to TensorX today — nor may either page go back to the
     // blanket "nothing is sent without an upload".
     const flatReliability = reliability.replace(/\s+/g, " ");
-    expect(flatReliability).not.toContain("this feature sends nothing to Chutes");
-    expect(flatReliability).toContain("while it is off, asking a question sends nothing to Chutes");
+    expect(flatReliability).not.toContain("this feature sends nothing to TensorX");
+    expect(flatReliability).toContain("while it is off, asking a question sends nothing to TensorX");
     expect(flatReliability).toContain("with no upload involved");
     expect(flatReliability).toContain("without personal data");
     const home = readFileSync("app/page.tsx", "utf8");
@@ -186,7 +187,7 @@ describe("public reliability evidence", () => {
     const limits = section(await html(), "limits");
     expect(limits).toContain("Document intake is available in beta");
     expect(limits).not.toContain("AI processing remains disabled");
-    expect(limits).toContain("Each upload sends extracted text, not the original file, to Chutes");
+    expect(limits).toContain("Each upload sends extracted text, not the original file, to TensorX (Ireland)");
     // The "without an upload nothing is sent" sentence was removed when the
     // wiki chat beta made it untrue. What has to stay is what is actually sent.
     expect(limits).not.toContain("Without an upload");

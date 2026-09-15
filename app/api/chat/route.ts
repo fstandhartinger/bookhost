@@ -6,8 +6,11 @@ import {
   IntakeError,
   workspace,
 } from "@/lib/intake/access";
+import { db } from "@/lib/db";
 import { chatQuota, refundChat } from "@/lib/chat/quota";
 import { aiEnabled, askWiki } from "@/lib/chat/ask";
+import { embeddingsEnabledForTenant } from "@/lib/chat/embeddings";
+import { startWikiIndexBackfill } from "@/lib/chat/indexing";
 
 export async function POST(request: Request) {
   try {
@@ -39,7 +42,21 @@ export async function POST(request: Request) {
       : null;
     try {
       const client = await clientFor(tenant);
-      const result = await askWiki(client, question);
+      // A gated tenant without an index answers lexically now and backfills
+      // the vector index in the background (R1.2).
+      if (embeddingsEnabledForTenant(tenant.team_id)) {
+        const index = await db
+          .query(
+            "SELECT count(*)::int AS count FROM wiki_chunks WHERE team_id=$1",
+            [tenant.team_id],
+          )
+          .catch(() => null);
+        if (!index || index.rows[0]?.count === 0)
+          startWikiIndexBackfill(client, tenant.team_id);
+      }
+      const result = await askWiki(client, question, {
+        teamId: tenant.team_id,
+      });
       return Response.json({ ...result, quota });
     } catch (error) {
       if (quota) await refundChat(tenant.team_id, quota.period).catch(() => {});

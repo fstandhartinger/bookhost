@@ -9,5 +9,7 @@ export async function register() {
     startIntakeCleanup();
     const { startEmailQueue } = await import("./lib/intake/email-jobs");
     startEmailQueue();
+    const { startWikiIndexRefresh } = await import("./lib/chat/wiki-index-jobs");
+    startWikiIndexRefresh();
   }
 }

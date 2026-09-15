@@ -8,41 +8,50 @@ export type DraftOptions = {
     tokens: number | null;
   }) => void;
 };
+function intakeEndpoint() {
+  const base = (
+    process.env.INTAKE_BASE_URL || "https://api.tensorx.ai/v1"
+  ).replace(/\/+$/, "");
+  return `${base}/chat/completions`;
+}
+function intakeApiKey() {
+  const name = process.env.INTAKE_API_KEY_ENV || "TENSORX_API_KEY";
+  return process.env[name];
+}
 export async function generateDraft(text: string, options: DraftOptions = {}) {
-  if (!process.env.CHUTES_API_KEY)
+  const apiKey = intakeApiKey();
+  if (!apiKey)
     throw new Error("Drafting is not configured. Contact support.");
   const models = options.model
     ? [options.model]
     : (
         process.env.INTAKE_MODELS ||
-        "google/gemma-4-31B-turbo-TEE,deepseek-ai/DeepSeek-V3.2-TEE"
+        "deepseek/deepseek-v4.1-flash,z-ai/glm-5.3-flash"
       )
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean)
         .slice(0, 2);
+  const endpoint = intakeEndpoint();
   let correctionUsed = false;
   modelLoop: for (const model of models) {
     const messages = buildPrompt(text);
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const response = await fetch(
-          "https://llm.chutes.ai/v1/chat/completions",
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${process.env.CHUTES_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model,
-              messages,
-              temperature: 0.2,
-              max_tokens: 6000,
-            }),
-            signal: AbortSignal.timeout(90000),
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
           },
-        );
+          body: JSON.stringify({
+            model,
+            messages,
+            temperature: 0.2,
+            max_tokens: 6000,
+          }),
+          signal: AbortSignal.timeout(90000),
+        });
         if (!response.ok)
           options.onResponse?.({
             model,

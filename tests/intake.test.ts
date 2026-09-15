@@ -179,7 +179,7 @@ describe("BookStack client", () => {
   });
 });
 it("corrects malformed output once but never retries rate limiting", async () => {
-  vi.stubEnv("CHUTES_API_KEY", "unit-test");
+  vi.stubEnv("TENSORX_API_KEY", "unit-test");
   vi.stubEnv("INTAKE_MODELS", "fast,second");
   const value = {
     title: "Guide",
@@ -204,6 +204,57 @@ it("corrects malformed output once but never retries rate limiting", async () =>
     .mockResolvedValue(new Response("rate-limited", { status: 429 }));
   await expect(generateDraft("source")).rejects.toThrow("Could not create");
   expect(fetcher).toHaveBeenCalledTimes(1);
+});
+
+describe("intake provider configuration", () => {
+  const valid = {
+    title: "Guide",
+    html: "<h2>Summary</h2><p>Example</p><h2>Things a reviewer should check</h2><ul><li>Date</li><li>Owner</li><li>Status</li></ul>",
+    tags: ["one", "two", "three"],
+  };
+  const okResponse = () =>
+    Response.json({
+      choices: [{ message: { content: JSON.stringify(valid) } }],
+    });
+  const chutesCalls = (fetcher: ReturnType<typeof vi.fn>) =>
+    fetcher.mock.calls.filter(([url]) => String(url).includes("chutes.ai"));
+
+  it("calls the default TensorX endpoint with the default first model and never a chutes.ai host", async () => {
+    vi.stubEnv("TENSORX_API_KEY", "unit-test");
+    const fetcher = vi.fn().mockResolvedValue(okResponse());
+    vi.stubGlobal("fetch", fetcher);
+    expect(await generateDraft("source")).toEqual(valid);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(fetcher.mock.calls[0][0]).toBe(
+      "https://api.tensorx.ai/v1/chat/completions",
+    );
+    expect(JSON.parse(fetcher.mock.calls[0][1].body).model).toBe(
+      "deepseek/deepseek-v4.1-flash",
+    );
+    expect(chutesCalls(fetcher)).toHaveLength(0);
+  });
+
+  it("rejects with the configured error and makes zero outbound calls when the key is missing", async () => {
+    vi.stubEnv("TENSORX_API_KEY", "");
+    const fetcher = vi.fn();
+    vi.stubGlobal("fetch", fetcher);
+    await expect(generateDraft("source")).rejects.toThrow(
+      "Drafting is not configured",
+    );
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it("honours a custom INTAKE_BASE_URL and still never calls a chutes.ai host", async () => {
+    vi.stubEnv("TENSORX_API_KEY", "unit-test");
+    vi.stubEnv("INTAKE_BASE_URL", "https://inference.example/v1/");
+    const fetcher = vi.fn().mockResolvedValue(okResponse());
+    vi.stubGlobal("fetch", fetcher);
+    expect(await generateDraft("source")).toEqual(valid);
+    expect(fetcher.mock.calls[0][0]).toBe(
+      "https://inference.example/v1/chat/completions",
+    );
+    expect(chutesCalls(fetcher)).toHaveLength(0);
+  });
 });
 
 it.each(["docx", "pdf"])("extracts an actual %s fixture", async (ext) => {
@@ -304,7 +355,7 @@ describe("Upload destinations", () => {
 });
 
 it("pins evaluation to one model and reports provider token usage", async () => {
-  vi.stubEnv("CHUTES_API_KEY", "unit-test");
+  vi.stubEnv("TENSORX_API_KEY", "unit-test");
   vi.stubEnv("INTAKE_MODELS", "unused,fallback");
   const onResponse = vi.fn();
   const fetcher = vi.fn().mockResolvedValue(

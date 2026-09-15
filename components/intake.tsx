@@ -227,13 +227,15 @@ export function Intake({
               </label>
               <p className="text-xs leading-5 text-slate-500">
                 PDF, DOCX, Markdown or TXT · up to 10 MB and 60,000 characters.
-                Text is sent to Chutes for AI drafting and stored for review.
-                The original file is not retained. Scanned PDFs need OCR first.
+                Text is sent to our EU AI provider (TensorX, Ireland) for AI
+                drafting and stored for review. The original file is not
+                retained. Scanned PDFs need OCR first.
               </p>
             <p className="mt-2 text-xs leading-5 text-amber-800">
-              Beta restriction: our data processing agreement and transfer
-              documentation with the AI provider are not complete yet. Until they
-              are, upload only documents without personal data. See the{" "}
+              Beta restriction: uploads of documents with personal data remain
+              restricted until the updated processing conditions are
+              independently verified. Until then, upload only documents
+              without personal data. See the{" "}
               <Link className="underline" href="/legal/datenschutz">privacy notice</Link>.
             </p>
               <label className="block text-sm font-medium">

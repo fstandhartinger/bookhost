@@ -45,7 +45,7 @@ async function start(configured) {
         AUTH_URL: "http://127.0.0.1:3988",
         AUTH_TRUST_HOST: "true",
         SMTP_HOST: "",
-        CHUTES_API_KEY: "",
+        TENSORX_API_KEY: "",
       },
       stdio: "ignore",
     },

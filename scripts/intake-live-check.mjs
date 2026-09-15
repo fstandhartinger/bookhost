@@ -213,7 +213,7 @@ try {
     book: book.name,
     tests: [
       "real Markdown upload",
-      "real Chutes draft",
+      "real TensorX draft",
       "member publish 403",
       "foreign team GET/POST 404",
       "owner publish 200",

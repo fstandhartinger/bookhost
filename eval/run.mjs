@@ -12,14 +12,15 @@ const expectations = JSON.parse(
 );
 const models = [
   ...new Set(
-    (process.env.INTAKE_MODELS || "google/gemma-4-31B-turbo-TEE")
+    (process.env.INTAKE_MODELS || "deepseek/deepseek-v4.1-flash")
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean),
   ),
 ];
-if (!process.env.CHUTES_API_KEY)
-  throw new Error("CHUTES_API_KEY is required (never stored in results).");
+const keyName = process.env.INTAKE_API_KEY_ENV || "TENSORX_API_KEY";
+if (!process.env[keyName])
+  throw new Error(`${keyName} is required (never stored in results).`);
 if (!models.length || expectations.length * models.length * 2 > 12)
   throw new Error(
     "Maximum 12 calls per run; choose one model for six documents, allowing one correction each.",

@@ -10,7 +10,7 @@ export const faqs = [
   ],
   [
     "Where is our data hosted?",
-    "Our core hosting and backups use Hetzner infrastructure in Germany or Finland, within the EU. This does not mean every service processes data only in the EU: Stripe payments and optional Google sign-in can involve international processing. Document intake (beta) sends the text of each uploaded document to Chutes when your team requests a draft, under the processing terms described in our German privacy notice and data processing agreement; we do not promise EU-only AI inference.",
+    "Our core hosting and backups use Hetzner infrastructure in Germany or Finland, within the EU. This does not mean every service processes data only in the EU: Stripe payments and optional Google sign-in can involve international processing. Document intake (beta) sends the text of each uploaded document to our EU AI provider TensorX (Ireland) when your team requests a draft, under the processing terms described in our German privacy notice and data processing agreement; TensorX's documented GPU infrastructure is in Dublin and Helsinki.",
   ],
   [
     "What happens if we need a backup restored?",

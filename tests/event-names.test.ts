@@ -60,8 +60,14 @@ it("022 preserves every historical event and every source event INSERT", () => {
   }
   expect(inserts).toBeGreaterThan(0);
   expect(required.has("inbound_rejected")).toBe(true);
+  // The newest migration that redefines the constraint is the one in force.
+  const latest = readdirSync("db/migrations")
+    .filter((n) => n.endsWith(".sql") && n >= "022")
+    .filter((n) => allowed(readFileSync(`db/migrations/${n}`, "utf8")).length)
+    .sort()
+    .at(-1)!;
   const actual = new Set(
-    allowed(readFileSync("db/migrations/022_event_names.sql", "utf8")),
+    allowed(readFileSync(`db/migrations/${latest}`, "utf8")),
   );
   expect([...required].filter((name) => !actual.has(name))).toEqual([]);
 });

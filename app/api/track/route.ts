@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { rateLimit, sameOrigin } from "@/lib/security";
 import { requestHash } from "@/lib/analytics/server";
 import {
+  automatedAgent,
   optedOut,
   parseUtm,
   publicPath,
@@ -14,7 +15,14 @@ export async function POST(request: Request) {
       status: 204,
       headers: { "Cache-Control": "no-store" },
     });
-  if (!sameOrigin(request) || optedOut(request.headers)) return done();
+  // Only page beacons are filtered by agent: checkout and billing events come from
+  // server paths where a missing User-Agent says nothing about the visitor.
+  if (
+    !sameOrigin(request) ||
+    optedOut(request.headers) ||
+    automatedAgent(request.headers.get("user-agent"))
+  )
+    return done();
   try {
     const hash = requestHash(request);
     if (!hash || !(await rateLimit("analytics:" + hash, 60, 60))) return done();

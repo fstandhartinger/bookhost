@@ -9,6 +9,7 @@ vi.mock("next/navigation", () => ({
 }));
 import { dailyHasher, isAdmin } from "@/lib/analytics/server";
 import {
+  automatedAgent,
   parseUtm,
   referrerHost,
   publicPath,
@@ -68,11 +69,61 @@ const request = (
     method: "POST",
     headers: {
       origin: "https://bookhost.co",
+      "user-agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       "x-real-ip": "192.0.2.1",
       ...headers,
     },
     body: JSON.stringify(body),
   });
+it.each([
+  {
+    name: "HeadlessChrome",
+    userAgent:
+      "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/120.0.0.0 Safari/537.36",
+    expected: true,
+  },
+  {
+    name: "Googlebot",
+    userAgent:
+      "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+    expected: true,
+  },
+  { name: "curl", userAgent: "curl/8.5.0", expected: true },
+  {
+    name: "python-requests",
+    userAgent: "python-requests/2.32",
+    expected: true,
+  },
+  { name: "empty user agent", userAgent: "", expected: true },
+  { name: "missing user agent", userAgent: null, expected: true },
+  {
+    name: "desktop Chrome on Windows",
+    userAgent:
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    expected: false,
+  },
+  {
+    name: "Firefox on Linux",
+    userAgent:
+      "Mozilla/5.0 (X11; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0",
+    expected: false,
+  },
+  {
+    name: "iPhone Safari",
+    userAgent:
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+    expected: false,
+  },
+  {
+    name: "Android Chrome mobile",
+    userAgent:
+      "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+    expected: false,
+  },
+])("classifies $name user agents", ({ userAgent, expected }) => {
+  expect(automatedAgent(userAgent)).toBe(expected);
+});
 it("stores only a daily hash, sanitized campaign and host", async () => {
   expect(
     (
@@ -114,6 +165,25 @@ it.each([
 ])("skips opted-out and foreign-origin beacons %s", async (headers) => {
   expect((await POST(request(undefined, headers))).status).toBe(204);
   expect(mocks.query).not.toHaveBeenCalled();
+});
+it("skips automated browser beacons but records a normal same-origin browser", async () => {
+  await POST(
+    request(undefined, {
+      "user-agent":
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/120.0.0.0 Safari/537.36",
+    }),
+  );
+  expect(
+    mocks.query.mock.calls.some(([sql]) => String(sql).startsWith("INSERT")),
+  ).toBe(false);
+
+  mocks.query.mockClear();
+  await POST(request());
+  expect(
+    mocks.query.mock.calls.some(([sql]) =>
+      String(sql).startsWith("INSERT INTO page_views"),
+    ),
+  ).toBe(true);
 });
 it("rejects oversized payloads and forged business events", async () => {
   await POST(request({ path: "/", payload: "x".repeat(3000) }));

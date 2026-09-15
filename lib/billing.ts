@@ -211,6 +211,25 @@ export async function syncSubscription(
     ],
   );
 }
+export async function recordPaidConversion(
+  client: Queryable,
+  subscriptionId: string,
+) {
+  await client.query("SAVEPOINT paid_conversion");
+  try {
+    await client.query(
+      `INSERT INTO events(name,team_id,utm_source)
+       SELECT 'paid_conversion',t.id,t.utm_source FROM subscriptions s JOIN teams t ON t.id=s.team_id
+       WHERE s.stripe_subscription_id=$1 AND NOT t.analytics_opt_out
+         AND NOT EXISTS(SELECT 1 FROM events e WHERE e.team_id=t.id AND e.name='paid_conversion')`,
+      [subscriptionId],
+    );
+  } catch {
+    await client.query("ROLLBACK TO SAVEPOINT paid_conversion").catch(() => undefined);
+    return;
+  }
+  await client.query("RELEASE SAVEPOINT paid_conversion");
+}
 export async function handleStripeEvent(
   client: Queryable,
   event: Stripe.Event,
@@ -292,10 +311,13 @@ export async function handleStripeEvent(
     const subscription = invoice.parent?.subscription_details?.subscription;
     const id =
       typeof subscription === "string" ? subscription : subscription?.id;
-    if (id)
+    if (id) {
       await sync(
         await stripe.subscriptions.retrieve(id, { expand: ["customer"] }),
         event.type === "invoice.payment_failed",
       );
+      if (event.type === "invoice.paid" && invoice.amount_paid > 0)
+        await recordPaidConversion(client, id);
+    }
   }
 }

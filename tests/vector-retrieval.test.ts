@@ -466,6 +466,97 @@ describe("indexing", () => {
     expect(vi.mocked(embedTexts).mock.calls[0][0]).toEqual(["gamma text"]);
   });
 
+  it("still indexes with null URLs when the books listing fails (A19)", async () => {
+    openGate();
+    const { store, database } = fakeChunkDb();
+    const request = vi.fn(async (path: string) => {
+      if (path.startsWith("books?"))
+        throw new Error("books endpoint down");
+      if (path.startsWith("pages?count=500"))
+        return {
+          data: [
+            { id: 1, title: "Deploy handbook", book_id: 5, slug: "deploy" },
+            { id: 2, title: "Credentials", book_id: 6, slug: "credentials" },
+          ],
+          total: 2,
+        };
+      const match = path.match(/^pages\/(\d+)$/);
+      const id = match ? Number(match[1]) : NaN;
+      if (id === 1)
+        return { id: 1, name: "Deploy handbook", html: "<p>alpha text</p>" };
+      if (id === 2)
+        return { id: 2, name: "Credentials", html: "<p>gamma text</p>" };
+      throw new Error(`unexpected path ${path}`);
+    });
+    const client = {
+      base: "https://wiki.example",
+      request,
+    } as unknown as WikiClient & { request: ReturnType<typeof vi.fn> };
+    vi.mocked(embedTexts).mockImplementation(async (texts: string[]) =>
+      texts.map(fakeVector),
+    );
+    // the failing books listing must not abort the run
+    const report = await indexTenant(client, TEAM, database);
+    expect(report.status).toBe("ok");
+    expect(report.error).toBeUndefined();
+    expect(report.pages).toBe(2);
+    expect(report.chunks).toBe(2);
+    expect(store.size).toBe(2);
+    // without book slugs no URL can be built: every citation is null,
+    // never a numeric-id link
+    for (const row of store.values()) expect(row.url).toBeNull();
+    expect(request).toHaveBeenCalledWith("books?count=500&offset=0");
+  });
+
+  it("resolves book slugs from a second books page (A19)", async () => {
+    openGate();
+    const { store, database } = fakeChunkDb();
+    const firstBatch = Array.from({ length: 500 }, (_, i) => ({
+      id: i + 1,
+      slug: `book-${i + 1}`,
+    }));
+    const secondBatch = [
+      { id: 501, slug: "alpha-late" },
+      { id: 502, slug: "beta-late" },
+      { id: 503, slug: "target-book" },
+    ];
+    const request = vi.fn(async (path: string) => {
+      if (path.startsWith("books?count=500")) {
+        if (path.endsWith("offset=0"))
+          return { data: firstBatch, total: 503 };
+        if (path.endsWith("offset=500"))
+          return { data: secondBatch, total: 503 };
+        throw new Error(`unexpected books path ${path}`);
+      }
+      if (path.startsWith("pages?count=500"))
+        return {
+          data: [
+            { id: 1, title: "Deploy handbook", book_id: 503, slug: "deploy" },
+          ],
+          total: 1,
+        };
+      const match = path.match(/^pages\/(\d+)$/);
+      const id = match ? Number(match[1]) : NaN;
+      if (id === 1)
+        return { id: 1, name: "Deploy handbook", html: "<p>alpha text</p>" };
+      throw new Error(`unexpected path ${path}`);
+    });
+    const client = {
+      base: "https://wiki.example",
+      request,
+    } as unknown as WikiClient & { request: ReturnType<typeof vi.fn> };
+    vi.mocked(embedTexts).mockImplementation(async (texts: string[]) =>
+      texts.map(fakeVector),
+    );
+    const report = await indexTenant(client, TEAM, database);
+    expect(report.status).toBe("ok");
+    expect(report.pages).toBe(1);
+    // the page's book only exists in the second batch, so the loop must
+    // have followed the pagination to find its slug
+    expect(store.get(`${TEAM}:1:0`)!.url).toBe("/books/target-book/page/deploy");
+    expect(request).toHaveBeenCalledWith("books?count=500&offset=500");
+  });
+
   it("prefixes the heading, caps at 1200 chars and skips empty sections", () => {
     expect(
       chunksOf({ name: "P", html: "<h2>Head</h2><p>body</p><h2>Empty</h2>" }),

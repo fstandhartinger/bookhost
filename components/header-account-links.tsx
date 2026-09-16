@@ -1,6 +1,6 @@
 "use client";
 
-import * as NextNavigation from "next/navigation";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
 
@@ -43,20 +43,6 @@ export function headerLinksFor(pathname: string | null): HeaderLink[] {
     },
   ];
 }
-
-// Some test setups mock next/navigation without usePathname (the mock proxy
-// throws on access); without the hook the header falls back to the public
-// links instead of crashing the layout.
-function resolveUsePathname(): () => string | null {
-  try {
-    const hook = NextNavigation.usePathname;
-    if (typeof hook === "function") return hook;
-  } catch {
-    // Partial mock: usePathname is not available.
-  }
-  return () => null;
-}
-const usePathname = resolveUsePathname();
 
 export default function HeaderAccountLinks({
   callToAction,

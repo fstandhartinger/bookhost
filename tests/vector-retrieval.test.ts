@@ -13,7 +13,7 @@ import {
   embeddingsEnabledForTenant,
   truncateAndRenormalise,
 } from "@/lib/chat/embeddings";
-import { chunksOf, indexTenant } from "@/lib/chat/indexing";
+import { chunksOf, contentHash, indexTenant } from "@/lib/chat/indexing";
 import { askWiki } from "@/lib/chat/ask";
 
 // embedTexts is spied so indexing tests can prove which chunks were sent to
@@ -291,10 +291,18 @@ describe("indexing", () => {
   function indexingClient(
     pages: Record<number, { title: string; book_id?: number; slug?: string }>,
     htmls: Record<number, string>,
+    books: Record<number, { slug: string }> = {},
   ): WikiClient {
     return {
       base: "https://wiki.example",
       request: vi.fn(async (path: string) => {
+        if (path.startsWith("books?count=500")) {
+          const data = Object.entries(books).map(([id, book]) => ({
+            id: Number(id),
+            slug: book.slug,
+          }));
+          return { data, total: data.length };
+        }
         if (path.startsWith("pages?count=500")) {
           const data = Object.entries(pages).map(([id, page]) => ({
             id: Number(id),
@@ -380,6 +388,82 @@ describe("indexing", () => {
     // the deleted page is gone
     expect(store.has(`${TEAM}:3:0`)).toBe(false);
     expect(store.size).toBe(3);
+  });
+
+  it("stores slug-based citation URLs and null for unknown books (A19)", async () => {
+    openGate();
+    const { store, database } = fakeChunkDb();
+    const client = indexingClient(
+      {
+        1: { title: "Deploy handbook", book_id: 5, slug: "deploy" },
+        2: { title: "Credentials", book_id: 6, slug: "credentials" },
+        3: { title: "Orphan", book_id: 9, slug: "orphan" },
+      },
+      {
+        1: "<p>alpha text</p>",
+        2: "<p>gamma text</p>",
+        3: "<p>delta text</p>",
+      },
+      {
+        5: { slug: "handbook" },
+        6: { slug: "secrets" },
+      },
+    );
+    vi.mocked(embedTexts).mockImplementation(async (texts: string[]) =>
+      texts.map(fakeVector),
+    );
+    const report = await indexTenant(client, TEAM, database);
+    expect(report.status).toBe("ok");
+    expect(store.size).toBe(3);
+    // every stored URL is the real BookStack page route, slug-based
+    expect(store.get(`${TEAM}:1:0`)!.url).toBe("/books/handbook/page/deploy");
+    expect(store.get(`${TEAM}:2:0`)!.url).toBe("/books/secrets/page/credentials");
+    // a page whose book is missing from the books listing gets no URL
+    expect(store.get(`${TEAM}:3:0`)!.url).toBeNull();
+    for (const row of store.values())
+      expect(row.url ?? "").not.toMatch(/^\/books\/\d+\/page\//);
+  });
+
+  it("re-embeds a NULL-embedding row and then no-ops cleanly (A19)", async () => {
+    openGate();
+    const { store, database } = fakeChunkDb();
+    const html = "<p>gamma text</p>";
+    const client = indexingClient(
+      { 1: { title: "Credentials", book_id: 6, slug: "credentials" } },
+      { 1: html },
+      { 6: { slug: "secrets" } },
+    );
+    vi.mocked(embedTexts).mockImplementation(async (texts: string[]) =>
+      texts.map(fakeVector),
+    );
+    // an operator forces a re-embed by NULLing the embedding while the
+    // content hash still matches
+    const chunk = chunksOf({ name: "Credentials", html })[0];
+    store.set(`${TEAM}:1:0`, {
+      team_id: TEAM,
+      page_id: 1,
+      page_name: "Credentials",
+      book_id: 6,
+      section: null,
+      url: "/books/secrets/page/credentials",
+      chunk_ordinal: 0,
+      chunk: chunk.text,
+      content_hash: contentHash(chunk.text),
+      embedding: null,
+    });
+    const first = await indexTenant(client, TEAM, database);
+    expect(first.status).toBe("ok");
+    expect(first.error).toBeUndefined();
+    expect(first.embedded).toBe(1);
+    expect(store.get(`${TEAM}:1:0`)!.embedding).not.toBeNull();
+    const second = await indexTenant(client, TEAM, database);
+    expect(second.status).toBe("ok");
+    expect(second.error).toBeUndefined();
+    expect(second.embedded).toBe(0);
+    for (const row of store.values()) expect(row.embedding).not.toBeNull();
+    // the NULL row was re-embedded exactly once, across both runs
+    expect(vi.mocked(embedTexts)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(embedTexts).mock.calls[0][0]).toEqual(["gamma text"]);
   });
 
   it("prefixes the heading, caps at 1200 chars and skips empty sections", () => {

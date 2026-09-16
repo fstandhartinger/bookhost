@@ -70,7 +70,36 @@ type PageDetail = {
 };
 
 /** Same paged listing loop as BookStack.list: 500 per page, bounded. */
-async function listPages(client: WikiClient): Promise<PageSummary[]> {
+async function listBooks(client: WikiClient): Promise<Map<number, string>> {
+  const slugs = new Map<number, string>();
+  let seen = 0;
+  for (let offset = 0; ; offset += 500) {
+    const result = await client.request<{
+      data?: { id?: number; slug?: string }[];
+      total?: number;
+    }>(`books?count=500&offset=${offset}`);
+    const data = result.data || [];
+    for (const book of data) {
+      seen += 1;
+      if (
+        typeof book.id === "number" &&
+        Number.isSafeInteger(book.id) &&
+        typeof book.slug === "string" &&
+        book.slug
+      )
+        slugs.set(book.id, book.slug);
+    }
+    const total = result.total ?? data.length;
+    if (seen >= total || !data.length) return slugs;
+    if (offset >= 9500) throw new Error("Too many books to index.");
+  }
+}
+
+/** Same paged listing loop as BookStack.list: 500 per page, bounded. */
+async function listPages(
+  client: WikiClient,
+  bookSlugs: Map<number, string>,
+): Promise<PageSummary[]> {
   const all: PageSummary[] = [];
   for (let offset = 0; ; offset += 500) {
     const result = await client.request<{
@@ -79,7 +108,6 @@ async function listPages(client: WikiClient): Promise<PageSummary[]> {
         title?: string;
         name?: string;
         book_id?: number;
-        chapter_id?: number | null;
         slug?: string;
       }[];
       total?: number;
@@ -93,21 +121,16 @@ async function listPages(client: WikiClient): Promise<PageSummary[]> {
         typeof page.book_id === "number" && Number.isSafeInteger(page.book_id)
           ? page.book_id
           : null;
-      const chapterId =
-        typeof page.chapter_id === "number" && Number.isSafeInteger(page.chapter_id)
-          ? page.chapter_id
-          : null;
+      const bookSlug = bookId === null ? null : bookSlugs.get(bookId) ?? null;
       all.push({
         id: page.id,
         name,
         bookId,
-        url: page.slug
-          ? bookId
-            ? `/books/${bookId}/page/${page.slug}`
-            : chapterId
-              ? `/chapters/${chapterId}/page/${page.slug}`
-              : null
-          : null,
+        // BookStack's page route is /books/<book-slug>/page/<page-slug>;
+        // a numeric id or a chapter path would 404, so an unknown slug
+        // stores null rather than a dead link.
+        url:
+          page.slug && bookSlug ? `/books/${bookSlug}/page/${page.slug}` : null,
       });
     }
     const total = result.total ?? data.length;
@@ -118,9 +141,9 @@ async function listPages(client: WikiClient): Promise<PageSummary[]> {
 
 /**
  * Rebuild one tenant's chunk index. Only chunks whose content hash changed
- * are re-embedded; rows for pages that disappeared are deleted. Errors are
- * reported, never raised, and a persistent embedding failure leaves the old
- * rows in place.
+ * or whose stored embedding is NULL are re-embedded; rows for pages that
+ * disappeared are deleted. Errors are reported, never raised, and a
+ * persistent embedding failure leaves the old rows in place.
  */
 export async function indexTenant(
   client: WikiClient,
@@ -139,7 +162,12 @@ export async function indexTenant(
     return report;
   }
   try {
-    const pages = await listPages(client);
+    // Best effort: a failing books listing degrades to null URLs rather
+    // than failing the whole run.
+    const bookSlugs = await listBooks(client).catch(
+      () => new Map<number, string>(),
+    );
+    const pages = await listPages(client, bookSlugs);
     report.pages = pages.length;
     const details = await Promise.allSettled(
       pages.map((page) => client.request<PageDetail>(`pages/${page.id}`)),
@@ -185,19 +213,24 @@ export async function indexTenant(
         row as unknown as StoredChunk,
       ]),
     );
-    const changed = desired.filter(
-      (item) =>
-        stored.get(`${item.page.id}:${item.ordinal}`)?.content_hash !== item.hash,
-    );
-    let vectors: number[][] | null = null;
+    // A NULL embedding counts as changed: it is exactly what an operator
+    // sets to force a re-embed, and skipping it would wedge every run.
+    const changed = desired.filter((item) => {
+      const previous = stored.get(`${item.page.id}:${item.ordinal}`);
+      return (
+        previous?.content_hash !== item.hash || previous.embedding === null
+      );
+    });
+    const vectorsByItem = new Map<Desired, number[]>();
     if (changed.length) {
-      vectors = await embedTexts(changed.map((item) => item.chunk));
+      let vectors = await embedTexts(changed.map((item) => item.chunk));
       if (!vectors)
         vectors = await embedTexts(changed.map((item) => item.chunk));
       if (!vectors) {
         report.error = "Embedding provider unavailable; index left unchanged.";
         return report;
       }
+      changed.forEach((item, index) => vectorsByItem.set(item, vectors[index]));
       report.embedded = changed.length;
     }
     // Pages that vanished from the wiki lose their rows; a page that is still
@@ -221,7 +254,7 @@ export async function indexTenant(
         previous?.content_hash === item.hash && previous.embedding !== null;
       const embedding = unchanged
         ? previous.embedding
-        : JSON.stringify(vectors![changed.indexOf(item)]);
+        : JSON.stringify(vectorsByItem.get(item)!);
       await database.query(
         `INSERT INTO wiki_chunks (team_id,page_id,page_name,book_id,section,url,chunk_ordinal,chunk,content_hash,embedding)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)

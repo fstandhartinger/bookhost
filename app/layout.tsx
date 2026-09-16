@@ -1,5 +1,6 @@
 import { PRODUCT_DESCRIPTION } from "@/lib/metadata";
 import AnalyticsBeacon from "@/lib/analytics/beacon";
+import HeaderAccountLinks from "@/components/header-account-links";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Link from "next/link";
@@ -85,21 +86,17 @@ export default function RootLayout({
               bookhost<span className="text-moss">.</span>
             </Link>
             <div className="flex items-center gap-3 text-sm sm:gap-5">
-              {/* The call to action leads to /pricing as well, so on a phone the
-                  plain link only costs the width that pushed the row off screen. */}
-              <Link className="hidden hover:underline sm:inline" href="/pricing">
-                Pricing
-              </Link>
-              <Link className="whitespace-nowrap hover:underline" href="/login">
-                Log in
-              </Link>
-              <Link
-                className="whitespace-nowrap rounded-lg border border-ink/20 px-3 py-2 sm:px-4"
-                href="/pricing"
-              >
-                <span className="sm:hidden">Try free ↗</span>
-                <span className="hidden sm:inline">Try BookHost ↗</span>
-              </Link>
+              <HeaderAccountLinks
+                callToAction={
+                  <Link
+                    href="/pricing"
+                    className="whitespace-nowrap rounded-lg border border-ink/20 px-3 py-2 sm:px-4"
+                  >
+                    <span className="sm:hidden">Try free ↗</span>
+                    <span className="hidden sm:inline">Try BookHost ↗</span>
+                  </Link>
+                }
+              />
             </div>
           </nav>
         </header>

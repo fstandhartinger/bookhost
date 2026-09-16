@@ -217,6 +217,28 @@ export default function Home() {
           committed release date. The document upload and review beta is
           available now.
         </p>
+        <figure className="mt-8 flex flex-col gap-4">
+          <figcaption className="order-2 text-sm leading-6 text-slate-600">
+            Real screenshot from our internal test workspace. There, matching by meaning found the bike-parking page although the question shares no word with it. Customer workspaces currently match by words; every answer still names its source page.
+          </figcaption>
+          <a
+            href="/screens/wiki-chat-answer.webp"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block overflow-hidden rounded-xl border border-ink/10 bg-white shadow-sm"
+            aria-label="View full screenshot: Ask your wiki answer"
+          >
+            <Image
+              src="/screens/wiki-chat-answer.webp"
+              alt='Ask your wiki answering "Where may I leave my two-wheeler?" with the bike-parking page as its numbered source'
+              width={1152}
+              height={870}
+              loading="lazy"
+              className="h-auto w-full"
+              sizes="(min-width: 1152px) 1100px, calc(100vw - 48px)"
+            />
+          </a>
+        </figure>
       </section>
       <div className="border-y border-ink/10">
         <Pricing />

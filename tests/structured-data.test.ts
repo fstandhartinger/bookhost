@@ -19,6 +19,7 @@ vi.mock("next/headers", () => ({
 }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({
+  usePathname: () => "/",
   redirect: () => {
     throw Error("redirect");
   },

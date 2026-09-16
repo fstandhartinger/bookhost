@@ -194,6 +194,14 @@ it("keeps the honest caveat next to the restore evidence", async () => {
   expect(post).toMatch(/matched by SHA-256/);
 });
 
+it("labels the chat screenshot as an internal test workspace", async () => {
+  // Semantic matching is only enabled in our internal test workspace, so the
+  // screenshot must say exactly that instead of implying customers get it.
+  const text = await readFile("app/page.tsx", "utf8");
+  expect(text).toContain("/screens/wiki-chat-answer.webp");
+  expect(text).toContain("Customer workspaces currently match by words; every answer still names its source page.");
+});
+
 it("makes an incomplete wiki access removal impossible to walk past", async () => {
   // Removing someone from the team does not always remove an account that
   // existed before the invitation. The owner has to act, so the notice needs

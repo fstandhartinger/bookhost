@@ -1,8 +1,8 @@
 "use client";
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { parseUtm, publicPath } from "./shared";
-const storageKey = "wissen-attribution";
+import { publicPath } from "./shared";
+import { attributionFor } from "./attribution";
 // Any workspace domain: the public demo is always the "demo." subdomain.
 const isDemoHost = (host: string) =>
   host === demoLegacyHost || host.startsWith("demo.");
@@ -15,22 +15,11 @@ function disabled() {
       .globalPrivacyControl === true
   );
 }
+// Attribution lives only in the memory of the open page: it survives
+// client-side (SPA) navigations and is gone after a full reload. Nothing is
+// stored on the device for statistics.
 function attribution() {
-  if (disabled()) {
-    try {
-      sessionStorage.removeItem(storageKey);
-    } catch {}
-    return {};
-  }
-  const current = parseUtm(new URLSearchParams(location.search));
-  try {
-    if (current.utm_source)
-      sessionStorage.setItem(storageKey, JSON.stringify(current));
-    const saved = JSON.parse(sessionStorage.getItem(storageKey) || "null");
-    return current.utm_source ? current : saved || current;
-  } catch {
-    return current;
-  }
+  return attributionFor(location.search, disabled());
 }
 export default function AnalyticsBeacon() {
   const path = usePathname();

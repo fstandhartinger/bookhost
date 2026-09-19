@@ -32,6 +32,11 @@ export async function analyticsReport(db) {
     WHERE referrer_host IS NOT NULL
       AND ts >= (date_trunc('day',now() AT TIME ZONE 'UTC')-interval '13 days') AT TIME ZONE 'UTC'
     GROUP BY 1 ORDER BY 2 DESC, 1 LIMIT 25`);
+  const { rows: pageRows } = await db.query(`
+    SELECT path, count(*)::int AS visits, count(DISTINCT visitor_hash)::int AS uniques
+    FROM page_views
+    WHERE ts >= (date_trunc('day',now() AT TIME ZONE 'UTC')-interval '13 days') AT TIME ZONE 'UTC'
+    GROUP BY 1 ORDER BY 2 DESC, 1 LIMIT 25`);
   const metrics = [
     "visits",
     "demo_click",
@@ -62,11 +67,76 @@ export async function analyticsReport(db) {
       host: row.host,
       visits: row.visits,
     })),
+    pages: pageRows.map((row) => ({
+      path: row.path,
+      visits: row.visits,
+      uniques: row.uniques,
+    })),
     sources: [...sources]
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([source, counts]) => ({ source, ...counts })),
     days: [...days]
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([day, counts]) => ({ day, ...counts })),
+  };
+}
+
+// Aggregate for GET /api/operator/visits?days=N. The caller validates days as an
+// integer 1..90; the guard keeps the window bounded if the function is ever
+// reused elsewhere. days is only ever a query parameter, never SQL text.
+export async function operatorVisits(db, days) {
+  if (!Number.isInteger(days) || days < 1 || days > 90)
+    throw new RangeError("days must be an integer between 1 and 90");
+  const since = `(date_trunc('day',now() AT TIME ZONE 'UTC')-($1::int-1)*interval '1 day') AT TIME ZONE 'UTC'`;
+  const { rows: dayRows } = await db.query(
+    `
+    SELECT (ts AT TIME ZONE 'UTC')::date::text AS date, count(*)::int AS visits,
+      count(DISTINCT visitor_hash)::int AS uniques
+    FROM page_views WHERE ts >= ${since}
+    GROUP BY 1`,
+    [days],
+  );
+  const { rows: pageRows } = await db.query(
+    `
+    SELECT path, count(*)::int AS visits, count(DISTINCT visitor_hash)::int AS uniques
+    FROM page_views WHERE ts >= ${since}
+    GROUP BY 1 ORDER BY 2 DESC, 1 LIMIT 25`,
+    [days],
+  );
+  const { rows: referrerRows } = await db.query(
+    `
+    SELECT referrer_host AS host, count(*)::int AS visits, count(DISTINCT visitor_hash)::int AS uniques
+    FROM page_views
+    WHERE referrer_host IS NOT NULL AND ts >= ${since}
+    GROUP BY 1 ORDER BY 2 DESC, 1 LIMIT 25`,
+    [days],
+  );
+  const series = [];
+  const today = new Date();
+  for (let ago = days - 1; ago >= 0; ago--) {
+    const date = new Date(today);
+    date.setUTCDate(date.getUTCDate() - ago);
+    series.push({ date: date.toISOString().slice(0, 10), visits: 0, uniques: 0 });
+  }
+  const byDate = new Map(series.map((entry) => [entry.date, entry]));
+  for (const row of dayRows) {
+    const target = byDate.get(String(row.date));
+    if (target) {
+      target.visits = Number(row.visits);
+      target.uniques = Number(row.uniques);
+    }
+  }
+  return {
+    days: series,
+    topPages: pageRows.map((row) => ({
+      path: row.path,
+      visits: row.visits,
+      uniques: row.uniques,
+    })),
+    topReferrers: referrerRows.map((row) => ({
+      host: row.host,
+      visits: row.visits,
+      uniques: row.uniques,
+    })),
   };
 }

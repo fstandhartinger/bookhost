@@ -210,20 +210,30 @@ it("admin gate denies missing/unlisted users with 404 before DB access", async (
 });
 it("shares consistent source/day totals with zero-filled daily series", async () => {
   const day = new Date().toISOString().slice(0, 10);
-  mocks.query.mockResolvedValue({
-    rows: [
-      {
-        day,
-        source: "test",
-        visits: 2,
-        demo_click: 1,
-        checkout_start: 1,
-        trial_started: 0,
-        workspace_created: 0,
-        intake_draft: 0,
-        intake_published: 0,
-      },
-    ],
+  mocks.query.mockImplementation(async (sql: string) => {
+    if (String(sql).includes("SELECT path,"))
+      return {
+        rows: [
+          { path: "/", visits: 3, uniques: 2 },
+          { path: "/pricing", visits: 1, uniques: 1 },
+        ],
+      };
+    if (String(sql).includes("referrer_host AS host")) return { rows: [] };
+    return {
+      rows: [
+        {
+          day,
+          source: "test",
+          visits: 2,
+          demo_click: 1,
+          checkout_start: 1,
+          trial_started: 0,
+          workspace_created: 0,
+          intake_draft: 0,
+          intake_published: 0,
+        },
+      ],
+    };
   });
   const report = await analyticsReport({ query: mocks.query });
   expect(report.sources[0]).toMatchObject({
@@ -233,6 +243,17 @@ it("shares consistent source/day totals with zero-filled daily series", async ()
   });
   expect(report.days).toHaveLength(14);
   expect(report.days.at(-1)).toMatchObject({ day, visits: 2 });
+  // Top pages share the same window: visits counts every beacon row, uniques
+  // the daily hashes behind them; SQL orders by visits DESC, then path.
+  expect(report.pages).toEqual([
+    { path: "/", visits: 3, uniques: 2 },
+    { path: "/pricing", visits: 1, uniques: 1 },
+  ]);
+  const pagesSql = mocks.query.mock.calls.find(([sql]) =>
+    String(sql).includes("SELECT path,"),
+  )?.[0] as string;
+  expect(pagesSql).toContain("count(DISTINCT visitor_hash)::int AS uniques");
+  expect(pagesSql).toContain("ORDER BY 2 DESC, 1 LIMIT 25");
 });
 
 it("does not count our own pages as a referring site", () => {

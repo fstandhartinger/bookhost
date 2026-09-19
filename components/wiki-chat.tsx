@@ -1,36 +1,32 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
-type Source = {
-  pageId: number;
-  pageName: string;
-  section: string | null;
-  url: string | null;
-  excerpt: string;
-};
-type Answer = {
-  question: string;
-  answer: string;
-  sources: Source[];
-  refused: boolean;
-  mode: "extractive" | "ai";
-  retrieval?: "lexical" | "hybrid";
-  terms?: string[];
-  quota?: { remaining: number; limit: number } | null;
-};
+import React, { useRef, useState } from "react";
+import {
+  createInflightGuard,
+  requestAnswer,
+  type ChatAnswer as Answer,
+  type ChatFailure,
+} from "@/lib/chat/client-error";
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /** Wrap the question's search terms wherever they appear, so hits stand out. */
-function highlight(text: string, terms: string[] | undefined, keyPrefix: string) {
+function highlight(
+  text: string,
+  terms: string[] | undefined,
+  keyPrefix: string,
+) {
   if (!terms?.length) return text;
   const pattern = new RegExp(`(${terms.map(escapeRegExp).join("|")})`, "gi");
   const lookup = new Set(terms.map((term) => term.toLowerCase()));
   return text.split(pattern).map((part, index) =>
     lookup.has(part.toLowerCase()) ? (
-      <mark key={`${keyPrefix}-${index}`} className="rounded bg-amber-100 px-0.5">
+      <mark
+        key={`${keyPrefix}-${index}`}
+        className="rounded bg-amber-100 px-0.5"
+      >
         {part}
       </mark>
     ) : (
@@ -38,6 +34,45 @@ function highlight(text: string, terms: string[] | undefined, keyPrefix: string)
     ),
   );
 }
+
+export function FailureNotice({
+  failure,
+  busy,
+  onRetry,
+}: {
+  failure: ChatFailure;
+  busy: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <div
+      role="alert"
+      className="space-y-3 rounded-xl bg-red-50 p-4 text-red-800"
+    >
+      <p>{failure.message}</p>
+      {(failure.link || failure.retry) && (
+        <p className="flex flex-wrap gap-x-4">
+          {failure.link && (
+            <a className="underline" href={failure.link.href}>
+              {failure.link.label}
+            </a>
+          )}
+          {failure.retry && (
+            <button
+              type="button"
+              className="underline"
+              disabled={busy}
+              onClick={onRetry}
+            >
+              Retry
+            </button>
+          )}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function WikiChat({
   tenants,
 }: {
@@ -48,28 +83,32 @@ export function WikiChat({
   const [result, setResult] = useState<Answer | null>(null);
   const [remaining, setRemaining] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  async function ask(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError("");
+  const [failure, setFailure] = useState<ChatFailure | null>(null);
+  const inflight = useRef(createInflightGuard());
+  async function submit() {
+    if (!inflight.current.enter()) return;
+    setFailure(null);
     setBusy(true);
     setResult(null);
     try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tenant, question }),
-      });
-      const data = await response.json();
-      if (!response.ok)
-        throw new Error(data.error || "Request failed. Please try again.");
-      setResult(data);
-      if (data.quota) setRemaining(data.quota.remaining);
-    } catch (e) {
-      setError((e as Error).message);
+      const outcome = await requestAnswer(fetch, { tenant, question });
+      if (outcome.ok) {
+        setResult(outcome.answer);
+        if (outcome.answer.quota) setRemaining(outcome.answer.quota.remaining);
+      } else {
+        setFailure(outcome.failure);
+      }
     } finally {
+      inflight.current.leave();
       setBusy(false);
     }
+  }
+  function ask(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void submit();
+  }
+  function retry() {
+    if (failure?.retry) void submit();
   }
   return (
     <div className="mt-8 space-y-6">
@@ -82,6 +121,8 @@ export function WikiChat({
             disabled={busy}
             onChange={(e) => {
               setResult(null);
+              setFailure(null);
+              setRemaining(null);
               setTenant(e.target.value);
             }}
           >
@@ -124,17 +165,18 @@ export function WikiChat({
           </Link>
           .
         </p>
-        <button className="button" disabled={busy || question.trim().length < 3}>
+        <button
+          className="button"
+          disabled={busy || question.trim().length < 3}
+        >
           {busy ? "Reading your wiki…" : "Ask"}
         </button>
       </form>
       <p role="status" aria-live="polite" className="text-sm text-slate-600">
         {busy && "Searching your wiki and collecting the matching pages…"}
       </p>
-      {error && (
-        <p role="alert" className="rounded-xl bg-red-50 p-4 text-red-800">
-          {error}
-        </p>
+      {failure && (
+        <FailureNotice failure={failure} busy={busy} onRetry={retry} />
       )}
       {result && (
         <div className="price-card space-y-5">
@@ -157,7 +199,9 @@ export function WikiChat({
           <p className="whitespace-pre-wrap text-base leading-7">
             {result.answer.split(/(\[\d+\])/).map((part, index) => {
               const match = part.match(/^\[(\d+)\]$/);
-              const source = match ? result.sources[Number(match[1]) - 1] : null;
+              const source = match
+                ? result.sources[Number(match[1]) - 1]
+                : null;
               if (!source) return highlight(part, result.terms, `a-${index}`);
               return source.url ? (
                 <a
@@ -201,7 +245,10 @@ export function WikiChat({
                       )}
                     </span>
                     {source.section && (
-                      <span className="text-slate-500"> › {source.section}</span>
+                      <span className="text-slate-500">
+                        {" "}
+                        › {source.section}
+                      </span>
                     )}
                     <p className="mt-1 text-slate-600">
                       {highlight(source.excerpt, result.terms, `s-${index}`)}

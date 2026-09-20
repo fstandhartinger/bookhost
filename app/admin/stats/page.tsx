@@ -1,3 +1,4 @@
+import React from "react";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
@@ -34,6 +35,7 @@ export default async function StatsPage() {
       "workspace_created",
       "intake_draft",
       "intake_published",
+      "paid_conversion",
     ];
     return (
       <div className="overflow-x-auto">

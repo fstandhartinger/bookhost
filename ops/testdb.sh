@@ -8,6 +8,10 @@
 # applies the migrations and runs everything. The container is removed on exit.
 #
 # Usage: ops/testdb.sh [additional vitest arguments]
+#
+# The image must ship the pgvector extension: migration 035 creates the
+# `vector` type for wiki retrieval, so a plain postgres image aborts the
+# migration chain and the whole suite never runs.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -21,7 +25,7 @@ cleanup
 
 sudo docker run -d --rm --name "$NAME" \
   -e POSTGRES_PASSWORD=testpw -e POSTGRES_DB=bookhost_test \
-  -p "127.0.0.1:${PORT}:5432" postgres:16-alpine >/dev/null
+  -p "127.0.0.1:${PORT}:5432" pgvector/pgvector:pg16 >/dev/null
 
 # pg_isready inside the container reports ready while initdb is still running
 # its temporary server, which then restarts and drops the connection. Wait for a

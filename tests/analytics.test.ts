@@ -1,4 +1,5 @@
 import { beforeEach, expect, it, vi } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
 const mocks = vi.hoisted(() => ({ query: vi.fn(), auth: vi.fn() }));
 vi.mock("@/lib/db", () => ({ db: { query: mocks.query } }));
 vi.mock("@/auth", () => ({ auth: mocks.auth }));
@@ -211,6 +212,10 @@ it("admin gate denies missing/unlisted users with 404 before DB access", async (
 it("shares consistent source/day totals with zero-filled daily series", async () => {
   const day = new Date().toISOString().slice(0, 10);
   mocks.query.mockImplementation(async (sql: string) => {
+    if (String(sql).includes("email_verified_at"))
+      return {
+        rows: [{ email: "owner@example.org", email_verified_at: new Date() }],
+      };
     if (String(sql).includes("SELECT path,"))
       return {
         rows: [
@@ -231,6 +236,7 @@ it("shares consistent source/day totals with zero-filled daily series", async ()
           workspace_created: 0,
           intake_draft: 0,
           intake_published: 0,
+          paid_conversion: 1,
         },
       ],
     };
@@ -240,9 +246,10 @@ it("shares consistent source/day totals with zero-filled daily series", async ()
     source: "test",
     visits: 2,
     demo_click: 1,
+    paid_conversion: 1,
   });
   expect(report.days).toHaveLength(14);
-  expect(report.days.at(-1)).toMatchObject({ day, visits: 2 });
+  expect(report.days.at(-1)).toMatchObject({ day, visits: 2, paid_conversion: 1 });
   // Top pages share the same window: visits counts every beacon row, uniques
   // the daily hashes behind them; SQL orders by visits DESC, then path.
   expect(report.pages).toEqual([
@@ -254,6 +261,16 @@ it("shares consistent source/day totals with zero-filled daily series", async ()
   )?.[0] as string;
   expect(pagesSql).toContain("count(DISTINCT visitor_hash)::int AS uniques");
   expect(pagesSql).toContain("ORDER BY 2 DESC, 1 LIMIT 25");
+  const funnelSql = mocks.query.mock.calls.find(([sql]) =>
+    String(sql).includes("FROM events"),
+  )?.[0] as string;
+  expect(funnelSql).toContain("name='paid_conversion'");
+  // The operator dashboard shows the full funnel, including the paid step.
+  vi.stubEnv("ADMIN_EMAILS", "owner@example.org");
+  mocks.auth.mockResolvedValue({
+    user: { id: "op-1", email: "owner@example.org" },
+  });
+  expect(renderToStaticMarkup(await StatsPage())).toContain("paid conversion");
 });
 
 it("does not count our own pages as a referring site", () => {

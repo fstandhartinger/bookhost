@@ -1,4 +1,5 @@
 import type { Passage } from "./retrieval";
+import { renumberCitations } from "./citations";
 
 export type ChatSource = {
   pageId: number;
@@ -74,12 +75,17 @@ export function parseChatAnswer(raw: string, passages: Passage[]): ChatAnswer {
       )
     : [];
   const enough = record.enough === true;
-  if (!enough || !answer || !citations.length)
+  // Markers must index the returned sources: renumber them by first
+  // appearance, then keep any cited passage the text did not mark.
+  const renumbered = renumberCitations(answer, passages.length);
+  const order = [...renumbered.citations];
+  for (const number of new Set(citations))
+    if (!order.includes(number)) order.push(number);
+  if (!enough || !answer || !order.length)
     return { answer: NO_ANSWER, sources: [], refused: true };
-  const unique = [...new Set(citations)];
   return {
-    answer: answer.slice(0, 4000),
-    sources: unique.map((number) => toSource(passages[number - 1])),
+    answer: renumbered.text.slice(0, 4000),
+    sources: order.map((number) => toSource(passages[number - 1])),
     refused: false,
   };
 }

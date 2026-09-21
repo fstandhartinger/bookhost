@@ -1,4 +1,5 @@
 import type { Passage } from "./retrieval";
+import { citationMarker } from "./citations";
 
 export type ExtractiveAnswer = {
   answer: string;
@@ -43,8 +44,9 @@ function addCitation(sentence: string, citation: number) {
 
 /**
  * Assemble an answer from the best-matching sentences of the retrieved
- * passages. Every sentence carries the number of the passage it was taken
- * from, so the answer is nothing but quoted, traceable wiki text. No model is
+ * passages. Every sentence carries a 1-based index into the source list built
+ * from `citations` — the original passage numbers in order of first
+ * appearance — so marker [n] always resolves to sources[n-1]. No model is
  * involved and nothing leaves BookHost.
  */
 export function extractiveAnswer(
@@ -87,8 +89,9 @@ export function extractiveAnswer(
     const count = clean(item.sentence).split(/\s+/).filter(Boolean).length;
     if (parts.length && words + count > MAX_WORDS) break;
     words += count;
-    parts.push(addCitation(item.sentence, item.passage + 1));
-    if (!citations.includes(item.passage + 1)) citations.push(item.passage + 1);
+    parts.push(
+      addCitation(item.sentence, citationMarker(citations, item.passage + 1)),
+    );
   }
   if (!parts.length)
     return { answer: addCitation(passages[0].text, 1), citations: [1] };

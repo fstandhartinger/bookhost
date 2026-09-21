@@ -71,7 +71,7 @@ export async function askWiki(
       question,
       answer: extract.answer,
       sources: toSources(
-        passages.filter((_passage, index) => extract.citations.includes(index + 1)),
+        extract.citations.map((number) => passages[number - 1]),
         client.base,
       ),
       refused: false,

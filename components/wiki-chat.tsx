@@ -110,6 +110,22 @@ export function WikiChat({
   function retry() {
     if (failure?.retry) void submit();
   }
+  function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (
+      event.key === "Enter" &&
+      !event.shiftKey &&
+      !event.altKey &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.nativeEvent.isComposing &&
+      event.nativeEvent.keyCode !== 229
+    ) {
+      event.preventDefault();
+      if (!busy && question.trim().length >= 3) {
+        event.currentTarget.form?.requestSubmit();
+      }
+    }
+  }
   return (
     <div className="mt-8 space-y-6">
       {tenants.length > 1 && (
@@ -146,8 +162,12 @@ export function WikiChat({
             disabled={busy}
             placeholder="What is our process for…?"
             onChange={(e) => setQuestion(e.target.value)}
+            onKeyDown={handleKeyDown}
           />
         </label>
+        <p className="text-xs text-slate-500">
+          Press Enter to ask · Shift+Enter for a new line
+        </p>
         <p className="text-xs leading-5 text-slate-500">
           Answers come only from pages your workspace can already read, and name
           the page and section they use.{" "}

@@ -5,7 +5,10 @@ export default defineConfig({
   test: {
     fileParallelism: process.env.INTAKE_DB_TEST !== "1",
     environment: "node",
-    environmentMatchGlobs: [["tests/wiki-chat-mounted.test.ts", "happy-dom"]],
+    environmentMatchGlobs: [
+      ["tests/wiki-chat-mounted.test.ts", "happy-dom"],
+      ["tests/wiki-chat-enter.test.ts", "happy-dom"],
+    ],
     include: ["tests/**/*.test.ts"],
   },
 });

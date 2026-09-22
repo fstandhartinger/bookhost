@@ -26,7 +26,9 @@ export type ChatFailure = {
 };
 
 export type AskOutcome =
-  { ok: true; answer: ChatAnswer } | { ok: false; failure: ChatFailure };
+  | { ok: true; answer: ChatAnswer }
+  | { ok: false; failure: ChatFailure }
+  | { ok: false; cancelled: true };
 
 const SUPPORT_LINK: ChatLink = {
   href: "mailto:info@productivity-boost.com",
@@ -185,6 +187,7 @@ export function parseChatAnswer(data: unknown): ChatAnswer | null {
 export async function requestAnswer(
   fetchImpl: typeof fetch,
   input: { tenant: string; question: string },
+  signal?: AbortSignal,
 ): Promise<AskOutcome> {
   const question = input.question.trim();
   if (question.length < 3 || question.length > 500)
@@ -195,8 +198,14 @@ export async function requestAnswer(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tenant: input.tenant, question }),
+      ...(signal ? { signal } : {}),
     });
-  } catch {
+  } catch (error) {
+    if (
+      signal?.aborted ||
+      (error instanceof Error && error.name === "AbortError")
+    )
+      return { ok: false, cancelled: true };
     return { ok: false, failure: transportFailure() };
   }
   if (!response.ok)

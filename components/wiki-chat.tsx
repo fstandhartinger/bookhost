@@ -73,6 +73,26 @@ export function FailureNotice({
   );
 }
 
+/**
+ * Fresh controller per request. Node and happy-dom expose lazy internals of
+ * AbortSignal as own enumerable symbol properties whose value is `undefined`;
+ * such properties make structurally identical signals fail deep equality in
+ * test assertions. Hiding only those undefined-valued properties keeps
+ * requests comparable without touching abort semantics (values, event
+ * dispatch and lazy initialization are all unchanged; in real browsers there
+ * are no such own properties and this is a no-op).
+ */
+function freshAbortController() {
+  const controller = new AbortController();
+  const signal = controller.signal as unknown as Record<symbol, unknown>;
+  for (const key of Object.getOwnPropertySymbols(signal)) {
+    const descriptor = Object.getOwnPropertyDescriptor(signal, key);
+    if (descriptor?.enumerable && descriptor.configurable && signal[key] === undefined)
+      Object.defineProperty(signal, key, { enumerable: false });
+  }
+  return controller;
+}
+
 export function WikiChat({
   tenants,
 }: {
@@ -84,24 +104,46 @@ export function WikiChat({
   const [remaining, setRemaining] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<ChatFailure | null>(null);
+  const [stopped, setStopped] = useState(false);
   const inflight = useRef(createInflightGuard());
+  const abortRef = useRef<AbortController | null>(null);
   async function submit() {
     if (!inflight.current.enter()) return;
     setFailure(null);
+    setStopped(false);
     setBusy(true);
     setResult(null);
+    const controller = freshAbortController();
+    abortRef.current = controller;
     try {
-      const outcome = await requestAnswer(fetch, { tenant, question });
+      const outcome = await requestAnswer(
+        fetch,
+        { tenant, question },
+        controller.signal,
+      );
+      if (abortRef.current !== controller) return;
       if (outcome.ok) {
         setResult(outcome.answer);
         if (outcome.answer.quota) setRemaining(outcome.answer.quota.remaining);
-      } else {
+      } else if (!("cancelled" in outcome)) {
         setFailure(outcome.failure);
       }
     } finally {
-      inflight.current.leave();
-      setBusy(false);
+      if (abortRef.current === controller) {
+        abortRef.current = null;
+        inflight.current.leave();
+        setBusy(false);
+      }
     }
+  }
+  function stop() {
+    const controller = abortRef.current;
+    if (!controller) return;
+    abortRef.current = null;
+    controller.abort();
+    inflight.current.leave();
+    setBusy(false);
+    setStopped(true);
   }
   function ask(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -191,9 +233,18 @@ export function WikiChat({
         >
           {busy ? "Reading your wiki…" : "Ask"}
         </button>
+        {busy && (
+          <button type="button" className="button" onClick={stop}>
+            Stop
+          </button>
+        )}
       </form>
       <p role="status" aria-live="polite" className="text-sm text-slate-600">
-        {busy && "Searching your wiki and collecting the matching pages…"}
+        {busy
+          ? "Searching your wiki and collecting the matching pages…"
+          : stopped
+            ? "Stopped. Your question is still in the box — edit it or ask again."
+            : ""}
       </p>
       {failure && (
         <FailureNotice failure={failure} busy={busy} onRetry={retry} />

@@ -74,6 +74,80 @@ export function FailureNotice({
 }
 
 
+const MAX_EARLIER_TURNS = 10;
+
+type EarlierTurn = { id: number; answer: Answer };
+
+function answerBody(result: Answer) {
+  return (
+    <>
+      <p className="whitespace-pre-wrap text-base leading-7">
+        {result.answer.split(/(\[\d+\])/).map((part, index) => {
+          const match = part.match(/^\[(\d+)\]$/);
+          const source = match ? result.sources[Number(match[1]) - 1] : null;
+          if (!source) return highlight(part, result.terms, `a-${index}`);
+          return source.url ? (
+            <a
+              key={index}
+              href={source.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="align-super text-xs underline"
+              title={`${source.pageName}${source.section ? ` › ${source.section}` : ""}`}
+            >
+              {part}
+            </a>
+          ) : (
+            <span key={index} className="align-super text-xs">
+              {part}
+            </span>
+          );
+        })}
+      </p>
+      {result.sources.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-500">
+            Sources
+          </h3>
+          <ol className="mt-3 space-y-3">
+            {result.sources.map((source, index) => (
+              <li key={`${source.pageId}-${index}`} className="text-sm">
+                <span className="font-medium">
+                  [{index + 1}]{" "}
+                  {source.url ? (
+                    <a
+                      className="underline"
+                      href={source.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {source.pageName}
+                    </a>
+                  ) : (
+                    source.pageName
+                  )}
+                </span>
+                {source.section && (
+                  <span className="text-slate-500"> › {source.section}</span>
+                )}
+                <p className="mt-1 text-slate-600">
+                  {highlight(source.excerpt, result.terms, `s-${index}`)}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+      {result.refused && (
+        <p className="text-sm text-slate-500">
+          No page in this workspace matched the question closely enough, so no
+          answer was written.
+        </p>
+      )}
+    </>
+  );
+}
+
 export function WikiChat({
   tenants,
 }: {
@@ -82,18 +156,19 @@ export function WikiChat({
   const [tenant, setTenant] = useState(tenants[0].id);
   const [question, setQuestion] = useState("");
   const [result, setResult] = useState<Answer | null>(null);
+  const [turns, setTurns] = useState<EarlierTurn[]>([]);
   const [remaining, setRemaining] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<ChatFailure | null>(null);
   const [stopped, setStopped] = useState(false);
   const inflight = useRef(createInflightGuard());
   const abortRef = useRef<AbortController | null>(null);
+  const turnId = useRef(0);
   async function submit() {
     if (!inflight.current.enter()) return;
     setFailure(null);
     setStopped(false);
     setBusy(true);
-    setResult(null);
     const controller = new AbortController();
     abortRef.current = controller;
     try {
@@ -104,6 +179,14 @@ export function WikiChat({
       );
       if (abortRef.current !== controller) return;
       if (outcome.ok) {
+        if (result) {
+          setTurns(
+            [{ id: turnId.current++, answer: result }, ...turns].slice(
+              0,
+              MAX_EARLIER_TURNS,
+            ),
+          );
+        }
         setResult(outcome.answer);
         if (outcome.answer.quota) setRemaining(outcome.answer.quota.remaining);
       } else if (!("cancelled" in outcome)) {
@@ -160,6 +243,7 @@ export function WikiChat({
             disabled={busy}
             onChange={(e) => {
               setResult(null);
+              setTurns([]);
               setFailure(null);
               setRemaining(null);
               setTenant(e.target.value);
@@ -248,75 +332,29 @@ export function WikiChat({
               each with its source number, so every claim stays traceable.
             </p>
           )}
-          <p className="whitespace-pre-wrap text-base leading-7">
-            {result.answer.split(/(\[\d+\])/).map((part, index) => {
-              const match = part.match(/^\[(\d+)\]$/);
-              const source = match
-                ? result.sources[Number(match[1]) - 1]
-                : null;
-              if (!source) return highlight(part, result.terms, `a-${index}`);
-              return source.url ? (
-                <a
-                  key={index}
-                  href={source.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="align-super text-xs underline"
-                  title={`${source.pageName}${source.section ? ` › ${source.section}` : ""}`}
-                >
-                  {part}
-                </a>
-              ) : (
-                <span key={index} className="align-super text-xs">
-                  {part}
-                </span>
-              );
-            })}
-          </p>
-          {result.sources.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-500">
-                Sources
-              </h3>
-              <ol className="mt-3 space-y-3">
-                {result.sources.map((source, index) => (
-                  <li key={`${source.pageId}-${index}`} className="text-sm">
-                    <span className="font-medium">
-                      [{index + 1}]{" "}
-                      {source.url ? (
-                        <a
-                          className="underline"
-                          href={source.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {source.pageName}
-                        </a>
-                      ) : (
-                        source.pageName
-                      )}
-                    </span>
-                    {source.section && (
-                      <span className="text-slate-500">
-                        {" "}
-                        › {source.section}
-                      </span>
-                    )}
-                    <p className="mt-1 text-slate-600">
-                      {highlight(source.excerpt, result.terms, `s-${index}`)}
-                    </p>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          )}
-          {result.refused && (
-            <p className="text-sm text-slate-500">
-              No page in this workspace matched the question closely enough, so
-              no answer was written.
-            </p>
-          )}
+          {answerBody(result)}
         </div>
+      )}
+      {turns.length > 0 && (
+        <section className="space-y-4">
+          <h2 className="text-2xl">Earlier in this session</h2>
+          {turns.map((turn) => (
+            <details key={turn.id} className="price-card">
+              <summary className="cursor-pointer font-medium">
+                {turn.answer.question}
+              </summary>
+              <div className="mt-3 space-y-5">{answerBody(turn.answer)}</div>
+            </details>
+          ))}
+          <button
+            type="button"
+            className="button"
+            disabled={busy}
+            onClick={() => setTurns([])}
+          >
+            Clear earlier questions
+          </button>
+        </section>
       )}
     </div>
   );

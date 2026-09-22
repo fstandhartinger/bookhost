@@ -34,6 +34,11 @@ async function changeWorkspace(value: string) {
     workspace().dispatchEvent(new Event("change", { bubbles: true }));
   });
 }
+type FetchCall = Parameters<typeof fetch>;
+function withoutSignal([url, init]: FetchCall) {
+  const { signal, ...rest } = init ?? {};
+  return [url, rest, signal instanceof AbortSignal] as const;
+}
 
 beforeEach(async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
@@ -107,7 +112,11 @@ describe("mounted WikiChat controlled responses", () => {
       container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
     });
     expect(fetcher).toHaveBeenCalledTimes(2);
-    expect(fetcher.mock.calls[0]).toEqual(fetcher.mock.calls[1]);
+    const firstCall = withoutSignal(fetcher.mock.calls[0]);
+    const secondCall = withoutSignal(fetcher.mock.calls[1]);
+    expect(firstCall).toEqual(secondCall);
+    expect(firstCall[2]).toBe(true);
+    expect(secondCall[2]).toBe(true);
     expect(JSON.parse(fetcher.mock.calls[1][1]!.body as string)).toEqual({ tenant: tenants[1].id, question });
     expect(field().disabled).toBe(true);
     expect(workspace().disabled).toBe(true);

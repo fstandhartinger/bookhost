@@ -78,6 +78,11 @@ function submit() {
 function question(value: string) {
   element("textarea").props.onChange!({ target: { value } });
 }
+type FetchCall = Parameters<typeof fetch>;
+function withoutSignal([url, init]: FetchCall) {
+  const { signal, ...rest } = init ?? {};
+  return [url, rest, signal instanceof AbortSignal] as const;
+}
 async function settled() {
   await vi.waitFor(() =>
     expect(element("textarea").props.disabled).toBe(false),
@@ -114,7 +119,11 @@ describe("WikiChat handler unit tests with mocked hooks (not mounted DOM or keyb
     retry();
     submit();
     expect(fetcher).toHaveBeenCalledTimes(2);
-    expect(fetcher.mock.calls[0]).toEqual(fetcher.mock.calls[1]);
+    const firstCall = withoutSignal(fetcher.mock.calls[0]);
+    const secondCall = withoutSignal(fetcher.mock.calls[1]);
+    expect(firstCall).toEqual(secondCall);
+    expect(firstCall[2]).toBe(true);
+    expect(secondCall[2]).toBe(true);
     expect(element("textarea").props.disabled).toBe(true);
     expect(element("select").props.disabled).toBe(true);
     expect(element("button").props.disabled).toBe(true);

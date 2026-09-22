@@ -73,25 +73,6 @@ export function FailureNotice({
   );
 }
 
-/**
- * Fresh controller per request. Node and happy-dom expose lazy internals of
- * AbortSignal as own enumerable symbol properties whose value is `undefined`;
- * such properties make structurally identical signals fail deep equality in
- * test assertions. Hiding only those undefined-valued properties keeps
- * requests comparable without touching abort semantics (values, event
- * dispatch and lazy initialization are all unchanged; in real browsers there
- * are no such own properties and this is a no-op).
- */
-function freshAbortController() {
-  const controller = new AbortController();
-  const signal = controller.signal as unknown as Record<symbol, unknown>;
-  for (const key of Object.getOwnPropertySymbols(signal)) {
-    const descriptor = Object.getOwnPropertyDescriptor(signal, key);
-    if (descriptor?.enumerable && descriptor.configurable && signal[key] === undefined)
-      Object.defineProperty(signal, key, { enumerable: false });
-  }
-  return controller;
-}
 
 export function WikiChat({
   tenants,
@@ -113,7 +94,7 @@ export function WikiChat({
     setStopped(false);
     setBusy(true);
     setResult(null);
-    const controller = freshAbortController();
+    const controller = new AbortController();
     abortRef.current = controller;
     try {
       const outcome = await requestAnswer(

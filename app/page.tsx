@@ -208,13 +208,12 @@ export default function Home() {
           &ldquo;Ask your wiki&rdquo; is available now in beta to workspace
           owners and admins: it searches your own workspace, answers only from
           the pages it found, and shows the page and section behind every
-          result. Its AI synthesis stays off until our data protection
-          groundwork is documented, so today a question sends nothing to an
-          external model; when it is switched on, the same limit applies as for
-          intake — use the betas only on workspaces without personal data. Email
-          submission, AI-written summaries and answers scoped to
-          each member&rsquo;s own BookStack permissions are planned with no
-          committed release date. The document upload and review beta is
+          result. Its AI answers are live in beta: each question and the
+          passages it answers from go to TensorX (Ireland) for a written
+          answer — and the same limit applies as for intake: use the betas
+          only on workspaces without personal data. Email submission and
+          answers scoped to each member&rsquo;s own BookStack permissions are
+          planned with no committed release date. The document upload and review beta is
           available now.
         </p>
         <figure className="mt-8 flex flex-col gap-4">

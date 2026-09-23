@@ -72,23 +72,86 @@ describe("public reliability evidence", () => {
   // The wiki chat beta reaches the same external model without any upload, so
   // "without an upload nothing goes to the external model" stopped being true
   // the night it shipped. Both pages must say what actually leaves the
-  // workspace.
+  // workspace, and no surface may keep a stale "synthesis is off" claim.
   it("says that the wiki chat beta also sends passages to the external model", async () => {
     const reliability = readFileSync("app/reliability/page.tsx", "utf8");
 
-  // Synthesis is behind WIKI_CHAT_LLM and ships off, so neither page may
-    // claim passages go to TensorX today — nor may either page go back to the
-    // blanket "nothing is sent without an upload".
+    // Synthesis is behind WIKI_CHAT_LLM and is enabled in this deployment.
     const flatReliability = reliability.replace(/\s+/g, " ");
-    expect(flatReliability).not.toContain("this feature sends nothing to TensorX");
-    expect(flatReliability).toContain("while it is off, asking a question sends nothing to TensorX");
-    expect(flatReliability).toContain("with no upload involved");
+    expect(flatReliability).toContain("Its AI answers are live");
+    expect(flatReliability).toContain(
+      "sends the question and those passages to the same external model as intake",
+    );
     expect(flatReliability).toContain("without personal data");
+    expect(flatReliability).not.toContain("ships switched off");
+    expect(flatReliability).not.toContain(
+      "while it is off, asking a question sends nothing to TensorX",
+    );
+
     const home = readFileSync("app/page.tsx", "utf8");
     // JSX wraps the sentence across lines; compare on the collapsed text.
     const flat = home.replace(/\s+/g, " ");
-    expect(flat).toContain("today a question sends nothing to an external model");
+    expect(flat).toContain("Its AI answers are live in beta");
+    expect(
+      flat.includes("goes to TensorX (Ireland)") ||
+        flat.includes("to TensorX (Ireland) for a written answer"),
+    ).toBe(true);
     expect(flat).toContain("use the betas only on workspaces without personal data");
+    expect(flat).toContain("answers scoped to each member");
+    expect(flat).not.toContain(
+      "today a question sends nothing to an external model",
+    );
+    expect(flat).not.toContain("AI-written summaries and answers scoped");
+
+    const pricing = readFileSync("components/pricing.tsx", "utf8").replace(
+      /\s+/g,
+      " ",
+    );
+    expect(pricing).toContain("Answers are AI-written from your pages");
+    expect(pricing).toContain(
+      "Planned: email intake and answers scoped to each member&rsquo;s own BookStack permissions. These are not available today; there is no committed release date.",
+    );
+    expect(pricing).not.toContain("permission-aware AI answers");
+    expect(pricing).not.toContain("no AI summary yet");
+
+    const chatPage = readFileSync("app/app/chat/page.tsx", "utf8").replace(
+      /\s+/g,
+      " ",
+    );
+    expect(chatPage).toContain("every claim with its source page named");
+    expect(chatPage).not.toContain("follow once the provider documents are complete");
+
+    const wikiChat = readFileSync("components/wiki-chat.tsx", "utf8").replace(
+      /\s+/g,
+      " ",
+    );
+    expect(wikiChat).toContain(
+      "final approval of the updated processing conditions",
+    );
+    expect(wikiChat).toContain("switched off in this deployment");
+    expect(wikiChat).not.toContain("not complete yet");
+    expect(wikiChat).not.toContain("still being completed");
+
+    const landingCopy = readFileSync("lib/landing-copy.ts", "utf8");
+    expect(landingCopy).toContain("The beta already writes its answers with AI");
+    expect(landingCopy).not.toContain("AI-written summaries and answers scoped");
+
+    const avv = readFileSync("content/legal/avv.md", "utf8");
+    expect(avv).toContain(
+      "Wiki-Chat-Fragen samt der zur Beantwortung abgerufenen Seitenpassagen",
+    );
+    expect(avv).not.toContain("keine KI-Antwortfunktion");
+
+    const datenschutz = readFileSync("content/legal/datenschutz.md", "utf8");
+    expect(datenschutz).toContain("je Upload beziehungsweise je Frage");
+    expect(datenschutz).toContain("Wiki-Antworten-Beta");
+    expect(datenschutz).not.toContain("Für später angebotene KI-Antworten dürfen");
+
+    const agb = readFileSync("content/legal/agb.md", "utf8");
+    expect(agb).toContain(
+      "1000 Fragen je Kalendermonat (UTC), gemeinsam für den Workspace",
+    );
+    expect(agb).toContain("rechtebewusste KI-Antworten bleiben geplant");
   });
 
   // A customer reading both pages found the contradiction before we did: the

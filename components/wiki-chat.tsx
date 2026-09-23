@@ -284,9 +284,9 @@ export function WikiChat({
           </a>
         </p>
         <p className="text-xs leading-5 text-amber-800">
-          Beta restriction: our data processing agreement and transfer
-          documentation with the AI provider are not complete yet. Until they
-          are, ask only about non-personal example documents. See the{" "}
+          Beta restriction: the final approval of the updated processing
+          conditions is still pending. Until then, ask only about non-personal
+          example documents. See the{" "}
           <Link className="underline" href="/legal/datenschutz">
             privacy notice
           </Link>
@@ -326,10 +326,10 @@ export function WikiChat({
           </h2>
           {result.mode === "extractive" && !result.refused && (
             <p className="rounded-lg bg-slate-50 p-3 text-xs leading-5 text-slate-600">
-              AI-written summaries are not enabled yet: the provider agreement
-              and transfer documents are still being completed. Until then
-              BookHost assembles the matching sentences from your own pages,
-              each with its source number, so every claim stays traceable.
+              AI-written summaries are switched off in this deployment. Until
+              they are switched on, BookHost assembles the matching sentences
+              from your own pages, each with its source number, so every claim
+              stays traceable.
             </p>
           )}
           {answerBody(result)}

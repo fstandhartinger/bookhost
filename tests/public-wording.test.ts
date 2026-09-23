@@ -51,7 +51,10 @@ describe("public wording matches implemented behaviour", () => {
   it("A01/A10 content/legal/datenschutz.md 8", async () => {
     const text = await readFile("content/legal/datenschutz.md", "utf8");
     expect(text).not.toContain("Wir handeln nach seiner Weisung als Auftragsverarbeiter; Chutes wird erst nach Erf\u00fcllung der in [Anlage 3 des AVV](avv.md) genannten Voraussetzungen als Unterauftragsverarbeiter eingesetzt.");
-    expect(text).toContain("Wir handeln nach seiner Weisung als Auftragsverarbeiter. TensorX ist der KI-Dienst der technisch verf\u00fcgbaren Upload-Beta; die [Auftragsverarbeiterliste in Anlage 3 des AVV](avv.md) beschreibt den Datenumfang und die Voraussetzungen f\u00fcr personenbezogene Inhalte.");
+    expect(text).toContain("Wir handeln nach seiner Weisung als Auftragsverarbeiter. TensorX ist der KI-Dienst der technisch verf\u00fcgbaren Upload-Beta und der Wiki-Antworten-Beta; die [Auftragsverarbeiterliste in Anlage 3 des AVV](avv.md) beschreibt den Datenumfang und die Voraussetzungen f\u00fcr personenbezogene Inhalte.");
+    expect(text).toContain("Bei den KI-Wiki-Antworten (Beta) stellt ein Owner oder Admin eine Frage; die Frage und die zur Beantwortung abgerufenen Textpassagen aus dem eigenen Workspace werden an TensorX \u00fcbermittelt, um eine Antwort mit Quellenangaben zu erzeugen.");
+    expect(text).toContain("Der Dokument-Eingang per Upload und die KI-Wiki-Antworten f\u00fcr Workspace-Owner und -Admins sind als Beta verf\u00fcgbar. Die KI-Verarbeitung durch TensorX Limited (Dublin, Irland) erfolgt auf Veranlassung des Kunden je Upload beziehungsweise je Frage.");
+    expect(text).toContain("E-Mail-Eingang und rechtebewusste KI-Antworten f\u00fcr einzelne Mitglieder sind weiterhin geplant und noch nicht verf\u00fcgbar.");
   });
   it("A01/A10 content/legal/datenschutz.md 9", async () => {
     const text = await readFile("content/legal/datenschutz.md", "utf8");
@@ -86,7 +89,17 @@ describe("public wording matches implemented behaviour", () => {
   it("A07 content/legal/avv.md 15", async () => {
     const text = await readFile("content/legal/avv.md", "utf8");
     expect(text).not.toContain("KI-Inferenz in einem Trusted Execution Environment (TEE) |");
-    expect(text).toContain("Unit 25, Classon House, Dundrum Business Park, Dublin 14, Irland; KI-Inferenz f\u00fcr die Upload-Beta |");
+    expect(text).toContain("Unit 25, Classon House, Dundrum Business Park, Dublin 14, Irland; KI-Inferenz f\u00fcr die Upload-Beta und die Wiki-Antworten-Beta |");
+    expect(text).toContain("Extrahierte Dokumenttexte, Seitenvorschl\u00e4ge, Wiki-Chat-Fragen samt der zur Beantwortung abgerufenen Seitenpassagen und erforderliche technische Metadaten; kein E-Mail-Eingang.");
+    expect(text).not.toContain("keine KI-Antwortfunktion");
+    expect(text).toContain("| KI-Wiki-Antworten (Beta) | Verf\u00fcgbar auf Veranlassung je Frage eines Workspace-Owners oder -Admins: Frage und zur Beantwortung abgerufene Passagen des eigenen Workspaces werden an TensorX Limited (Dublin, Irland) \u00fcbermittelt; Antworten nur mit Quellangaben; keine dauerhafte Protokollierung von Frage und Antwort, nur der Fragenz\u00e4hler je Konto. Voraussetzungen f\u00fcr personenbezogene Inhalte: Anlage 3. |");
+    expect(text).toContain("Die aktuelle Wiki-Antworten-Beta steht nur Workspace-Ownern und -Admins offen und nutzt die \u00fcber das Workspace-API-Token zug\u00e4nglichen Inhalte.");
+  });
+
+  it("KI wording: new agb.md sentence", async () => {
+    const text = await readFile("content/legal/agb.md", "utf8");
+    expect(text).toContain("Die KI-Wiki-Antworten sind als Beta f\u00fcr Workspace-Owner und -Admins auf Veranlassung je Frage verf\u00fcgbar und im Tarif enthalten: 100 Fragen insgesamt w\u00e4hrend der Testphase, 1000 Fragen je Kalendermonat (UTC), gemeinsam f\u00fcr den Workspace.");
+    expect(text).toContain("E-Mail-Eingang und rechtebewusste KI-Antworten bleiben geplant und sind noch nicht nutzbar; ein verbindlicher Liefertermin ist nicht zugesagt.");
   });
   it("A14 content/legal/datenschutz.md 16", async () => {
     const text = await readFile("content/legal/datenschutz.md", "utf8");

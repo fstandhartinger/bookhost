@@ -39,7 +39,7 @@ function toSources(passages: Passage[], base: string): ChatSource[] {
   }));
 }
 
-/** AI synthesis stays off until the provider DPA and transfer documents exist. */
+/** AI synthesis is enabled per deployment via WIKI_CHAT_LLM (provider: TensorX; see README.md). */
 export function aiEnabled() {
   return process.env.WIKI_CHAT_LLM === "1";
 }

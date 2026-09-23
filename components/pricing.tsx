@@ -66,13 +66,15 @@ export function Pricing() {
             <li>Reviewed document intake — available now (beta)</li>
             {/* The one thing none of the hosts in our sponsor row offer, and it
                 was missing from the page where people decide. Stated at what it
-                actually does today: passages with their page and section, no
-                AI summary yet. */}
+                actually does today: AI answers with named sources, beta
+                restricted to non-personal content. */}
             <li>
               &ldquo;Ask your wiki&rdquo; — available now (beta) for owners and
               admins: it names the page and section behind every answer.
-              AI-written summaries follow once the data protection documents are
-              complete; until then ask only about non-personal content.
+              Answers are AI-written from your pages, with the page and section
+              named behind every answer; until the updated processing
+              conditions are finally approved, ask only about non-personal
+              content.
             </li>
             <li>{DRAFT_COPY}</li>
             <li>Summary, tags and reviewer checklist for each draft</li>
@@ -84,8 +86,9 @@ export function Pricing() {
             BookStack page permissions apply after publication.
           </p>
           <p className="mt-5 text-xs leading-5 text-slate-600">
-            Planned: email intake and permission-aware AI answers. These are not
-            available today; there is no committed release date.
+            Planned: email intake and answers scoped to each
+            member&rsquo;s own BookStack permissions. These are not available
+            today; there is no committed release date.
           </p>
           <p className="mt-4 text-xs text-slate-600 text-center">
             No credit card · Cancel anytime · Plus applicable VAT

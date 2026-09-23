@@ -161,19 +161,16 @@ export default function Reliability() {
             </p>
             <p>We do not offer a contractual availability commitment.</p>
             <p>
-              {/* The blanket "nothing is sent without an upload" sentence was
-                  removed when chat shipped, but its first replacement said
-                  passages go to the external model today. They do not: synthesis
-                  is behind WIKI_CHAT_LLM and ships off. Say what holds in both
-                  states. */}
+              {/* AI answers are enabled in this deployment (WIKI_CHAT_LLM=1).
+                  Keep this text in sync with the flag: if the flag is removed,
+                  this text must go back to saying synthesis is switched off. */}
               &ldquo;Ask your wiki&rdquo; is available in beta to workspace owners
               and admins. It searches your own pages and shows the passages it
-              found. The AI synthesis on top of that ships switched off: while it
-              is off, asking a question sends nothing to TensorX. If we switch it
-              on, the question and those passages go to the same external model
-              as intake — with no upload involved — and the same limit applies
-              as there: use it only on workspaces without personal data, until
-              the updated processing conditions are independently verified.
+              found. Its AI answers are live: asking a question sends the
+              question and those passages to the same external model as intake —
+              with no upload involved — and the same limit applies as there: use
+              it only on workspaces without personal data, until the updated
+              processing conditions are independently verified.
             </p>
             <p>
               Document intake is available in beta. Each upload sends extracted text,

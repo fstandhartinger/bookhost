@@ -48,8 +48,8 @@ export default async function ChatPage({
       <p className="mt-4 max-w-2xl text-slate-600">
         Ask a question in your own words. BookHost finds the matching pages in
         your workspace and shows the page and section behind each result, so no
-        claim is unsourced. AI-written summaries follow once the provider
-        documents are complete.
+        claim is unsourced. Answers are AI-written from your
+        workspace&rsquo;s own pages, every claim with its source page named.
       </p>
       <p className="mt-3 max-w-2xl text-sm text-slate-500">{CHAT_COPY}</p>
       {!tenants.length ? (

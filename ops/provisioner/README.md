@@ -20,6 +20,12 @@ python3 -m venv .venv
 .venv/bin/python -m unittest discover -s . -p 'test_*.py' -v
 ```
 
+The same provisioner venv (`python3 -m venv .venv`, then `.venv/bin/pip install -r requirements.txt`)
+also serves the offsite scripts: `offsite-sync.sh` and `offsite-restore-test.sh` run
+`offsite.py` with `.venv/bin/python` and fail loudly with a clear error and nonzero exit when
+the venv is missing. `requirements.txt` is the single dependency source for all of these
+commands and now also declares `boto3` for the Cloudflare R2 backend.
+
 All tenant data is outside git at `/home/flori/ventures2/bookstack/tenants/<slug>`.
 Never print `.env`, resolved Compose configs, Docker environment inspection, or
 subprocess diagnostics. Initial credentials go through stdin during bootstrap;

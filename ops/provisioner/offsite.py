@@ -21,6 +21,10 @@ REMOTE = 'wissen-backups'
 ARCHIVE = re.compile(r'^([0-9]{8}T[0-9]{6}Z)\.age$')
 
 
+def emit(line, stream=None):
+    print(datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')+' '+line, file=stream)
+
+
 def stamp(name):
     match = ARCHIVE.fullmatch(name)
     if not match:
@@ -218,7 +222,7 @@ def sync(storage):
     for slug in storage.names():
         if valid_slug(slug):
             prune(storage,slug,now)
-    print('OFFSITE SYNC OK archives='+str(count))
+    emit('OFFSITE SYNC OK archives='+str(count))
 
 
 def download_newest(storage, slug, dest):
@@ -247,7 +251,7 @@ def verify(storage, slug):
     with tempfile.TemporaryDirectory(prefix='.offsite-verify-',dir=tenant.ROOT) as tmp:
         src = download_newest(storage,slug,Path(tmp))
         size = src.stat().st_size
-        print('OFFSITE VERIFY OK slug='+slug+' archive='+src.name+' bytes='+str(size))
+        emit('OFFSITE VERIFY OK slug='+slug+' archive='+src.name+' bytes='+str(size))
 
 
 def main():
@@ -269,5 +273,5 @@ if __name__ == '__main__':
     try:
         main()
     except Exception as exc:
-        print('OFFSITE ERROR '+(str(exc) if isinstance(exc,(ValueError,RuntimeError)) else 'operation failed; inspect configuration locally'),file=sys.stderr)
+        emit('OFFSITE ERROR '+(str(exc) if isinstance(exc,(ValueError,RuntimeError)) else 'operation failed; inspect configuration locally'),sys.stderr)
         sys.exit(1)

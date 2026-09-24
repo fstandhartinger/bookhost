@@ -3,7 +3,10 @@ import hashlib
 import hmac
 import io
 from pathlib import Path
+import runpy
+import sys
 import tempfile
+import types
 import unittest
 from unittest.mock import patch
 
@@ -193,11 +196,54 @@ class OffsiteTests(unittest.TestCase):
             with patch.object(offsite.tenant,'ROOT',root),patch.object(offsite.tenant,'KEY',key),contextlib.redirect_stdout(out):
                 offsite.verify(storage,'demo')
             line = out.getvalue().strip()
-            self.assertTrue(line.startswith('OFFSITE VERIFY OK'))
+            self.assertRegex(line,r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z OFFSITE VERIFY OK')
             self.assertIn('slug=demo',line)
             self.assertIn('archive='+name,line)
             self.assertIn('bytes=9',line)
             self.assertEqual([p.name for p in root.iterdir() if p.name.startswith('.offsite')],[])
+
+    def fake_boto3(self, fake):
+        module = types.ModuleType('boto3')
+        module.client = lambda *args,**kwargs: fake
+        return module
+
+    def test_main_sync_line_is_timestamped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root,key,name,work = fixture(tmp)
+            fake = FakeS3()
+            synced(fake,work,root,key,name)
+            out = io.StringIO()
+            with patch.object(offsite.tenant,'ROOT',root),patch.object(offsite.tenant,'KEY',key), \
+                 patch.object(offsite,'WORK',work),patch.object(offsite.time,'time',return_value=offsite.stamp(name)), \
+                 patch.dict(sys.modules,{'boto3':self.fake_boto3(fake)}),patch.object(sys,'argv',['offsite.py','sync']), \
+                 contextlib.redirect_stdout(out):
+                offsite.main()
+            self.assertRegex(out.getvalue().strip(),r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z OFFSITE SYNC OK archives=\d+')
+
+    def test_main_verify_line_is_timestamped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root,key,name,work = fixture(tmp)
+            fake = FakeS3()
+            synced(fake,work,root,key,name)
+            out = io.StringIO()
+            with patch.object(offsite.tenant,'ROOT',root),patch.object(offsite.tenant,'KEY',key), \
+                 patch.object(offsite,'WORK',work), \
+                 patch.dict(sys.modules,{'boto3':self.fake_boto3(fake)}),patch.object(sys,'argv',['offsite.py','verify','demo']), \
+                 contextlib.redirect_stdout(out):
+                offsite.main()
+            self.assertRegex(out.getvalue().strip(),r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z OFFSITE VERIFY OK slug=demo archive='+name)
+
+    def test_main_error_line_is_timestamped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root,key,name,work = fixture(tmp)
+            err = io.StringIO()
+            # env_read is patched so the runpy-executed entry never reads real config
+            # content; an invalid invocation still exercises the __main__ error path.
+            with patch.object(offsite.tenant,'ROOT',root),patch.object(offsite.tenant,'env_read',return_value={}), \
+                 patch.object(sys,'argv',['offsite.py','bogus']),contextlib.redirect_stderr(err):
+                with self.assertRaises(SystemExit):
+                    runpy.run_path(str(Path(__file__).with_name('offsite.py')),run_name='__main__')
+            self.assertRegex(err.getvalue().strip(),r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z OFFSITE ERROR')
 
 
 if __name__=='__main__': unittest.main()

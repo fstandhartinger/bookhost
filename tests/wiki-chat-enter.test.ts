@@ -23,6 +23,9 @@ const answer = {
 let container: HTMLDivElement;
 let root: Root;
 let fetcher: ReturnType<typeof vi.fn<typeof fetch>>;
+function chatCalls() {
+  return fetcher.mock.calls.filter(([url]) => url === "/api/chat");
+}
 function field() {
   return container.querySelector("textarea")!;
 }
@@ -62,10 +65,10 @@ describe("mounted WikiChat Enter-to-submit", () => {
   it("A1 submits the form once with a POST body containing the question", async () => {
     fetcher.mockResolvedValue(Response.json(answer));
     await enterQuestion(question);
-    expect(fetcher).not.toHaveBeenCalled();
+    expect(chatCalls()).toHaveLength(0);
     expect(await pressKey({ key: "Enter" })).toBe(false);
-    expect(fetcher).toHaveBeenCalledOnce();
-    const [url, init] = fetcher.mock.calls[0];
+    expect(chatCalls()).toHaveLength(1);
+    const [url, init] = chatCalls()[0];
     expect(url).toBe("/api/chat");
     expect(init?.method).toBe("POST");
     expect(JSON.parse(init?.body as string)).toEqual({
@@ -77,15 +80,15 @@ describe("mounted WikiChat Enter-to-submit", () => {
   it("A2 Shift+Enter keeps the newline default and does not submit", async () => {
     await enterQuestion(question);
     expect(await pressKey({ key: "Enter", shiftKey: true })).toBe(true);
-    expect(fetcher).not.toHaveBeenCalled();
+    expect(chatCalls()).toHaveLength(0);
   });
 
   it("A3 Enter during IME composition or keyCode 229 does not submit", async () => {
     await enterQuestion(question);
     expect(await pressKey({ key: "Enter", isComposing: true })).toBe(true);
-    expect(fetcher).not.toHaveBeenCalled();
+    expect(chatCalls()).toHaveLength(0);
     expect(await pressKey({ key: "Enter", keyCode: 229 })).toBe(true);
-    expect(fetcher).not.toHaveBeenCalled();
+    expect(chatCalls()).toHaveLength(0);
   });
 
   it("A4 blocks short questions and duplicate submits while a request is pending", async () => {
@@ -96,15 +99,15 @@ describe("mounted WikiChat Enter-to-submit", () => {
     fetcher.mockReturnValue(pending);
     await enterQuestion(" ab ");
     await pressKey({ key: "Enter" });
-    expect(fetcher).not.toHaveBeenCalled();
+    expect(chatCalls()).toHaveLength(0);
     await enterQuestion(question);
     expect(await pressKey({ key: "Enter" })).toBe(false);
-    expect(fetcher).toHaveBeenCalledOnce();
+    expect(chatCalls()).toHaveLength(1);
     await pressKey({ key: "Enter" });
-    expect(fetcher).toHaveBeenCalledOnce();
+    expect(chatCalls()).toHaveLength(1);
     await act(async () => resolve(Response.json(answer)));
     expect(await pressKey({ key: "Enter" })).toBe(false);
-    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(chatCalls()).toHaveLength(2);
   });
 
   it("A5 renders the Enter and Shift+Enter hint", () => {

@@ -16,6 +16,9 @@ const answer = {
 let container: HTMLDivElement;
 let root: Root;
 let fetcher: ReturnType<typeof vi.fn<typeof fetch>>;
+function chatCalls() {
+  return fetcher.mock.calls;
+}
 function field() { return container.querySelector("textarea")!; }
 function workspace() { return container.querySelector("select")!; }
 function retry() { return Array.from(container.querySelectorAll("button")).find((button) => button.textContent === "Retry"); }
@@ -43,7 +46,15 @@ function withoutSignal([url, init]: FetchCall) {
 beforeEach(async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   fetcher = vi.fn<typeof fetch>();
-  vi.stubGlobal("fetch", fetcher);
+  vi.stubGlobal(
+    "fetch",
+    vi.fn<typeof fetch>((input, init) => {
+      if (String(input).startsWith("/api/chat/suggestions"))
+        return Promise.resolve(Response.json({ questions: [] }));
+      return (fetcher(input as never, init as never) ??
+        Promise.reject(new Error("no chat mock"))) as Promise<Response>;
+    }),
+  );
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -79,7 +90,7 @@ describe("mounted WikiChat controlled responses", () => {
     if (status === 429) expect(alert.textContent).not.toMatch(/reset|midnight|\d/);
     if (status === 409) expect(alert.textContent).not.toMatch(/wait|later|shortly/);
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
-    expect(fetcher).toHaveBeenCalledOnce();
+    expect(chatCalls()).toHaveLength(1);
     expect(field().value).toBe(question);
     expect(workspace().value).toBe(tenants[0].id);
     expect(field().disabled).toBe(false);
@@ -96,7 +107,7 @@ describe("mounted WikiChat controlled responses", () => {
     expect(container.querySelector('[role="alert"]')?.textContent).toMatch(message);
     expect(container.textContent).not.toMatch(/RAW_ERROR_MARKER|SyntaxError|Unexpected/);
     expect(retry()).toBeDefined();
-    expect(fetcher).toHaveBeenCalledOnce();
+    expect(chatCalls()).toHaveLength(1);
   });
 
   it("requires explicit retry, preserves input, guards duplicate submits and renders cited success", async () => {
@@ -105,19 +116,19 @@ describe("mounted WikiChat controlled responses", () => {
     fetcher.mockResolvedValueOnce(new Response("RAW_RESPONSE_MARKER", { status: 429 })).mockReturnValueOnce(deferred);
     await changeWorkspace(tenants[1].id);
     await submit();
-    expect(fetcher).toHaveBeenCalledOnce();
+    expect(chatCalls()).toHaveLength(1);
     await act(async () => {
       retry()!.click();
       container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
       container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
     });
-    expect(fetcher).toHaveBeenCalledTimes(2);
-    const firstCall = withoutSignal(fetcher.mock.calls[0]);
-    const secondCall = withoutSignal(fetcher.mock.calls[1]);
+    expect(chatCalls()).toHaveLength(2);
+    const firstCall = withoutSignal(chatCalls()[0]);
+    const secondCall = withoutSignal(chatCalls()[1]);
     expect(firstCall).toEqual(secondCall);
     expect(firstCall[2]).toBe(true);
     expect(secondCall[2]).toBe(true);
-    expect(JSON.parse(fetcher.mock.calls[1][1]!.body as string)).toEqual({ tenant: tenants[1].id, question });
+    expect(JSON.parse(chatCalls()[1][1]!.body as string)).toEqual({ tenant: tenants[1].id, question });
     expect(field().disabled).toBe(true);
     expect(workspace().disabled).toBe(true);
     expect(container.querySelector("form button")!.hasAttribute("disabled")).toBe(true);
@@ -131,7 +142,7 @@ describe("mounted WikiChat controlled responses", () => {
     expect(field().disabled).toBe(false);
     expect(workspace().disabled).toBe(false);
     expect(container.textContent).toContain("non-personal example documents");
-    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(chatCalls()).toHaveLength(2);
   });
 
   it("clears result, quota and failure across workspace changes and sends the selected tenant", async () => {
@@ -142,17 +153,17 @@ describe("mounted WikiChat controlled responses", () => {
     await changeWorkspace(tenants[1].id);
     expect(container.querySelector("h2")).toBeNull();
     expect(container.textContent).not.toContain("questions remaining");
-    expect(fetcher).toHaveBeenCalledOnce();
+    expect(chatCalls()).toHaveLength(1);
     await submit();
     expect(container.querySelector('[role="alert"]')).not.toBeNull();
-    expect(JSON.parse(fetcher.mock.calls[1][1]!.body as string).tenant).toBe(tenants[1].id);
+    expect(JSON.parse(chatCalls()[1][1]!.body as string).tenant).toBe(tenants[1].id);
     await changeWorkspace(tenants[0].id);
     expect(container.querySelector('[role="alert"]')).toBeNull();
     expect(retry()).toBeUndefined();
     expect(container.textContent).not.toContain("questions remaining");
     expect(field().value).toBe(question);
-    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(chatCalls()).toHaveLength(2);
     await submit();
-    expect(JSON.parse(fetcher.mock.calls[2][1]!.body as string).tenant).toBe(tenants[0].id);
+    expect(JSON.parse(chatCalls()[2][1]!.body as string).tenant).toBe(tenants[0].id);
   });
 });

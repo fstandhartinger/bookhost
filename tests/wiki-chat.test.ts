@@ -1,4 +1,7 @@
+// @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from "vitest";
+import React, { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
 import {
   queryTerms,
   htmlToSections,
@@ -8,6 +11,7 @@ import { parseChatAnswer } from "@/lib/chat/answer";
 import { askWiki } from "@/lib/chat/ask";
 import { extractiveAnswer, splitSentences } from "@/lib/chat/synthesize";
 import type { Passage } from "@/lib/chat/retrieval";
+import { WikiChat } from "@/components/wiki-chat";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -271,5 +275,170 @@ describe("ask wiki", () => {
     const result = await askWiki(client, "unrelated question");
     expect(result.refused).toBe(true);
     expect(result.sources).toEqual([]);
+  });
+});
+
+describe("SQ4 suggested question chips", () => {
+  const tenants = [
+    { id: "synthetic-a", slug: "Example A" },
+    { id: "synthetic-b", slug: "Example B" },
+  ];
+  const suggestions = [
+    'What is "Deploy handbook"?',
+    'How is "Setup" documented?',
+    'What does "Billing" cover?',
+    'How is "Rollback" documented?',
+    'What is "Monitoring"?',
+  ];
+  const answer = {
+    question: "What is \"Deploy handbook\"?",
+    answer: "Read the handbook [1].",
+    sources: [
+      {
+        pageId: 1,
+        pageName: "Deploy handbook",
+        section: "Setup",
+        url: "/books/handbook/page/deploy",
+        excerpt: "Read the handbook.",
+      },
+    ],
+    refused: false,
+    mode: "extractive",
+  };
+  let container: HTMLDivElement;
+  let root: Root;
+  let fetcher: ReturnType<typeof vi.fn<typeof fetch>>;
+  let suggestionFor: (tenant: string) => string[];
+  let pendingChat: Promise<Response> | null;
+
+  function field() {
+    return container.querySelector("textarea")!;
+  }
+  function workspace() {
+    return container.querySelector("select")!;
+  }
+  function chip(text: string) {
+    return Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent === text,
+    );
+  }
+  function chips() {
+    return Array.from(container.querySelectorAll("button")).filter((button) =>
+      /^(What|How) /.test(button.textContent || ""),
+    );
+  }
+  function chatCalls() {
+    return fetcher.mock.calls.filter(([url]) => url === "/api/chat");
+  }
+  function suggestionCalls() {
+    return fetcher.mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/chat/suggestions"),
+    );
+  }
+  function deferred() {
+    let resolve!: (response: Response) => void;
+    const promise = new Promise<Response>((done) => {
+      resolve = done;
+    });
+    return { promise, resolve };
+  }
+  async function mount() {
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    fetcher = vi.fn<typeof fetch>(async (input) => {
+      const url = String(input);
+      if (url.startsWith("/api/chat/suggestions")) {
+        const tenant =
+          new URL(url, "http://localhost").searchParams.get("tenant") || "";
+        return Response.json({ questions: suggestionFor(tenant) });
+      }
+      return pendingChat ?? Response.json(answer);
+    });
+    vi.stubGlobal("fetch", fetcher);
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    await act(async () =>
+      root.render(React.createElement(WikiChat, { tenants })),
+    );
+  }
+  async function changeWorkspace(value: string) {
+    await act(async () => {
+      workspace().value = value;
+      workspace().dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  }
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    container.remove();
+  });
+
+  it("renders up to four chips and clicking one fills the box and asks it", async () => {
+    suggestionFor = () => suggestions;
+    pendingChat = null;
+    await mount();
+    const rendered = chips();
+    expect(rendered).toHaveLength(4);
+    expect(container.textContent).toContain("Try asking");
+    const first = chip(suggestions[0])!;
+    expect(first).not.toBeUndefined();
+    expect(first.getAttribute("type")).toBe("button");
+    expect(first.getAttribute("aria-label")).toBe(`Ask: ${suggestions[0]}`);
+    await act(async () => {
+      first.click();
+    });
+    expect(field().value).toBe(suggestions[0]);
+    const posts = chatCalls();
+    expect(posts).toHaveLength(1);
+    const [url, init] = posts[0];
+    expect(url).toBe("/api/chat");
+    expect(JSON.parse(init!.body as string)).toEqual({
+      tenant: tenants[0].id,
+      question: suggestions[0],
+    });
+    expect(container.querySelector("h2")?.textContent).toBe("Answer");
+  });
+
+  it("renders nothing when the workspace has no indexed content", async () => {
+    suggestionFor = () => [];
+    pendingChat = null;
+    await mount();
+    expect(chips()).toHaveLength(0);
+    expect(container.textContent).not.toContain("Try asking");
+  });
+
+  it("hides the chips while a request is busy and brings them back after", async () => {
+    suggestionFor = () => suggestions;
+    const pending = deferred();
+    pendingChat = pending.promise;
+    await mount();
+    expect(chips()).toHaveLength(4);
+    await act(async () => {
+      chip(suggestions[0])!.click();
+    });
+    expect(chips()).toHaveLength(0);
+    expect(container.textContent).not.toContain("Try asking");
+    await act(async () => pending.resolve(Response.json(answer)));
+    expect(chips()).toHaveLength(4);
+  });
+
+  it("fetches suggestions on mount and again on every workspace switch", async () => {
+    suggestionFor = (tenant) =>
+      tenant === tenants[0].id
+        ? ['What is "Alpha runbook"?']
+        : ['What is "Beta runbook"?'];
+    pendingChat = null;
+    await mount();
+    expect(suggestionCalls()).toHaveLength(1);
+    expect(String(suggestionCalls()[0][0])).toContain("tenant=synthetic-a");
+    expect(chips().map((node) => node.textContent)).toEqual([
+      'What is "Alpha runbook"?',
+    ]);
+    await changeWorkspace(tenants[1].id);
+    expect(suggestionCalls()).toHaveLength(2);
+    expect(String(suggestionCalls()[1][0])).toContain("tenant=synthetic-b");
+    expect(chips().map((node) => node.textContent)).toEqual([
+      'What is "Beta runbook"?',
+    ]);
   });
 });

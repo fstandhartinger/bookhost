@@ -148,6 +148,60 @@ function answerBody(result: Answer) {
   );
 }
 
+function SuggestedQuestions({
+  tenant,
+  busy,
+  onPick,
+}: {
+  tenant: string;
+  busy: boolean;
+  onPick: (question: string) => void;
+}) {
+  const [questions, setQuestions] = useState<string[]>([]);
+  React.useEffect(() => {
+    let active = true;
+    setQuestions([]);
+    void (async () => {
+      try {
+        const response = await fetch(
+          `/api/chat/suggestions?tenant=${encodeURIComponent(tenant)}`,
+        );
+        const data = response.ok ? await response.json() : null;
+        const list = Array.isArray(data?.questions)
+          ? data.questions.filter(
+              (item: unknown): item is string => typeof item === "string",
+            )
+          : [];
+        if (active) setQuestions(list.slice(0, 4));
+      } catch {
+        if (active) setQuestions([]);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [tenant]);
+  if (busy || questions.length === 0) return null;
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium text-slate-500">Try asking</p>
+      <div className="flex flex-wrap gap-2">
+        {questions.map((suggestion) => (
+          <button
+            key={suggestion}
+            type="button"
+            className="rounded-full border px-3 py-1 text-sm"
+            aria-label={`Ask: ${suggestion}`}
+            onClick={() => onPick(suggestion)}
+          >
+            {suggestion}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function WikiChat({
   tenants,
 }: {
@@ -164,7 +218,7 @@ export function WikiChat({
   const inflight = useRef(createInflightGuard());
   const abortRef = useRef<AbortController | null>(null);
   const turnId = useRef(0);
-  async function submit() {
+  async function submit(value: string = question) {
     if (!inflight.current.enter()) return;
     setFailure(null);
     setStopped(false);
@@ -174,7 +228,7 @@ export function WikiChat({
     try {
       const outcome = await requestAnswer(
         fetch,
-        { tenant, question },
+        { tenant, question: value },
         controller.signal,
       );
       if (abortRef.current !== controller) return;
@@ -212,6 +266,10 @@ export function WikiChat({
   function ask(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     void submit();
+  }
+  function askSuggestion(value: string) {
+    setQuestion(value);
+    void submit(value);
   }
   function retry() {
     if (failure?.retry) void submit();
@@ -257,6 +315,7 @@ export function WikiChat({
           </select>
         </label>
       )}
+      <SuggestedQuestions tenant={tenant} busy={busy} onPick={askSuggestion} />
       <form onSubmit={ask} className="price-card space-y-4">
         <label className="block text-sm font-medium">
           Your question

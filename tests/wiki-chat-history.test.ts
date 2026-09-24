@@ -32,6 +32,9 @@ function makeAnswer(n: number, refused = false) {
 let container: HTMLDivElement;
 let root: Root;
 let fetcher: ReturnType<typeof vi.fn<typeof fetch>>;
+function chatCalls() {
+  return fetcher.mock.calls.filter(([url]) => url === "/api/chat");
+}
 function field() {
   return container.querySelector("textarea")!;
 }
@@ -148,7 +151,7 @@ describe("mounted WikiChat session history", () => {
     expect(sourceLink.getAttribute("href")).toBe("/books/book-1/page/page-1");
     expect(sourceItem.textContent).toContain("Section 1");
     expect(sourceItem.textContent).toContain("Excerpt 1.");
-    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(chatCalls()).toHaveLength(2);
   });
 
   it("H2 keeps at most 10 earlier turns, newest first, oldest dropped", async () => {
@@ -161,7 +164,7 @@ describe("mounted WikiChat session history", () => {
     );
     expect(earlierSection()!.textContent).not.toContain("Question 1?");
     expect(items[0].textContent).toContain("Answer 11 cites");
-    expect(fetcher).toHaveBeenCalledTimes(12);
+    expect(chatCalls()).toHaveLength(12);
   });
 
   it("H3 records refused answers, ignores errors and Stop, and keeps everything visible in flight", async () => {
@@ -202,7 +205,7 @@ describe("mounted WikiChat session history", () => {
       "Question 2?",
       "Question 1?",
     ]);
-    expect(fetcher).toHaveBeenCalledTimes(6);
+    expect(chatCalls()).toHaveLength(6);
     expect(field().value).toBe("Question 6?");
   });
 
@@ -239,9 +242,9 @@ describe("mounted WikiChat session history", () => {
     expect(container.textContent).not.toContain("Answer 1 cites");
     expect(container.textContent).not.toContain("Answer 2 cites");
     expect(button("Clear earlier questions")).toBeUndefined();
-    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(chatCalls()).toHaveLength(2);
     await ask(3);
-    expect(JSON.parse(fetcher.mock.calls[2][1]!.body as string).tenant).toBe(
+    expect(JSON.parse(chatCalls()[2][1]!.body as string).tenant).toBe(
       tenants[1].id,
     );
     expect(latestCard()!.textContent).toContain("Answer 3 cites");
@@ -258,12 +261,12 @@ describe("mounted WikiChat session history", () => {
     );
     await ask(1);
     await ask(2);
-    expect(fetcher).toHaveBeenCalledTimes(2);
-    expect(JSON.parse(fetcher.mock.calls[0][1]!.body as string)).toEqual({
+    expect(chatCalls()).toHaveLength(2);
+    expect(JSON.parse(chatCalls()[0][1]!.body as string)).toEqual({
       tenant: tenants[0].id,
       question: "Question 1?",
     });
-    expect(JSON.parse(fetcher.mock.calls[1][1]!.body as string)).toEqual({
+    expect(JSON.parse(chatCalls()[1][1]!.body as string)).toEqual({
       tenant: tenants[0].id,
       question: "Question 2?",
     });

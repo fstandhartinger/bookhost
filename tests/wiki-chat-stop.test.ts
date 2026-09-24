@@ -25,6 +25,9 @@ const answer = {
 let container: HTMLDivElement;
 let root: Root;
 let fetcher: ReturnType<typeof vi.fn<typeof fetch>>;
+function chatCalls() {
+  return fetcher.mock.calls.filter(([url]) => url === "/api/chat");
+}
 function field() {
   return container.querySelector("textarea")!;
 }
@@ -85,13 +88,13 @@ describe("mounted WikiChat Stop button", () => {
     expect(button("Ask")).toBeDefined();
     await enterQuestion(question);
     await pressKey({ key: "Enter" });
-    expect(fetcher).toHaveBeenCalledOnce();
+    expect(chatCalls()).toHaveLength(1);
     const stop = button("Stop")!;
     expect(stop).toBeDefined();
     expect(stop.getAttribute("type")).toBe("button");
     expect(stop.disabled).toBe(false);
     await pressKey({ key: "Enter" });
-    expect(fetcher).toHaveBeenCalledOnce();
+    expect(chatCalls()).toHaveLength(1);
   });
 
   it("B2 aborts the request and restores the form with the question kept", async () => {
@@ -99,7 +102,7 @@ describe("mounted WikiChat Stop button", () => {
     fetcher.mockReturnValue(pending.promise);
     await enterQuestion(question);
     await pressKey({ key: "Enter" });
-    const init = fetcher.mock.calls[0][1];
+    const init = chatCalls()[0][1];
     expect(init?.signal).toBeInstanceOf(AbortSignal);
     const signal = init!.signal as AbortSignal;
     expect(signal.aborted).toBe(false);
@@ -109,7 +112,7 @@ describe("mounted WikiChat Stop button", () => {
     expect(button("Ask")).toBeDefined();
     expect(button("Stop")).toBeUndefined();
     expect(field().value).toBe(question);
-    expect(fetcher).toHaveBeenCalledOnce();
+    expect(chatCalls()).toHaveLength(1);
   });
 
   it("B3 shows a neutral Stopped status message and no alert after Stop", async () => {
@@ -147,12 +150,12 @@ describe("mounted WikiChat Stop button", () => {
     fetcher.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
     await enterQuestion(question);
     await pressKey({ key: "Enter" });
-    expect(fetcher).toHaveBeenCalledOnce();
+    expect(chatCalls()).toHaveLength(1);
     await act(async () => button("Stop")!.click());
     expect(status().textContent).toContain("Stopped");
     await pressKey({ key: "Enter" });
-    expect(fetcher).toHaveBeenCalledTimes(2);
-    const [url, init] = fetcher.mock.calls[1];
+    expect(chatCalls()).toHaveLength(2);
+    const [url, init] = chatCalls()[1];
     expect(url).toBe("/api/chat");
     expect(init?.method).toBe("POST");
     expect(JSON.parse(init?.body as string)).toEqual({
@@ -170,7 +173,7 @@ describe("mounted WikiChat Stop button", () => {
       ),
     ).toBe(true);
     expect(container.querySelector('[role="alert"]')).toBeNull();
-    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(chatCalls()).toHaveLength(2);
   });
 });
 

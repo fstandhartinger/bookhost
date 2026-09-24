@@ -79,6 +79,10 @@ The provisioner owns transitions from `pending` to `provisioning`, `running`, `f
 
 The initial password is selected only by a separate owner-authenticated POST. A row lock ensures only one response gets it; the database value is deleted in that transaction. It never appears in HTML/server component payloads. If delivery fails after deletion, reset it in BookStack or through support. This intentionally favors one-time handling over repeated recovery of a plaintext password.
 
+## Wiki chat
+
+`POST /api/chat` answers questions from a workspace's own BookStack pages; `GET /api/chat/suggestions?tenant=<id>` returns up to four prompt suggestions derived from that workspace's own indexed `wiki_chunks`, behind the identical sign-in → workspace → owner/admin guard chain, and returns an empty list instead of an error when the index is empty or the lookup fails.
+
 ## Publication checks
 
 This repository has not been deployed. The supplied German legal documents contain explicit completion fields; they are drafts until the operator resolves them. The landing page clearly describes reviewed intake and AI answers as planned, not available functionality.

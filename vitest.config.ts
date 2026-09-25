@@ -8,6 +8,7 @@ export default defineConfig({
     environmentMatchGlobs: [
       ["tests/wiki-chat-mounted.test.ts", "happy-dom"],
       ["tests/wiki-chat-enter.test.ts", "happy-dom"],
+      ["tests/wiki-chat-demo.test.ts", "happy-dom"],
     ],
     include: ["tests/**/*.test.ts"],
   },

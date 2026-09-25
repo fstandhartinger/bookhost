@@ -207,6 +207,19 @@ it("keeps the honest caveat next to the restore evidence", async () => {
   expect(post).toMatch(/matched by SHA-256/);
 });
 
+it("keeps the wiki chat demo honest and self-contained", async () => {
+  // The landing demo loops a real test-workspace answer. It must stay
+  // labelled as fictional, keep the word-matching caveat, and stay free of
+  // the semantic-search badge and any network reference.
+  const page = await readFile("app/page.tsx", "utf8");
+  expect(page).toContain("fictional sample content");
+  expect(page).toContain("internal test workspace");
+  const demo = await readFile("components/wiki-chat-demo.tsx", "utf8");
+  expect(demo).not.toContain("semantic search");
+  expect(demo).not.toContain("http://");
+  expect(demo).not.toContain("https://");
+});
+
 it("labels the chat screenshot as an internal test workspace", async () => {
   // Semantic matching is only enabled in our internal test workspace, so the
   // screenshot must say exactly that instead of implying customers get it.

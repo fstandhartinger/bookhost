@@ -5,6 +5,7 @@ import { PaymentNote } from "@/components/payment-note";
 import Image from "next/image";
 import { ActionButton } from "@/components/action-button";
 import { Pricing } from "@/components/pricing";
+import { WikiChatDemo } from "@/components/wiki-chat-demo";
 import { faqs, benefits, steps } from "@/lib/landing-copy";
 import { DEMO_URL } from "@/lib/config";
 import Link from "next/link";
@@ -216,6 +217,14 @@ export default function Home() {
           planned with no committed release date. The document upload and review beta is
           available now.
         </p>
+        <div className="mt-8">
+          <WikiChatDemo />
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            Animation of a real answer from our internal test workspace —
+            fictional sample content. Customer workspaces currently match by
+            words; every answer still names its source page.
+          </p>
+        </div>
         <figure className="mt-8 flex flex-col gap-4">
           <figcaption className="order-2 text-sm leading-6 text-slate-600">
             Real screenshot from our internal test workspace. There, matching by meaning found the bike-parking page although the question shares no word with it. Customer workspaces currently match by words; every answer still names its source page.

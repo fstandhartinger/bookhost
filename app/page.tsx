@@ -221,13 +221,14 @@ export default function Home() {
           <WikiChatDemo />
           <p className="mt-3 text-sm leading-6 text-slate-600">
             Animation of a real answer from our internal test workspace —
-            fictional sample content. Customer workspaces currently match by
-            words; every answer still names its source page.
+            fictional sample content. Customer workspaces match by words
+            unless an owner or admin turns on matching by meaning (beta);
+            every answer still names its source page.
           </p>
         </div>
         <figure className="mt-8 flex flex-col gap-4">
           <figcaption className="order-2 text-sm leading-6 text-slate-600">
-            Real screenshot from our internal test workspace. There, matching by meaning found the bike-parking page although the question shares no word with it. Customer workspaces currently match by words; every answer still names its source page.
+            Real screenshot from our internal test workspace. There, matching by meaning found the bike-parking page although the question shares no word with it. Customer workspaces match by words unless an owner or admin turns on matching by meaning (beta); every answer still names its source page.
           </figcaption>
           <a
             href="/screens/wiki-chat-answer.webp"

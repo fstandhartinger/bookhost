@@ -89,8 +89,8 @@ describe("public wording matches implemented behaviour", () => {
   it("A07 content/legal/avv.md 15", async () => {
     const text = await readFile("content/legal/avv.md", "utf8");
     expect(text).not.toContain("KI-Inferenz in einem Trusted Execution Environment (TEE) |");
-    expect(text).toContain("Unit 25, Classon House, Dundrum Business Park, Dublin 14, Irland; KI-Inferenz f\u00fcr die Upload-Beta und die Wiki-Antworten-Beta |");
-    expect(text).toContain("Extrahierte Dokumenttexte, Seitenvorschl\u00e4ge, Wiki-Chat-Fragen samt der zur Beantwortung abgerufenen Seitenpassagen und erforderliche technische Metadaten; kein E-Mail-Eingang.");
+    expect(text).toContain("Unit 25, Classon House, Dundrum Business Park, Dublin 14, Irland; KI-Inferenz f\u00fcr die Upload-Beta, die Wiki-Antworten-Beta und die optionale semantische Wiki-Indexierung (Beta) |");
+    expect(text).toContain("Extrahierte Dokumenttexte, Seitenvorschl\u00e4ge, Wiki-Chat-Fragen samt der zur Beantwortung abgerufenen Seitenpassagen und erforderliche technische Metadaten; bei aktivierter semantischer Wiki-Indexierung zus\u00e4tzlich der Text aller Seiten des eigenen Workspaces zur Berechnung von Suchvektoren, die samt Textpassagen in der Datenbank von BookHost verbleiben; kein E-Mail-Eingang.");
     expect(text).not.toContain("keine KI-Antwortfunktion");
     expect(text).toContain("| KI-Wiki-Antworten (Beta) | Verf\u00fcgbar auf Veranlassung je Frage eines Workspace-Owners oder -Admins: Frage und zur Beantwortung abgerufene Passagen des eigenen Workspaces werden an TensorX Limited (Dublin, Irland) \u00fcbermittelt; Antworten nur mit Quellangaben; keine dauerhafte Protokollierung von Frage und Antwort, nur der Fragenz\u00e4hler je Konto. Voraussetzungen f\u00fcr personenbezogene Inhalte: Anlage 3. |");
     expect(text).toContain("Die aktuelle Wiki-Antworten-Beta steht nur Workspace-Ownern und -Admins offen und nutzt die \u00fcber das Workspace-API-Token zug\u00e4nglichen Inhalte.");
@@ -225,7 +225,23 @@ it("labels the chat screenshot as an internal test workspace", async () => {
   // screenshot must say exactly that instead of implying customers get it.
   const text = await readFile("app/page.tsx", "utf8");
   expect(text).toContain("/screens/wiki-chat-answer.webp");
-  expect(text).toContain("Customer workspaces currently match by words; every answer still names its source page.");
+  expect(text).toContain("Customer workspaces match by words unless an owner or admin turns on matching by meaning (beta); every answer still names its source page.");
+});
+
+it("drops the 'currently match by words' caveat from the landing page", async () => {
+  // Customers can now opt in, so the old blanket caveat must be gone from
+  // both captions.
+  const text = await readFile("app/page.tsx", "utf8");
+  expect(text).not.toMatch(/currently match by\s+words/);
+});
+
+it("describes the semantic opt-in indexing in the privacy notice and AVV", async () => {
+  const privacy = await readFile("content/legal/datenschutz.md", "utf8");
+  expect(privacy).toContain("Die semantische Wiki-Indexierung (\u201eMatching by meaning\u201c, Beta) ist f\u00fcr einen Workspace nicht aktiviert, bis ein Owner oder Admin sie im Dashboard aktiviert.");
+  expect(privacy).toContain("Bei Aktivierung wird der Text aller Seiten des eigenen Workspaces an TensorX Limited, Dublin, Irland, \u00fcbermittelt, um Suchvektoren zu berechnen; die Vektoren und die zugeh\u00f6rigen Textpassagen werden in der eigenen Datenbank von BookHost auf unseren Servern in der EU gespeichert und st\u00fcndlich aktualisiert. Beim Deaktivieren werden Vektoren und Textpassagen sofort gel\u00f6scht.");
+  const avv = await readFile("content/legal/avv.md", "utf8");
+  expect(avv).toContain("Die semantische Wiki-Indexierung (\u201eMatching by meaning\u201c, Beta) ist f\u00fcr einen Workspace nicht aktiviert, bis ein Owner oder Admin sie im Dashboard aktiviert.");
+  expect(avv).toContain("bei aktivierter semantischer Wiki-Indexierung zus\u00e4tzlich der Text aller Seiten des eigenen Workspaces zur Berechnung von Suchvektoren");
 });
 
 it("makes an incomplete wiki access removal impossible to walk past", async () => {

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { db } from "@/lib/db";
 import { htmlToSections, type DbClient, type WikiClient } from "./retrieval";
-import { embedTexts, embeddingsEnabledForTenant } from "./embeddings";
+import { embedTexts, semanticEnabled } from "./embeddings";
 
 const MAX_CHUNK_CHARS = 1200;
 
@@ -157,7 +157,7 @@ export async function indexTenant(
     chunks: 0,
     embedded: 0,
   };
-  if (!embeddingsEnabledForTenant(teamId)) {
+  if (!(await semanticEnabled(teamId, database))) {
     report.status = "skipped";
     return report;
   }
@@ -299,11 +299,17 @@ const globalIndex = globalThis as unknown as {
  * triggered it proceeds on the lexical path meanwhile.
  */
 export function startWikiIndexBackfill(client: WikiClient, teamId: string) {
-  if (!embeddingsEnabledForTenant(teamId)) return;
-  const running = (globalIndex.wikiIndexRunning ??= new Set<string>());
-  if (running.has(teamId)) return;
-  running.add(teamId);
-  void indexTenant(client, teamId)
-    .catch(() => {})
-    .finally(() => running.delete(teamId));
+  void (async () => {
+    if (!(await semanticEnabled(teamId))) return;
+    const running = (globalIndex.wikiIndexRunning ??= new Set<string>());
+    if (running.has(teamId)) return;
+    running.add(teamId);
+    try {
+      await indexTenant(client, teamId);
+    } catch {
+      // indexTenant reports errors in its report; nothing to raise here.
+    } finally {
+      running.delete(teamId);
+    }
+  })();
 }

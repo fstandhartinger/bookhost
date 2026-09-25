@@ -9,7 +9,7 @@ import {
 import { db } from "@/lib/db";
 import { chatQuota, refundChat } from "@/lib/chat/quota";
 import { aiEnabled, askWiki } from "@/lib/chat/ask";
-import { embeddingsEnabledForTenant } from "@/lib/chat/embeddings";
+import { semanticEnabled } from "@/lib/chat/embeddings";
 import { startWikiIndexBackfill } from "@/lib/chat/indexing";
 
 export async function POST(request: Request) {
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
       const client = await clientFor(tenant);
       // A gated tenant without an index answers lexically now and backfills
       // the vector index in the background (R1.2).
-      if (embeddingsEnabledForTenant(tenant.team_id)) {
+      if (await semanticEnabled(tenant.team_id)) {
         const index = await db
           .query(
             "SELECT count(*)::int AS count FROM wiki_chunks WHERE team_id=$1",

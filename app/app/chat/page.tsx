@@ -5,6 +5,7 @@ import { activeTeamId, MEMBERSHIP_ORDER } from "@/lib/active-team";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { WikiChat } from "@/components/wiki-chat";
+import { SemanticToggle } from "@/components/semantic-toggle";
 import { CHAT_COPY } from "@/lib/quotas";
 export const dynamic = "force-dynamic";
 export const metadata = {
@@ -63,7 +64,10 @@ export default async function ChatPage({
           member&rsquo;s own BookStack permissions are planned.
         </p>
       ) : (
-        <WikiChat tenants={tenants} />
+        <>
+          <WikiChat tenants={tenants} />
+          <SemanticToggle tenants={tenants} />
+        </>
       )}
     </section>
   );

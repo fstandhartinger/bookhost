@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { embedTexts, embeddingsEnabledForTenant } from "./embeddings";
+import { embedTexts, semanticEnabled } from "./embeddings";
 
 export type WikiClient = {
   base: string;
@@ -256,7 +256,7 @@ export async function retrieveHybrid(
   database: DbClient = db,
 ): Promise<HybridResult> {
   const lexical = await retrieve(client, question, 6);
-  if (!embeddingsEnabledForTenant(teamId))
+  if (!(await semanticEnabled(teamId, database)))
     return { passages: lexical, retrieval: "lexical" };
   let vector: number[] | null = null;
   try {

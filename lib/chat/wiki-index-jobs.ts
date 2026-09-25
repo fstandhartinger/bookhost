@@ -2,17 +2,18 @@ import { db } from "@/lib/db";
 import { BookStack } from "@/lib/intake/bookstack";
 import { decrypt } from "@/lib/intake/crypto";
 import { tenantHost } from "@/lib/tenant-host";
-import { embeddingsEnabledForTenant, embeddingsTenantIds } from "./embeddings";
+import { semanticTeamIds } from "./embeddings";
 import { indexTenant } from "./indexing";
 import type { DbClient } from "./retrieval";
 
 /**
- * Hourly refresh of the chunk index for every tenant on the QA-tenant gate.
- * One tenant failing never stops the others.
+ * Hourly refresh of the chunk index for every tenant whose semantic gate is
+ * open (operator allowlist or customer opt-in). One tenant failing never
+ * stops the others.
  */
 export async function refreshWikiIndexes(database: DbClient = db) {
-  for (const teamId of embeddingsTenantIds()) {
-    if (!embeddingsEnabledForTenant(teamId)) continue;
+  const enabled = await semanticTeamIds(database);
+  for (const teamId of enabled) {
     try {
       const tenant = (
         await database.query(
@@ -36,6 +37,24 @@ export async function refreshWikiIndexes(database: DbClient = db) {
       await indexTenant(client, teamId, database);
     } catch {
       // Keep going: the next tenant and the next hour still get a chance.
+    }
+  }
+  // No vectors may outlive the opt-in: purge the chunks of every team whose
+  // gate is now false (kill switch off, allowlist change, opt-out).
+  const withChunks = await database
+    .query("SELECT DISTINCT team_id FROM wiki_chunks")
+    .catch(() => null);
+  if (!withChunks) return;
+  const enabledIds = new Set(enabled);
+  for (const row of withChunks.rows) {
+    const teamId = row.team_id;
+    if (typeof teamId !== "string" || enabledIds.has(teamId)) continue;
+    try {
+      await database.query("DELETE FROM wiki_chunks WHERE team_id=$1", [
+        teamId,
+      ]);
+    } catch {
+      // Keep going: the next team and the next hour still get a chance.
     }
   }
 }

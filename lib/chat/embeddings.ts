@@ -2,7 +2,12 @@
 // endpoint (TensorX by default). Failures degrade to the lexical path: this
 // module never throws and never logs credentials.
 
+import { db } from "@/lib/db";
+import type { DbClient } from "./retrieval";
+
 const BATCH_SIZE = 8;
+const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const RETRY_BACKOFF_MS = 500;
 const REQUEST_TIMEOUT_MS = 30000;
 
@@ -29,6 +34,52 @@ export function embeddingsTenantIds() {
 export function embeddingsEnabledForTenant(teamId: string) {
   if (process.env.WIKI_EMBEDDINGS !== "1" || !teamId) return false;
   return embeddingsTenantIds().includes(teamId);
+}
+
+/**
+ * The customer gate: false unless the global switch is on, then true when
+ * the team is on the operator allowlist or has opted in via
+ * `teams.wiki_semantic_opt_in_at`. A database error fails closed. Never
+ * throws.
+ */
+export async function semanticEnabled(
+  teamId: string,
+  database: DbClient = db,
+): Promise<boolean> {
+  try {
+    if (process.env.WIKI_EMBEDDINGS !== "1" || !teamId) return false;
+    if (embeddingsTenantIds().includes(teamId)) return true;
+    const result = await database.query(
+      "SELECT wiki_semantic_opt_in_at FROM teams WHERE id=$1",
+      [teamId],
+    );
+    return result.rows.some((row) => row.wiki_semantic_opt_in_at != null);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Every team whose gate is open: the de-duplicated union of the operator
+ * allowlist and the opted-in teams. With the global switch off the gate is
+ * closed for everyone, so the result is empty. A database error keeps the
+ * allowlist only (fail closed). Never throws.
+ */
+export async function semanticTeamIds(
+  database: DbClient = db,
+): Promise<string[]> {
+  if (process.env.WIKI_EMBEDDINGS !== "1") return [];
+  const ids = new Set(embeddingsTenantIds());
+  try {
+    const result = await database.query(
+      "SELECT id FROM teams WHERE wiki_semantic_opt_in_at IS NOT NULL",
+    );
+    for (const row of result.rows)
+      if (typeof row.id === "string" && UUID.test(row.id)) ids.add(row.id);
+  } catch {
+    // Fail closed: the operator allowlist alone remains.
+  }
+  return [...ids];
 }
 
 /** Keep the first 1024 dims and restore unit length (cosine distance). A

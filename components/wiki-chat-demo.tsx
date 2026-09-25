@@ -35,9 +35,14 @@ function usePrefersReducedMotion() {
 
 export function WikiChatDemo({ immediate = false }: { immediate?: boolean }) {
   const reduced = usePrefersReducedMotion();
-  const final = reduced || immediate;
-  const [phase, setPhase] = useState<Phase>(final ? 3 : 0);
+  const [mounted, setMounted] = useState(false);
+  const [phase, setPhase] = useState<Phase>(0);
   useEffect(() => {
+    setMounted(true);
+  }, []);
+  const final = mounted && (reduced || immediate);
+  useEffect(() => {
+    if (!mounted) return;
     if (final) {
       setPhase(3);
       return;
@@ -60,7 +65,7 @@ export function WikiChatDemo({ immediate = false }: { immediate?: boolean }) {
       cancelled = true;
       for (const timer of timers) clearTimeout(timer);
     };
-  }, [final]);
+  }, [final, mounted]);
   return (
     <div data-wiki-chat-demo className="price-card p-5 sm:p-6">
       <p className="sr-only">

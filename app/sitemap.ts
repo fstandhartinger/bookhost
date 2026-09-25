@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getPosts } from "@/app/blog/posts";
 import { PUBLIC_BASE_URL } from "@/lib/config";
+import { guides } from "@/lib/guides";
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticPaths = [
     "",
@@ -18,6 +19,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // easy to reach (§312k BGB). It was linked in the footer but missing here,
     // so search engines had no reason to know it exists.
     "/cancel",
+    ...guides.map((guide) => `/${guide.slug}`),
   ];
   return [
     // Static pages have no maintained modification date; do not invent one.

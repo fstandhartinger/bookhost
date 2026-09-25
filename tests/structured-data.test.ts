@@ -94,7 +94,10 @@ function organization(value: Record<string, unknown>) {
 }
 it("renders the configured monthly net offer and legal provider as valid JSON-LD", () => {
   const all = schemas(Home());
-  expect(all).toHaveLength(2);
+  expect(all).toHaveLength(3);
+  const site = all.find((item) => item["@type"] === "WebSite");
+  expect(site).toMatchObject({ name: PRODUCT_NAME, url: PUBLIC_BASE_URL });
+  organization(site.publisher);
   const app = all.find((item) => item["@type"] === "SoftwareApplication");
   expect(app).toMatchObject({
     "@context": "https://schema.org",

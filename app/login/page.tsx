@@ -36,7 +36,7 @@ export default async function Login({
       <p className="mt-5 text-slate-600">
         Sign in to manage your team and workspace.
       </p>
-      <p className="mt-5 rounded-lg bg-[#e8edde] p-4 text-sm">
+      <p className="mt-5 rounded-lg bg-accent/60 p-4 text-sm">
         New to BookHost?{" "}
         <a className="font-medium underline" href="/pricing#trial">
           Start your free 14-day trial — no card needed.

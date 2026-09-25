@@ -20,7 +20,7 @@ export function headerLinksFor(pathname: string | null): HeaderLink[] {
       {
         href: "/app",
         label: "Your workspace",
-        className: "whitespace-nowrap hover:underline",
+        className: "whitespace-nowrap font-medium text-ink transition hover:text-moss",
       },
     ];
   }
@@ -28,12 +28,12 @@ export function headerLinksFor(pathname: string | null): HeaderLink[] {
     {
       href: "/pricing",
       label: "Pricing",
-      className: "hidden hover:underline sm:inline",
+      className: "hidden text-muted transition hover:text-ink sm:inline",
     },
     {
       href: "/login",
       label: "Log in",
-      className: "whitespace-nowrap hover:underline",
+      className: "whitespace-nowrap text-muted transition hover:text-ink",
     },
     {
       href: "/pricing",

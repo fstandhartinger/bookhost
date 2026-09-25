@@ -73,7 +73,7 @@ export function WikiChatDemo({ immediate = false }: { immediate?: boolean }) {
         source, and the source page name.
       </p>
       <div aria-hidden="true" className="space-y-4">
-        <p className="rounded-xl border border-ink/10 bg-[#f4f6f1] px-4 py-2.5 text-sm font-medium text-ink">
+        <p className="rounded-xl border border-ink/10 bg-sunken px-4 py-2.5 text-sm font-medium text-ink">
           {QUESTION}
         </p>
         {phase === 1 && (

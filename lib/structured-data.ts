@@ -70,8 +70,22 @@ export function softwareApplication() {
   };
 }
 
+// Names the site itself so search results can show "BookHost" as the site
+// name instead of the bare domain.
+export function webSite() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: PRODUCT_NAME,
+    url: PUBLIC_BASE_URL,
+    inLanguage: "en",
+    publisher: organization(),
+  };
+}
+
 export function homeStructuredData() {
   return [
+    webSite(),
     softwareApplication(),
     {
       "@context": "https://schema.org",

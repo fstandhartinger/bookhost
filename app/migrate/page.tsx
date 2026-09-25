@@ -138,7 +138,7 @@ tar -czf bookstack-files.tar.gz -C /config/www uploads files`}</code></pre>
           </ul>
         </section>
       </div>
-      <section className="mt-16 rounded-2xl bg-[#e8edde] p-8">
+      <section className="mt-16 rounded-2xl bg-accent/60 p-8">
         <h2>Ready to talk it through?</h2>
         <p className="mt-4 text-sm leading-7 text-slate-600">
           Email <a className="underline" href="mailto:info@productivity-boost.com">info@productivity-boost.com</a> with your BookStack version and a short description of your setup. Start with 14 days free; no card is required.

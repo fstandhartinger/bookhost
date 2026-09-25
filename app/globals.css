@@ -1,71 +1,258 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Design tokens as "R G B" triplets (see tailwind.config.ts). Light is the
+   default; dark follows the OS unless the visitor picked a theme, which the
+   inline script in the layout stores as data-theme on <html>. */
 :root {
   color-scheme: light;
+  --paper: 250 249 245;
+  --surface: 255 255 255;
+  --sunken: 243 242 236;
+  --ink: 21 47 44;
+  --moss: 40 103 82;
+  --accent: 214 236 178;
+  --muted: 74 90 87;
+  --muted-strong: 52 68 65;
+  --faint: 86 100 96;
+  --line: 226 228 221;
+  --line-strong: 190 198 194;
+  --warn-bg: 254 246 225;
+  --warn-line: 240 214 150;
+  --warn-fg: 122 72 10;
+  --danger-bg: 254 238 236;
+  --danger-line: 244 176 168;
+  --danger-fg: 153 27 27;
+  --ok-bg: 234 246 236;
+  --glow: 40 103 82;
+  --shadow: 21 47 44;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: 11 18 17;
+    --surface: 18 28 26;
+    --sunken: 14 23 21;
+    --ink: 232 239 233;
+    --moss: 126 201 165;
+    --accent: 44 79 62;
+    --muted: 163 179 174;
+    --muted-strong: 196 208 203;
+    --faint: 138 154 149;
+    --line: 38 52 49;
+    --line-strong: 58 74 70;
+    --warn-bg: 48 36 14;
+    --warn-line: 110 82 30;
+    --warn-fg: 246 207 128;
+    --danger-bg: 56 22 22;
+    --danger-line: 128 48 44;
+    --danger-fg: 252 170 160;
+    --ok-bg: 20 44 32;
+    --glow: 126 201 165;
+    --shadow: 0 0 0;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: 11 18 17;
+  --surface: 18 28 26;
+  --sunken: 14 23 21;
+  --ink: 232 239 233;
+  --moss: 126 201 165;
+  --accent: 44 79 62;
+  --muted: 163 179 174;
+  --muted-strong: 196 208 203;
+  --faint: 138 154 149;
+  --line: 38 52 49;
+  --line-strong: 58 74 70;
+  --warn-bg: 48 36 14;
+  --warn-line: 110 82 30;
+  --warn-fg: 246 207 128;
+  --danger-bg: 56 22 22;
+  --danger-line: 128 48 44;
+  --danger-fg: 252 170 160;
+  --ok-bg: 20 44 32;
+  --glow: 126 201 165;
+  --shadow: 0 0 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
 body {
   @apply bg-paper text-ink antialiased;
+  font-feature-settings: "cv11", "ss01", "ss03";
+  text-rendering: optimizeLegibility;
 }
 ::selection {
-  background: #dbe9ba;
+  background: rgb(var(--accent));
+  color: rgb(var(--ink));
 }
 a,
 button,
 input,
+select,
+textarea,
 summary {
-  outline-offset: 5px;
+  outline-offset: 4px;
+}
+:focus-visible {
+  outline: 2px solid rgb(var(--moss));
+  border-radius: 6px;
 }
 button:disabled {
   cursor: wait;
   opacity: 0.65;
 }
+code {
+  font-size: 0.9em;
+}
+:not(pre) > code {
+  @apply rounded-md bg-sunken px-1.5 py-0.5;
+}
+
 @layer components {
+  /* Below-the-fold sections: skip layout and paint until scrolled near. */
+  .defer {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 900px;
+  }
   .shell {
-    @apply mx-auto max-w-6xl px-6;
+    @apply mx-auto max-w-6xl px-5 sm:px-6;
   }
   .section {
     @apply py-16 md:py-24;
   }
   .eyebrow {
-    @apply mb-5 text-xs font-semibold tracking-[.18em] text-moss;
+    @apply mb-4 text-xs font-semibold uppercase tracking-[.16em] text-moss;
   }
   h1 {
-    @apply text-4xl font-semibold leading-[1.1] tracking-[-.045em] md:text-6xl;
+    @apply text-[2.6rem] font-semibold leading-[1.04] tracking-[-.045em] sm:text-5xl md:text-[4.25rem];
+    text-wrap: balance;
   }
   h2 {
-    @apply text-3xl font-semibold leading-tight tracking-[-.035em] md:text-4xl;
+    @apply text-3xl font-semibold leading-[1.1] tracking-[-.035em] md:text-[2.75rem];
+    text-wrap: balance;
+  }
+  h3 {
+    @apply tracking-[-.015em];
   }
   .lede {
-    @apply mt-6 max-w-xl text-lg leading-relaxed text-slate-600;
+    @apply mt-6 max-w-xl text-lg leading-relaxed text-muted md:text-xl md:leading-relaxed;
+    text-wrap: pretty;
   }
   .button {
-    @apply inline-flex items-center justify-center gap-4 rounded-lg bg-ink px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-moss focus-visible:outline focus-visible:outline-2 focus-visible:outline-moss;
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-ink px-6 py-3 text-sm font-semibold text-white shadow-[0_1px_0_rgb(255_255_255/.12)_inset,0_8px_24px_-12px_rgb(var(--shadow)/.6)] transition hover:-translate-y-px hover:bg-moss focus-visible:outline focus-visible:outline-2 focus-visible:outline-moss;
   }
   .button-secondary {
-    @apply button border border-ink/20 bg-transparent text-ink hover:bg-white;
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-ink/15 bg-surface/60 px-6 py-3 text-sm font-semibold text-ink backdrop-blur transition hover:border-ink/30 hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-moss;
   }
   .badge {
-    @apply inline-block rounded-full bg-[#e8efd9] px-3 py-1 text-xs font-medium text-moss;
+    @apply inline-block rounded-full bg-accent/70 px-3 py-1 text-xs font-medium text-moss;
+  }
+  .pill {
+    @apply inline-flex items-center gap-2 rounded-full border border-ink/10 bg-surface/70 px-3 py-1.5 text-xs font-medium text-muted backdrop-blur;
+  }
+  .card {
+    @apply rounded-2xl border border-ink/10 bg-surface p-6 shadow-[0_1px_2px_rgb(var(--shadow)/.04),0_12px_32px_-24px_rgb(var(--shadow)/.35)];
   }
   .price-card {
-    @apply rounded-2xl border border-ink/15 bg-white p-8 shadow-[0_12px_40px_-25px_rgba(21,47,44,.3)];
+    @apply rounded-3xl border border-ink/10 bg-surface p-7 shadow-[0_1px_2px_rgb(var(--shadow)/.05),0_30px_60px_-40px_rgb(var(--shadow)/.45)] sm:p-9;
+  }
+  .frame {
+    @apply overflow-hidden rounded-2xl border border-ink/10 bg-surface shadow-[0_1px_2px_rgb(var(--shadow)/.06),0_40px_80px_-40px_rgb(var(--shadow)/.45)];
+  }
+  .frame-bar {
+    @apply flex items-center gap-2 border-b border-ink/10 bg-sunken px-4 py-2.5;
+  }
+  .frame-bar i {
+    @apply block h-2.5 w-2.5 rounded-full bg-ink/15;
+  }
+  .glow {
+    background: radial-gradient(
+      60% 60% at 50% 40%,
+      rgb(var(--glow) / 0.18),
+      transparent 70%
+    );
   }
   .checklist {
-    @apply space-y-3 text-sm text-slate-700;
+    @apply space-y-3 text-sm text-muted-strong;
+  }
+  .checklist li {
+    @apply relative pl-7;
   }
   .checklist li:before {
     content: "✓";
-    @apply mr-3 font-semibold text-moss;
+    @apply absolute left-0 top-0 font-semibold text-moss;
   }
   .field {
-    @apply mt-2 block w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-base focus:border-moss focus:outline-none focus:ring-2 focus:ring-moss/20;
+    @apply mt-2 block w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-base text-ink focus:border-moss focus:outline-none focus:ring-2 focus:ring-moss/20;
   }
   .error {
     @apply text-sm text-red-800;
   }
+  .cta-panel {
+    @apply relative mt-16 overflow-hidden rounded-3xl border border-ink/10 bg-surface p-8 sm:p-10;
+  }
+  .cta-panel h2 {
+    @apply text-2xl md:text-3xl;
+  }
+  .prose-guide {
+    @apply mt-10 leading-[1.75] text-muted-strong;
+    text-wrap: pretty;
+  }
+  .prose-guide > * + * {
+    @apply mt-5;
+  }
+  .prose-guide h2 {
+    @apply mb-4 mt-14 text-2xl text-ink md:text-3xl;
+    scroll-margin-top: 6rem;
+  }
+  .prose-guide h3 {
+    @apply mb-2 mt-8 text-lg font-semibold text-ink;
+  }
+  .prose-guide a {
+    @apply text-ink underline decoration-moss/40 underline-offset-4 hover:decoration-moss;
+  }
+  .prose-guide strong {
+    @apply text-ink;
+  }
+  .prose-guide ul {
+    @apply list-disc space-y-2 pl-6 marker:text-moss;
+  }
+  .prose-guide ol {
+    @apply list-decimal space-y-2 pl-6 marker:text-moss;
+  }
+  .prose-guide table {
+    @apply w-full border-collapse text-left text-sm;
+  }
+  .prose-guide .table-wrap {
+    @apply overflow-x-auto rounded-xl border border-ink/10;
+  }
+  .prose-guide th {
+    @apply border-b border-ink/10 bg-sunken p-3 font-semibold text-ink;
+  }
+  .prose-guide td {
+    @apply border-b border-ink/10 p-3 align-top;
+  }
+  .prose-guide pre {
+    @apply overflow-x-auto rounded-xl border border-ink/10 bg-sunken p-5 text-sm leading-7 text-ink;
+  }
   .legal {
-    @apply mx-auto min-w-0 max-w-3xl py-16 leading-7 text-slate-700;
+    @apply mx-auto min-w-0 max-w-3xl py-16 leading-7 text-muted-strong;
     overflow-wrap: anywhere;
     hyphens: auto;
   }
@@ -101,7 +288,7 @@ button:disabled {
   }
   .legal th,
   .legal td {
-    @apply border p-3 text-left;
+    @apply border border-ink/15 p-3 text-left;
   }
 }
 
@@ -136,7 +323,7 @@ button:disabled {
 }
 .intake-preview td,
 .intake-preview th {
-  border: 1px solid #cbd5e1;
+  border: 1px solid rgb(var(--line-strong));
   padding: 0.5rem;
   text-align: left;
 }
@@ -148,4 +335,4 @@ button:disabled {
 .legal-wrapper { display: block; }
 .legal-intro { max-width: 72ch; margin: 2.5rem auto 0; padding: 0 1.25rem; }
 .legal-intro h1 { font-size: 2rem; margin-bottom: 0.75rem; }
-.legal-intro p { line-height: 1.6; color: var(--muted, #4b5563); }
+.legal-intro p { line-height: 1.6; color: rgb(var(--muted)); }

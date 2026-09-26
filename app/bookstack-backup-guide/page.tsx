@@ -32,20 +32,25 @@ tar -czf bookstack-files.tar.gz -C /config/www uploads files .env`;
 const checksums = `sha256sum bookstack.sql bookstack-files.tar.gz > SHA256SUMS
 tar -tzf bookstack-files.tar.gz > /dev/null && echo "archive readable"`;
 
-const restoreStandard = `# 1. Import the database into the empty BookStack database
+const restoreStandard = `# 1. Unpack files into the BookStack folder. This also restores
+#    the old .env, which still points at the old server.
+tar -xzf bookstack-files.tar.gz
+
+# 2. Edit .env: keep APP_KEY from the backup, set DB_HOST,
+#    DB_DATABASE, DB_USERNAME, DB_PASSWORD and APP_URL for this server
+nano .env
+
+# 3. Import the database into the empty BookStack database
 mysql -u bookstack -p bookstack < bookstack.sql
 
-# 2. Bring the schema up to the installed version
+# 4. Bring the schema up to the installed version, fix ownership
 php artisan migrate
-
-# 3. Unpack files into the BookStack folder, then fix ownership
-tar -xzf bookstack-files.tar.gz
 sudo chown -R www-data:www-data public/uploads storage/uploads
 
-# 4. If the address changed
+# 5. If the address changed
 php artisan bookstack:update-url https://old.example.com https://new.example.com
 
-# 5. Rebuild derived data and clear caches
+# 6. Rebuild derived data and clear caches
 php artisan bookstack:regenerate-search
 php artisan bookstack:regenerate-permissions
 php artisan cache:clear && php artisan view:clear`;
@@ -193,9 +198,10 @@ export default function BookStackBackupGuidePage() {
         <h2>Restore a standard install</h2>
         <p>
           Install BookStack as usual on the target server, same version or
-          newer, and point <code>.env</code> at an empty database. Put the old{" "}
-          <code>APP_KEY</code> into the new <code>.env</code> before anyone
-          signs in. Then:
+          newer, with an empty database. The files archive contains the old{" "}
+          <code>.env</code>, so unpack it first and then correct the database
+          settings and <code>APP_URL</code> for the new server, keeping the
+          old <code>APP_KEY</code>. Do all of this before anyone signs in:
         </p>
         <pre>
           <code>{restoreStandard}</code>

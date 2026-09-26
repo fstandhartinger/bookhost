@@ -2,7 +2,7 @@ import type { Config } from "tailwindcss";
 
 // Every colour is a CSS variable (globals.css) so light and dark mode flip
 // the whole site, including the dashboard, without a `dark:` twin on every
-// class. `white` means "raised surface" and the slate/amber/red/green shades
+// class. `white` means "raised surface" and the slate/amber/red/green/teal shades
 // the app already uses are remapped to tokens with enough contrast in both.
 const token = (name: string) => `rgb(var(--${name}) / <alpha-value>)`;
 export default {
@@ -48,6 +48,16 @@ export default {
           900: token("danger-fg"),
         },
         green: { 50: token("ok-bg") },
+        // Dashboard notices, invitation box and onboarding steps.
+        teal: {
+          50: token("ok-bg"),
+          100: token("ok-bg"),
+          200: token("line-strong"),
+          600: token("moss"),
+          700: token("moss"),
+          800: token("moss"),
+          900: token("ink"),
+        },
       },
       fontFamily: {
         sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],

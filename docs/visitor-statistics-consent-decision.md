@@ -80,3 +80,13 @@ IP-derived persistent identifier of any kind.
    marker appears in `page_views`; the identical request with a curl UA produces no row; no
    request to any third-party analytics host (served HTML/bundle enumeration + network capture);
    unauthenticated `GET /api/operator/visits` → 404; QA marker rows deleted after the proof.
+
+## Addendum 2026-09-26 — public paths after the revamp round
+
+The `publicPath` allowlist in `lib/analytics/shared.ts` was extended so the first-party count also covers the
+public pages added after the original decision: `/migrate`, `/reliability`, `/blog`, `/blog/<slug>` (bounded
+slug pattern), the SEO guides `/bookstack-vs-confluence`, `/bookstack-backup-guide`,
+`/self-hosted-vs-managed-bookstack`, `/eu-hosted-team-wiki`, plus `/privacy` and `/terms`. Every other fact in
+this decision is unchanged: strict fixed-path allowlist without query strings, nothing stored on or read from
+the device for statistics, no third party, daily-rotated in-memory hash salt, 90-day retention, operator-only
+aggregate output. None of the §-3 reopening conditions is triggered.

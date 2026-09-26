@@ -58,6 +58,28 @@ it("sanitizes UTM labels and excludes private paths and referrer secrets", () =>
   ).toBeNull();
   expect(publicPath("/welcome?session_id=secret")).toBeNull();
   expect(publicPath("/app/intake")).toBeNull();
+  expect(publicPath("/migrate")).toBe("/migrate");
+  expect(publicPath("/reliability")).toBe("/reliability");
+  expect(publicPath("/privacy")).toBe("/privacy");
+  expect(publicPath("/terms")).toBe("/terms");
+  expect(publicPath("/bookstack-vs-confluence")).toBe("/bookstack-vs-confluence");
+  expect(publicPath("/bookstack-backup-guide")).toBe("/bookstack-backup-guide");
+  expect(publicPath("/self-hosted-vs-managed-bookstack")).toBe(
+    "/self-hosted-vs-managed-bookstack",
+  );
+  expect(publicPath("/eu-hosted-team-wiki")).toBe("/eu-hosted-team-wiki");
+  expect(publicPath("/blog")).toBe("/blog");
+  expect(publicPath("/blog/moving-self-hosted-bookstack-to-managed-hosting")).toBe(
+    "/blog/moving-self-hosted-bookstack-to-managed-hosting",
+  );
+  expect(publicPath("/blogg")).toBeNull();
+  expect(publicPath("/blog/Foo")).toBeNull();
+  expect(publicPath("/blog/foo/bar")).toBeNull();
+  expect(publicPath("/blog/-leading-hyphen")).toBeNull();
+  expect(publicPath("/blog/has_underscore")).toBeNull();
+  expect(publicPath(`/blog/${"a".repeat(82)}`)).toBeNull();
+  expect(publicPath("/migrate?utm_source=x")).toBeNull();
+  expect(publicPath("//migrate")).toBeNull();
   expect(referrerHost("https://example.org/private?token=secret")).toBe(
     "example.org",
   );

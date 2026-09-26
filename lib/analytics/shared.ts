@@ -21,7 +21,7 @@ export function parseUtm(params: URLSearchParams) {
 export function publicPath(value: unknown): string | null {
   // Never store account IDs, checkout tokens, search strings or private paths.
   return typeof value === "string" &&
-    /^\/(?:pricing|login(?:\/reset)?|cancel|legal\/(?:datenschutz|impressum|agb|avv))?$/.test(
+    /^\/(?:pricing|privacy|terms|migrate|reliability|bookstack-vs-confluence|bookstack-backup-guide|self-hosted-vs-managed-bookstack|eu-hosted-team-wiki|login(?:\/reset)?|cancel|legal\/(?:datenschutz|impressum|agb|avv)|blog(?:\/[a-z0-9][a-z0-9-]{1,80})?)?$/.test(
       value,
     )
     ? value

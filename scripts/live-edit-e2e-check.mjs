@@ -27,11 +27,14 @@ function env(name) {
 
 async function login(page, baseUrl, email, password) {
   await page.goto(`${baseUrl}/login`, { waitUntil: "networkidle" });
-  await page.fill('input[name="email"]', email);
-  await page.fill('input[name="password"]', password);
+  const form = page.locator("form").filter({
+    has: page.locator('input[name="password"]'),
+  });
+  await form.locator('input[name="email"]').fill(email);
+  await form.locator('input[name="password"]').fill(password);
   await Promise.all([
-    page.waitForNavigation({ waitUntil: "networkidle" }),
-    page.click('button[type="submit"]'),
+    page.waitForNavigation({ waitUntil: "domcontentloaded" }),
+    form.getByRole("button", { name: /log in/i }).click(),
   ]);
   if (page.url().includes("/login"))
     throw new Error(`Login failed for ${email}`);

@@ -8,11 +8,17 @@
 // disappears silently.
 //
 // Known limitation (phase 1): only WYSIWYG-edited BookStack pages are supported.
-// Markdown-edited pages are HTML-agnostic in a way Tiptap (an HTML/WYSIWYG editor)
-// cannot cleanly round-trip, so this script no-ops on markdown pages for now.
+// BookStack's page-view component does not expose its editor type, so the server
+// makes the authoritative check when the user tries to join. The native edit
+// route does expose its editor type and is checked here before polling presence.
 
 import { injectStyles } from "./styles";
 import { mountEditor } from "./editor";
+import {
+  getBookStackEditorType,
+  getBookStackPageId,
+  getBookStackPageInfo,
+} from "./page-info";
 import type { JoinResponse, PresenceResponse, TicketResult } from "./types";
 
 // BookHost's control-plane origin. Hardcoded on purpose for this MVP: Live Edit is
@@ -35,10 +41,6 @@ function safe(fn: () => void): void {
   } catch (error) {
     warn(error);
   }
-}
-
-function getPageInfoElement(): Element | null {
-  return document.querySelector("[page-id]");
 }
 
 function getPageTitle(): string {
@@ -295,20 +297,20 @@ function init(): void {
     // page qualifies for Live Edit below — this is what an e2e test checks first.
     (window as unknown as { __liveEdit?: { version: string } }).__liveEdit = { version: "1" };
 
-    const pageInfoEl = getPageInfoElement();
+    const pageInfoEl = getBookStackPageInfo(document, location.pathname);
     if (!pageInfoEl) return; // not a book page
 
-    const pageId = pageInfoEl.getAttribute("page-id");
+    const pageId = getBookStackPageId(pageInfoEl, location.pathname);
     if (!pageId) return;
-
-    const editorType = pageInfoEl.getAttribute("editor-type");
-    if (editorType !== "wysiwyg") return; // markdown pages unsupported in phase 1
 
     const pageTitle = getPageTitle();
 
     if (location.pathname.endsWith("/edit")) {
+      if (getBookStackEditorType(pageInfoEl) !== "wysiwyg") return;
       initSoftLock(pageId);
     } else {
+      const editorType = getBookStackEditorType(pageInfoEl);
+      if (editorType && editorType !== "wysiwyg") return;
       initJoinButton(pageId, pageTitle);
     }
   });

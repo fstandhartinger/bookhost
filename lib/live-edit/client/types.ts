@@ -2,7 +2,7 @@
 // (see scripts/build-live-edit-embed.mjs) into a single browser IIFE — it is never
 // compiled by tsc/Next's own build, but is kept type-clean regardless.
 
-/** The BookStack page-info element BookStack always renders, carrying `page-id` / `editor-type`. */
+/** Page and editor IDs exposed by BookStack's page-view/editor component roots. */
 export interface PageInfo {
   pageId: string;
   pageTitle: string;

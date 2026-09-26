@@ -85,6 +85,7 @@ const footerColumns: [string, [string, string][]][] = [
       ["/pricing", "Pricing"],
       [DEMO_URL, "Live demo"],
       ["/migrate", "Move your BookStack"],
+      ["/agents", "Agents (MCP)"],
     ],
   ],
   [

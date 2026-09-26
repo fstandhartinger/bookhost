@@ -46,16 +46,25 @@ export async function POST(request: Request) {
     const headers = { "Cache-Control": "no-store" };
     switch (body.action) {
       case "set_mode":
-        return Response.json(await setWriteMode(user, tenant, body.mode), { headers });
+        return Response.json(await setWriteMode(user, tenant, body.mode), {
+          headers,
+        });
       case "set_access":
-        return Response.json(await setAccess(user, tenant, body.enabled), { headers });
+        return Response.json(await setAccess(user, tenant, body.enabled), {
+          headers,
+        });
       case "create_agent":
         return Response.json(
-          await createAgent(user, tenant, { name: body.name, role_id: body.role_id }),
+          await createAgent(user, tenant, {
+            name: body.name,
+            role_id: body.role_id,
+          }),
           { status: 201, headers },
         );
       case "revoke_agent":
-        return Response.json(await revokeAgent(user, tenant, body.agent_id), { headers });
+        return Response.json(await revokeAgent(user, tenant, body.agent_id), {
+          headers,
+        });
       default:
         throw new IntakeError("Unknown action.");
     }

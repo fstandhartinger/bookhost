@@ -20,7 +20,9 @@ export default function Privacy() {
           billing details handled by Stripe, optional Google sign-in profile data, documents you
           upload for reviewed intake (processed by an AI provider on your request), first-party
           visitor statistics without cookies or device storage (see below), and server logs. We do
-          not sell personal data. You can request access,
+          not sell personal data. If you connect AI agents over MCP (beta), we pass their requests
+          to your workspace and keep only metadata (tool, object id, result, latency) for 90 days;
+          page content goes only to the agent you connect. You can request access,
           correction, export or deletion at any time. The German text below is the legally binding
           version of this policy (Datenschutzerklärung).
         </p>

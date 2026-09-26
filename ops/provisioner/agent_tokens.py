@@ -95,16 +95,14 @@ def revoke(db, row, run_php=php):
 
 
 def reconcile_agents(db, instance, run_php=php):
-    """One pass: install pending tokens, then delete revoked ones."""
-    try:
-        exists = db.execute("SELECT to_regclass('public.agents')").fetchone()[0]
-    except Exception:
-        return
-    if not exists:
-        return
+    """One pass: install pending tokens, then delete revoked ones.
+
+    Every query is scoped to this provisioner instance, like the tenant queue.
+    Before migration 038 the tables do not exist; the caller logs and retries.
+    """
     pending = db.execute(
-        "SELECT a.id,t.slug,a.name,a.role_id,a.token_id,a.pending_secret_enc FROM agents a JOIN tenants t ON t.id=a.tenant_id "
-        "WHERE a.status='pending' AND a.pending_secret_enc IS NOT NULL AND t.status='running' AND COALESCE(t.provisioner_instance,'production')=%s "
+        "SELECT a.id,n.slug,a.name,a.role_id,a.token_id,a.pending_secret_enc FROM agents a JOIN tenants n ON n.id=a.tenant_id "
+        "WHERE a.status='pending' AND a.pending_secret_enc IS NOT NULL AND n.status='running' AND COALESCE(n.provisioner_instance,'production')=%s "
         "ORDER BY a.created_at LIMIT 20", (instance,)).fetchall()
     key = kms_key() if pending else None
     for row in pending:
@@ -113,11 +111,12 @@ def reconcile_agents(db, instance, run_php=php):
         except Exception:
             print('Agent token install failed; retry next run', flush=True)
     db.execute(
-        "UPDATE agents SET status='failed',pending_secret_enc=NULL,error=%s,updated_at=now() WHERE status='pending' AND created_at<now()-make_interval(mins => %s)",
-        ('Setting up this agent took too long. Revoke it and create a new one.', STALE_MINUTES))
+        "UPDATE agents a SET pending_secret_enc=NULL,status='failed',error=%s,updated_at=now() FROM tenants n "
+        "WHERE n.id=a.tenant_id AND COALESCE(n.provisioner_instance,'production')=%s AND a.status='pending' AND a.created_at<now()-make_interval(mins => %s)",
+        ('Setting up this agent took too long. Revoke it and create a new one.', instance, STALE_MINUTES))
     revoking = db.execute(
-        "SELECT a.id,t.slug,a.token_id FROM agents a JOIN tenants t ON t.id=a.tenant_id "
-        "WHERE a.status='revoke_requested' AND t.status='running' AND COALESCE(t.provisioner_instance,'production')=%s ORDER BY a.updated_at LIMIT 50", (instance,)).fetchall()
+        "SELECT a.id,n.slug,a.token_id FROM agents a JOIN tenants n ON n.id=a.tenant_id "
+        "WHERE a.status='revoke_requested' AND n.status='running' AND COALESCE(n.provisioner_instance,'production')=%s ORDER BY a.updated_at LIMIT 50", (instance,)).fetchall()
     for row in revoking:
         try:
             revoke(db, row, run_php)

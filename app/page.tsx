@@ -356,6 +356,50 @@ export default function Home() {
         </figure>
       </section>
 
+      <section id="agents" className="defer scroll-mt-20 border-t border-ink/10 py-16 md:py-24">
+        <div className="grid gap-10 lg:grid-cols-[1fr_1.15fr] lg:items-start">
+          <div>
+            <p className="eyebrow">Agent access · beta</p>
+            <h2>Human-agent collaboration wiki.</h2>
+            <p className="mt-5 text-sm leading-7 text-muted">
+              Connect Claude Code, Cursor, VS Code or Codex over MCP. Agents use
+              their own BookStack user and permissions; their edits wait for
+              your approval unless you allow direct edits.
+            </p>
+            <Link
+              href="/agents"
+              className="mt-5 inline-block text-sm font-medium text-ink underline decoration-moss/40 underline-offset-4 hover:decoration-moss"
+            >
+              How to connect an agent →
+            </Link>
+          </div>
+          <ul className="checklist text-sm leading-6 text-muted">
+            <li>
+              One MCP endpoint per workspace; owners and admins create an agent
+              user and token in the dashboard.
+            </li>
+            <li>
+              BookStack roles decide what each agent can read and change.
+            </li>
+            <li>
+              Default &ldquo;Propose only&rdquo;: agent edits land in the review
+              queue. Direct edits appear in the revision history under the
+              agent&rsquo;s name.
+            </li>
+            <li>
+              Activity log without page content, rate limits per token, and a
+              switch to turn agent access off.
+            </li>
+            <li>
+              BookHost sends no page content to an AI model for this feature;
+              content goes only to the agent you connect. Claude.ai web and
+              ChatGPT connectors need OAuth sign-in, which is planned but not
+              available yet.
+            </li>
+          </ul>
+        </div>
+      </section>
+
       <section className="defer section">
         <div className="grid gap-10 lg:grid-cols-[1fr_1.6fr] lg:items-start">
           <div>

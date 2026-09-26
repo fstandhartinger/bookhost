@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 
-export type ActivityStatus = "ok" | "proposed" | "denied" | "error" | "rate_limited";
+export type ActivityStatus =
+  "ok" | "proposed" | "denied" | "error" | "rate_limited";
 
 // Metadata only: which token/agent, which tool, which object id, outcome and
 // latency. Never arguments, page content, search terms or secrets.

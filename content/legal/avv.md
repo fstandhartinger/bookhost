@@ -1,6 +1,6 @@
 # Auftragsverarbeitungsvertrag gemäß Art. 28 DSGVO
 
-Stand: 15.09.2026
+Stand: 26.09.2026
 
 ## 1. Vertragsparteien und Einbeziehung
 
@@ -25,6 +25,8 @@ Verlangt Unionsrecht oder das Recht eines Mitgliedstaates ausnahmsweise eine and
 Der Auftraggeber verantwortet die Rechtmäßigkeit der Erhebung und Nutzung der Inhalte, die Information der Betroffenen, die Auswahl einer Rechtsgrundlage sowie seine Weisungen. Er vergibt und überprüft Benutzer- und Freigaberechte. Er informiert den Auftragnehmer über besondere Schutzanforderungen und erkennbare Fehler oder Sicherheitsvorfälle.
 
 Bei der technisch verfügbaren Upload-Beta veranlasst der Kunde die KI-Verarbeitung je Upload. Für die Nutzung mit personenbezogenen Kundeninhalten gelten die Voraussetzungen in Anlage 3; die technische Verfügbarkeit belegt deren Erfüllung nicht. Der Auftraggeber minimiert übermittelte Inhalte auf das für den jeweiligen Zweck Erforderliche. Nicht vereinbarte besondere Kategorien personenbezogener Daten und strafrechtliche Daten dürfen nicht gezielt zur KI-Verarbeitung übermittelt werden.
+
+Beim Agentenzugriff über MCP (Beta) veranlasst der Auftraggeber jeden Zugriff, indem er einem MCP-Client das API-Token eines BookStack-Benutzers seines Workspaces überlässt. Er legt über dessen BookStack-Rolle und den Schreibmodus fest, welche Inhalte gelesen oder geändert werden können. Den verbundenen Client und den dahinterstehenden KI-Dienst wählt der Auftraggeber selbst; die Übermittlung von Inhalten dorthin erfolgt in seiner Verantwortung und ist keine Unterauftragsverarbeitung durch den Auftragnehmer.
 
 ## 4. Vertraulichkeit und Sicherheit
 
@@ -84,6 +86,7 @@ Die Verantwortlichkeit und Haftung gegenüber Betroffenen, insbesondere nach Art
 | Betroffene | Beschäftigte und sonstige Nutzer des Kunden, Kunden und Interessenten des Kunden, Lieferanten, Geschäftspartner sowie weitere in zulässigen Dokumenten erwähnte Personen. |
 | Dokument-Eingang per Upload (Beta) | Verfügbar auf Veranlassung des Kunden je Upload: Textextraktion aus PDF, DOCX, Markdown oder TXT, KI-Inferenz über TensorX Limited (Dublin, Irland) für Seitenvorschläge mit Zusammenfassung, Tags und Prüfliste, menschliche Prüfung und Veröffentlichung ausschließlich durch Workspace-Owner oder -Admins. Alle Mitglieder des BookHost-Dashboard-Teams können hochladen und Entwürfe prüfen; individuelle BookStack-Seitenrechte gelten nach Veröffentlichung. Voraussetzungen für personenbezogene Inhalte: Anlage 3. |
 | KI-Wiki-Antworten (Beta) | Verfügbar auf Veranlassung je Frage eines Workspace-Owners oder -Admins: Frage und zur Beantwortung abgerufene Passagen des eigenen Workspaces werden an TensorX Limited (Dublin, Irland) übermittelt; Antworten nur mit Quellangaben; keine dauerhafte Protokollierung von Frage und Antwort, nur der Fragenzähler je Konto. Voraussetzungen für personenbezogene Inhalte: Anlage 3. |
+| Agentenzugriff über MCP (Beta) | Verfügbar auf Veranlassung des Kunden: Weiterleitung von Anfragen eines vom Kunden verbundenen MCP-Clients samt dessen BookStack-API-Token an die BookStack-Instanz des Kunden und Rückgabe des Ergebnisses an diesen Client; es gelten die BookStack-Berechtigungen des Token-Benutzers. Im Modus „Nur vorschlagen“ (Standard) Speicherung von Änderungen als Entwurf im Dokument-Eingang bis zur Prüfung durch Owner oder Admins. Gespeichert werden nur Metadaten (Token-Fingerabdruck, Werkzeug, Objekt-ID, Ergebnis, Antwortzeit, Zeitpunkt; Löschung nach 90 Tagen) sowie Zähler zur Ratenbegrenzung; keine Seiteninhalte, Suchbegriffe oder Token. Keine KI-Verarbeitung durch den Auftragnehmer und keine weiteren Unterauftragsverarbeiter. |
 | Geplante Zusatzverarbeitung | E-Mail-Eingang und berechtigungsgeprüfte KI-Antworten sind geplant und nicht verfügbar. Ihre spätere Aktivierung setzt gesonderte Information und Weisung voraus. |
 | Zusätzliche KI-Daten der Upload-Beta | Extrahierter Dokumenttext, Dateiname und Typ, gewähltes Zielbuch/-kapitel, Seitenvorschlag, Zusammenfassung, Tags, Prüfliste sowie technische Verarbeitungsmetadaten. |
 | Ausschlüsse | Eine gezielte Verarbeitung von Daten nach Art. 9 oder 10 DSGVO ist ohne gesonderte Vereinbarung über Zulässigkeit und zusätzliche Schutzmaßnahmen nicht umfasst; insbesondere erfolgt keine solche KI-Verarbeitung allein aufgrund dieses Standard-AVV. |
@@ -129,9 +132,13 @@ Vertraulichkeitsverpflichtungen, rollenbezogene Datenschutzunterweisung, minimal
 
 Die Standardkonfiguration verwendet auf TensorX gehostete Modellnamen. Der Inferenzpfad prüft keine TEE-Attestierung und sperrt abweichend konfigurierte Modellnamen nicht; eine Modellbezeichnung allein belegt keine TEE-Eigenschaft. Nur für den Auftrag erforderliche Inhalte werden übermittelt. Eine Nutzung für Modelltraining oder eine freiwillige Inhaltsprotokollierung wird nicht aktiviert; nach § 2.2.3 der Vendor-DPA (Anlage 1: „Zero data retention“) werden Prompts und Completionen in der ephemeren Verarbeitung nicht gespeichert. Entwürfe bleiben bis zur menschlichen Freigabe unveröffentlicht. Die aktuelle Wiki-Antworten-Beta steht nur Workspace-Ownern und -Admins offen und nutzt die über das Workspace-API-Token zugänglichen Inhalte. Für künftig angebotene berechtigungsgeprüfte KI-Antworten pro Mitglied müssen Berechtigungen bereits bei der Auswahl der Quellinhalte und bei der Ausgabe beachtet werden; ein späteres Ausblenden einzelner Links reicht nicht. Separate Löschfristen gelten für Eingangsdaten, Entwürfe und technische Metadaten.
 
+### 10. Zusätzliche Maßnahmen für den Agentenzugriff (MCP-Beta)
+
+Der Workspace wird allein über die aufgerufene Adresse bestimmt; ein Token wirkt nur in dem Workspace, zu dem sein BookStack-Benutzer gehört. Das interne Dienstkonto des Auftragnehmers ist für den Agentenzugriff gesperrt. Im Dashboard angelegte Agenten-Benutzer erhalten keine Administrator- oder Gastrolle; ihr Token-Geheimnis wird nur einmal angezeigt und beim Auftragnehmer lediglich verschlüsselt aufbewahrt, bis es in BookStack eingerichtet ist. Owner und Admins können einzelne Token widerrufen und den Agentenzugriff für den Workspace abschalten; beides wirkt ab der nächsten Anfrage. Anfragen sind je Token begrenzt (120 je Minute, 1.500 je Stunde, 60 Schreibvorgänge je Stunde); wiederholte Fehlanmeldungen werden je IP-Adresse begrenzt. Das Aktivitätsprotokoll enthält nur Metadaten und wird nach 90 Tagen gelöscht.
+
 ## Anlage 3 – Dienstleister und Unterauftragsverarbeiter
 
-Die Rollen werden je Verarbeitungsvorgang bestimmt. Stripe und Google sind für ihre eigenen Konto-, Zahlungs-, Sicherheits- und gesetzlichen Aufgaben eigene Verantwortliche; ihre Nennung macht diese Tätigkeiten nicht zu einer Unterauftragsverarbeitung von BookStack-Seiten.
+Die Rollen werden je Verarbeitungsvorgang bestimmt. Stripe und Google sind für ihre eigenen Konto-, Zahlungs-, Sicherheits- und gesetzlichen Aufgaben eigene Verantwortliche; ihre Nennung macht diese Tätigkeiten nicht zu einer Unterauftragsverarbeitung von BookStack-Seiten. Vom Auftraggeber beim Agentenzugriff über MCP verbundene Clients und KI-Dienste sind keine Unterauftragsverarbeiter des Auftragnehmers; der Auftraggeber wählt und verantwortet sie selbst.
 
 | Anbieter | Sitz / Aufgabe | Rolle und Datenumfang | Verarbeitungsorte / Einsatzbedingung |
 | --- | --- | --- | --- |

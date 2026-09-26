@@ -1,6 +1,6 @@
 # Datenschutzerklärung
 
-Stand: 15.09.2026
+Stand: 26.09.2026
 
 Diese Erklärung gilt für die Website und Kontoverwaltung unter https://bookhost.co sowie für den von uns betriebenen Dienst BookHost. Bei personenbezogenen Inhalten in einer Kundeninstanz unterscheiden wir zwischen unserer eigenen Verantwortung für den Betrieb und der Auftragsverarbeitung für den jeweiligen Kunden.
 
@@ -82,6 +82,8 @@ Für diese Inhalte ist grundsätzlich der Kunde Verantwortlicher. Wir verarbeite
 Supportzugriffe auf Inhalte erfolgen nur, soweit für einen vom Kunden veranlassten Vorgang oder die sichere Bereitstellung erforderlich, durch berechtigte und zur Vertraulichkeit verpflichtete Personen. Wir verwenden Kundeninhalte nicht für Werbung oder zum Training eigener KI-Modelle.
 
 Anfragen zu personenbezogenen Informationen in einer Kundeninstanz richten Sie bitte an deren Betreiber. Erreichen uns solche Anfragen, unterstützen wir den Kunden bei ihrer Bearbeitung und leiten sie ihm zu, soweit zulässig.
+
+**Agentenzugriff über MCP (Beta).** Der Kunde kann KI-Agenten und andere MCP-Clients über den Endpunkt `https://<workspace>.bookhost.co/mcp` mit seinem Workspace verbinden. Der Zugriff wird vom Kunden veranlasst: Er verwendet dafür das API-Token eines BookStack-Benutzers seines Workspaces, in der Regel eines von Ownern oder Admins im Dashboard angelegten Agenten-Benutzers, und bestimmt über dessen BookStack-Rolle, welche Inhalte gelesen oder geändert werden können. Wir leiten jede Anfrage mit diesem Token an die BookStack-Instanz des Kunden weiter und geben das Ergebnis an den anfragenden Client zurück. Dabei speichern wir nur Metadaten: einen nicht umkehrbaren Fingerabdruck der Token-Kennung, das aufgerufene Werkzeug, die Kennung des betroffenen Objekts (etwa eine Seiten-ID), das Ergebnis, die Antwortzeit und den Zeitpunkt. Diese Einträge werden nach 90 Tagen gelöscht. Seiteninhalte, Suchbegriffe und Token werden nicht protokolliert. Zur Ratenbegrenzung führen wir Zähler je Token (als Hashwert) und bei fehlgeschlagenen Anmeldungen je IP-Adresse; sie gelten für ein Zeitfenster von höchstens einer Stunde und werden danach bei der nächsten Bereinigung entfernt. Für im Dashboard angelegte Agenten speichern wir Name, gewählte Rolle, Token-Kennung und die anlegende Person; das Token-Geheimnis wird nur einmal angezeigt und bei uns lediglich verschlüsselt aufbewahrt, bis es in BookStack eingerichtet ist. Im Schreibmodus „Nur vorschlagen“ (Standard) werden Änderungen eines Agenten als Entwurf im Dokument-Eingang gespeichert; dafür gelten die Fristen für Intake-Einträge in Abschnitt 8. Seiteninhalte werden nur an den vom Kunden verbundenen Client und den von diesem genutzten KI-Dienst übermittelt. Diesen wählt der Kunde selbst aus; er verantwortet die Übermittlung dorthin, und der Dienst ist kein Unterauftragsverarbeiter von BookHost. BookHost selbst übermittelt für diese Funktion keine Inhalte an einen KI-Dienst und setzt dafür keine weiteren Unterauftragsverarbeiter ein.
 
 ## 8. KI-Verarbeitung von Dokumenten (Beta) und geplante Funktionen
 

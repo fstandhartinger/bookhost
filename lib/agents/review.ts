@@ -23,7 +23,14 @@ type Item = {
   };
 };
 
-type Page = { id: number; name: string; revision_count: number; editor?: string; html?: string; markdown?: string };
+type Page = {
+  id: number;
+  name: string;
+  revision_count: number;
+  editor?: string;
+  html?: string;
+  markdown?: string;
+};
 
 // Approving an agent proposal applies exactly what the agent submitted; the
 // reviewer can approve or reject but not silently rewrite it. The change is
@@ -31,7 +38,10 @@ type Page = { id: number; name: string; revision_count: number; editor?: string;
 // approval, like any other reviewed intake draft.
 export async function publishAgentProposal(item: Item, userId: string) {
   if (!canPublish(item.role))
-    throw new IntakeError("Only team owners and admins can approve agent proposals.", 403);
+    throw new IntakeError(
+      "Only team owners and admins can approve agent proposals.",
+      403,
+    );
   const host = tenantHost(item);
   if (item.status === "published")
     return { url: `https://${host}/link/${item.bookstack_page_id}` };
@@ -89,11 +99,17 @@ export async function publishAgentProposal(item: Item, userId: string) {
       const body =
         kind === "append"
           ? page.editor === "markdown" && typeof page.markdown === "string"
-            ? { markdown: `${page.markdown.replace(/\s+$/, "")}\n\n${item.extracted_text || ""}` }
+            ? {
+                markdown: `${page.markdown.replace(/\s+$/, "")}\n\n${item.extracted_text || ""}`,
+              }
             : { html: `${page.html || ""}\n${item.draft_html || ""}` }
           : {
-              ...(item.draft_title && item.draft_title !== page.name ? { name: item.draft_title } : {}),
-              ...(item.extracted_text !== null ? { markdown: item.extracted_text } : {}),
+              ...(item.draft_title && item.draft_title !== page.name
+                ? { name: item.draft_title }
+                : {}),
+              ...(item.extracted_text !== null
+                ? { markdown: item.extracted_text }
+                : {}),
             };
       if (Object.keys(body).length)
         await client.request(`pages/${pageId}`, body, "PUT");

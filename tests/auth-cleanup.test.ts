@@ -15,15 +15,18 @@ it("cleans expired rows at startup and hourly with only one timer per process", 
     startAuthCleanup();
     startAuthCleanup();
     await vi.advanceTimersByTimeAsync(0);
-    expect(db.query).toHaveBeenCalledTimes(4);
+    expect(db.query).toHaveBeenCalledTimes(5);
     expect(db.query).toHaveBeenCalledWith(
       "DELETE FROM password_reset_tokens WHERE expires_at<now()",
     );
     expect(db.query).toHaveBeenCalledWith(
       "DELETE FROM rate_limits WHERE expires_at<now()",
     );
+    expect(db.query).toHaveBeenCalledWith(
+      "DELETE FROM agent_activity WHERE created_at<now()-interval '90 days'",
+    );
     await vi.advanceTimersByTimeAsync(3600_000);
-    expect(db.query).toHaveBeenCalledTimes(8);
+    expect(db.query).toHaveBeenCalledTimes(10);
   } finally {
     vi.clearAllTimers();
     vi.useRealTimers();

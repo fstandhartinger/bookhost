@@ -1,6 +1,6 @@
 # Allgemeine Geschäftsbedingungen für BookHost
 
-Stand: 10.09.2026
+Stand: 26.09.2026
 
 ## 1. Anbieter, Geltungsbereich und Kundenkreis
 
@@ -29,6 +29,8 @@ Die BookStack-Exportfunktionen stehen während der Vertragslaufzeit im Rahmen de
 Der geprüfte Dokument-Eingang per Upload ist als **Beta auf Veranlassung des Kunden je Upload verfügbar** und im Tarif enthalten: 20 Entwürfe insgesamt während der Testphase, 300 Entwürfe je Kalendermonat (UTC) im Team-Tarif, gemeinsam für den Workspace. Die Verarbeitung reserviert einen Platz; fehlgeschlagene Entwurfserstellung gibt ihn im ursprünglichen Zeitraum wieder frei. Ungenutzte Plätze werden nicht übertragen. Verworfene Entwürfe und Entwürfe mit fehlgeschlagener Veröffentlichung zählen weiterhin. E-Mail-Eingang und rechtebewusste KI-Antworten bleiben geplant und sind noch nicht nutzbar; ein verbindlicher Liefertermin ist nicht zugesagt. Eine frühere ausdrückliche Individualzusage bleibt unberührt. Die KI-Wiki-Antworten sind als Beta für Workspace-Owner und -Admins auf Veranlassung je Frage verfügbar und im Tarif enthalten: 100 Fragen insgesamt während der Testphase, 1000 Fragen je Kalendermonat (UTC), gemeinsam für den Workspace.
 
 Beim Dokument-Eingang entstehen zunächst KI-Vorschläge mit Zusammenfassung, Tags und Prüfliste. Nur ein Owner oder Admin des Kunden darf diese nach Prüfung in BookStack veröffentlichen. KI-Ausgaben können falsch oder unvollständig sein; der Kunde prüft sie vor Verwendung. Die Verarbeitung durch TensorX Limited (Dublin, Irland) erfolgt nur auf Veranlassung des Kunden je Upload und nach Maßgabe des AVV. Die Verantwortung des Anbieters für eine vereinbarte technische Funktion und Zugriffskontrolle bleibt bestehen.
+
+Der Agentenzugriff über MCP ist als **Beta** verfügbar und im Tarif enthalten. Der Kunde kann damit selbst gewählte KI-Agenten und andere MCP-Clients über das API-Token eines BookStack-Benutzers seines Workspaces verbinden; es gelten die BookStack-Berechtigungen dieses Benutzers und der vom Kunden gewählte Schreibmodus (aus, nur Vorschläge zur Freigabe durch Owner oder Admins, oder direkte Änderungen). Anfragen sind je Token begrenzt (derzeit 120 je Minute, 1.500 je Stunde und 60 Schreibvorgänge je Stunde). Der Anbieter übermittelt für diese Funktion keine Inhalte an einen KI-Dienst. Auswahl, Vertragsbeziehung und Datenübermittlung an den verbundenen Client und dessen KI-Anbieter liegen beim Kunden. Handlungen eines Agenten, insbesondere direkte Änderungen, werden dem Kunden wie Handlungen seiner Nutzer zugerechnet; Seiteninhalte können Anweisungen an KI-Systeme enthalten, deren Befolgung der Anbieter nicht verhindern kann. Eine Anmeldung per OAuth und damit die Anbindung von Diensten, die diese voraussetzen, ist noch nicht verfügbar; ein Liefertermin ist nicht zugesagt.
 
 ## 4. Preis und Zahlung
 

@@ -52,6 +52,7 @@ export default async function Dashboard({
   // Carry the shown team so document intake cannot land on a different one.
   const intakeHref = team ? `/app/intake?team=${team.id}` : "/app/intake";
   const chatHref = team ? `/app/chat?team=${team.id}` : "/app/chat";
+  const agentsHref = team ? `/app/agents?team=${team.id}` : "/app/agents";
   const isOwner = !team || team.owner_user_id === session.user.id;
   const userId = session.user.id;
   const ownsTeam = teams.some((t) => t.owner_user_id === userId);
@@ -421,16 +422,18 @@ export default async function Dashboard({
                   >
                     Open BookStack ↗
                   </a>
-                  <a
-                    className="button-secondary mt-3"
-                    href={intakeHref}
-                  >
+                  <a className="button-secondary mt-3" href={intakeHref}>
                     Document intake (beta)
                   </a>
                   {canManage && (
-                    <a className="button-secondary mt-3" href={chatHref}>
-                      Ask your wiki (beta)
-                    </a>
+                    <>
+                      <a className="button-secondary mt-3" href={chatHref}>
+                        Ask your wiki (beta)
+                      </a>
+                      <a className="button-secondary mt-3" href={agentsHref}>
+                        Agents (beta)
+                      </a>
+                    </>
                   )}
                   {!isOwner && (
                     <MemberBookStackLogin

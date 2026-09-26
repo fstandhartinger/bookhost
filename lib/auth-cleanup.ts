@@ -2,6 +2,7 @@ import { generateNotifications, deliverNotifications } from "./notifications";
 import { mailTransport } from "./password-mail";
 import { baseUrl } from "./config";
 import { db, transaction } from "./db";
+import { cleanupAgentActivity } from "./agents/activity";
 const state = globalThis as typeof globalThis & {
   authCleanupTimer?: NodeJS.Timeout;
 };
@@ -20,6 +21,7 @@ export function startAuthCleanup() {
         "DELETE FROM page_views WHERE ts<now()-interval '90 days'",
       );
       await db.query("DELETE FROM events WHERE ts<now()-interval '90 days'");
+      await cleanupAgentActivity();
       await transaction((client) => generateNotifications(client, new Date()));
       if (process.env.SMTP_HOST)
         await deliverNotifications(db, async (email, text) => {

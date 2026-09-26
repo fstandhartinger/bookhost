@@ -31,6 +31,14 @@ export const guides = [
     description:
       "Back up and restore BookStack: database dump, uploads and attachments, the .env APP_KEY, LinuxServer paths, restore steps, restore tests and retention.",
   },
+  {
+    slug: "bookstack-mcp",
+    short: "BookStack MCP for AI agents",
+    title:
+      "Give Claude, Cursor and ChatGPT access to your team wiki (BookStack MCP)",
+    description:
+      "Connect AI agents to a BookStack wiki over MCP: which clients work today, how permissions and review of agent edits work, and what still needs OAuth.",
+  },
 ] as const;
 
 export type GuideSlug = (typeof guides)[number]["slug"];

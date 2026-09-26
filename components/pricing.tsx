@@ -102,6 +102,20 @@ export function Pricing() {
             <li>Summary, tags and reviewer checklist for each draft</li>
             <li>Owner/admin approval before publication to BookStack</li>
           </ul>
+          <p className="mb-4 mt-8 text-xs font-semibold uppercase tracking-[.14em] text-faint">
+            Agent access · beta
+          </p>
+          <ul className="checklist">
+            <li>
+              Human-agent collaboration wiki: connect Claude Code, Cursor, VS
+              Code or Codex over MCP. Agents use their own BookStack user and
+              permissions; their edits wait for your approval unless you allow
+              direct edits.{" "}
+              <Link className="underline" href="/agents">
+                How it works
+              </Link>
+            </li>
+          </ul>
           <p className="mt-6 text-xs leading-5 text-muted">
             Only workspace owners/admins can publish; members can upload and
             review. Drafts are shared with your BookHost dashboard team;

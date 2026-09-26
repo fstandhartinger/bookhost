@@ -18,8 +18,7 @@ type HastNode = {
 const VOID = new Set(["br", "hr", "img", "input"]);
 const escapeText = (value: string) =>
   value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-const escapeAttr = (value: string) =>
-  escapeText(value).replace(/"/g, "&quot;");
+const escapeAttr = (value: string) => escapeText(value).replace(/"/g, "&quot;");
 
 function attr(name: string, value: unknown) {
   const key = name === "className" ? "class" : name.toLowerCase();
@@ -42,9 +41,35 @@ function toHtml(node: HastNode): string {
 
 export const PAGE_HTML_OPTIONS: sanitizeHtml.IOptions = {
   allowedTags: [
-    "h1", "h2", "h3", "h4", "h5", "h6", "p", "br", "hr", "ul", "ol", "li",
-    "strong", "em", "del", "s", "code", "pre", "blockquote", "a", "table",
-    "thead", "tbody", "tr", "th", "td", "input", "sup", "sub",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "p",
+    "br",
+    "hr",
+    "ul",
+    "ol",
+    "li",
+    "strong",
+    "em",
+    "del",
+    "s",
+    "code",
+    "pre",
+    "blockquote",
+    "a",
+    "table",
+    "thead",
+    "tbody",
+    "tr",
+    "th",
+    "td",
+    "input",
+    "sup",
+    "sub",
   ],
   allowedAttributes: {
     a: ["href"],
@@ -58,6 +83,8 @@ export const PAGE_HTML_OPTIONS: sanitizeHtml.IOptions = {
 
 export function markdownToHtml(markdown: string): string {
   const processor = unified().use(remarkParse).use(remarkGfm).use(remarkRehype);
-  const tree = processor.runSync(processor.parse(markdown)) as unknown as HastNode;
+  const tree = processor.runSync(
+    processor.parse(markdown),
+  ) as unknown as HastNode;
   return sanitizeHtml(toHtml(tree), PAGE_HTML_OPTIONS);
 }

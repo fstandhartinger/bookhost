@@ -49,6 +49,8 @@ export async function GET(_request: Request, context: Context) {
         target_chapter_name: item.target_chapter_name,
         source: item.source,
         source_metadata: item.source_metadata,
+        // Agent proposals link to the existing page they change.
+        host: item.source === "agent" ? tenantHost(item) : undefined,
         source_preview: (item.extracted_text || "").slice(0, 2000),
         can_publish: canPublish(role),
         url: bookstack_page_id

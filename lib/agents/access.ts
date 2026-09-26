@@ -87,9 +87,10 @@ export type ParsedToken = {
 // Accepts "Bearer <id>:<secret>" (MCP clients) and "Token <id>:<secret>"
 // (BookStack's own format). Returns null for anything else.
 export function parseToken(header: string | null): ParsedToken | null {
-  const match = /^(?:Bearer|Token)\s+([A-Za-z0-9]{16,128}):([A-Za-z0-9]{16,128})\s*$/i.exec(
-    header || "",
-  );
+  const match =
+    /^(?:Bearer|Token)\s+([A-Za-z0-9]{16,128}):([A-Za-z0-9]{16,128})\s*$/i.exec(
+      header || "",
+    );
   if (!match) return null;
   const token = `${match[1]}:${match[2]}`;
   return {
@@ -116,7 +117,9 @@ export type AgentIdentity = {
 export async function localTokenCheck(
   tenantId: string,
   token: ParsedToken,
-): Promise<{ ok: true; identity: AgentIdentity } | { ok: false; reason: string }> {
+): Promise<
+  { ok: true; identity: AgentIdentity } | { ok: false; reason: string }
+> {
   const service = (
     await db.query("SELECT api_id FROM tenant_secrets WHERE tenant_id=$1", [
       tenantId,
@@ -125,7 +128,8 @@ export async function localTokenCheck(
   if (service && service.api_id === token.tokenId)
     return {
       ok: false,
-      reason: "This token belongs to BookHost's internal service user and cannot be used for agent access.",
+      reason:
+        "This token belongs to BookHost's internal service user and cannot be used for agent access.",
     };
   const agent = (
     await db.query(
@@ -135,7 +139,11 @@ export async function localTokenCheck(
   ).rows[0];
   if (agent) {
     if (agent.status === "pending")
-      return { ok: false, reason: "This agent token is still being set up. Try again in a minute." };
+      return {
+        ok: false,
+        reason:
+          "This agent token is still being set up. Try again in a minute.",
+      };
     if (agent.status !== "active")
       return { ok: false, reason: "This agent token was revoked." };
     return { ok: true, identity: { agentId: agent.id, label: agent.name } };

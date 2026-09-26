@@ -4,7 +4,13 @@
 export class AgentError extends Error {
   constructor(
     message: string,
-    readonly code: "denied" | "not_found" | "invalid" | "conflict" | "rate_limited" | "unavailable",
+    readonly code:
+      | "denied"
+      | "not_found"
+      | "invalid"
+      | "conflict"
+      | "rate_limited"
+      | "unavailable",
   ) {
     super(message);
   }
@@ -63,7 +69,9 @@ export class UserBookStack {
         headers: {
           Authorization: `Token ${this.token}`,
           Accept: "application/json",
-          ...(init.body !== undefined ? { "Content-Type": "application/json" } : {}),
+          ...(init.body !== undefined
+            ? { "Content-Type": "application/json" }
+            : {}),
         },
         ...(init.body !== undefined ? { body: JSON.stringify(init.body) } : {}),
         cache: "no-store",
@@ -71,7 +79,10 @@ export class UserBookStack {
         signal: AbortSignal.timeout(20000),
       });
     } catch {
-      throw new AgentError("The workspace is not reachable right now. Try again shortly.", "unavailable");
+      throw new AgentError(
+        "The workspace is not reachable right now. Try again shortly.",
+        "unavailable",
+      );
     }
     if (!response.ok) {
       // Validation messages are short and describe the request, not page content.
@@ -87,27 +98,55 @@ export class UserBookStack {
         await response.body?.cancel().catch(() => undefined);
       }
       if (response.status === 401)
-        throw new AgentError("BookStack rejected the API token (401). Check the token or create a new one.", "denied");
+        throw new AgentError(
+          "BookStack rejected the API token (401). Check the token or create a new one.",
+          "denied",
+        );
       if (response.status === 403)
-        throw new AgentError("Your BookStack user is not allowed to do this (403).", "denied");
+        throw new AgentError(
+          "Your BookStack user is not allowed to do this (403).",
+          "denied",
+        );
       if (response.status === 404)
-        throw new AgentError("Not found, or not visible to your BookStack user.", "not_found");
+        throw new AgentError(
+          "Not found, or not visible to your BookStack user.",
+          "not_found",
+        );
       if (response.status === 422)
-        throw new AgentError(`BookStack rejected the request: ${detail || "validation failed"}`, "invalid");
+        throw new AgentError(
+          `BookStack rejected the request: ${detail || "validation failed"}`,
+          "invalid",
+        );
       if (response.status === 429)
-        throw new AgentError("BookStack rate limit reached. Try again shortly.", "rate_limited");
-      throw new AgentError("The workspace returned an error. Try again shortly.", "unavailable");
+        throw new AgentError(
+          "BookStack rate limit reached. Try again shortly.",
+          "rate_limited",
+        );
+      throw new AgentError(
+        "The workspace returned an error. Try again shortly.",
+        "unavailable",
+      );
     }
     return { response, ...(await readCapped(response, limit)) };
   }
 
-  async json<T>(path: string, init: { method?: "GET" | "POST" | "PUT"; body?: unknown } = {}): Promise<T> {
+  async json<T>(
+    path: string,
+    init: { method?: "GET" | "POST" | "PUT"; body?: unknown } = {},
+  ): Promise<T> {
     const { text, truncated } = await this.raw(path, init);
-    if (truncated) throw new AgentError("The workspace response was too large.", "unavailable");
+    if (truncated)
+      throw new AgentError(
+        "The workspace response was too large.",
+        "unavailable",
+      );
     try {
       return JSON.parse(text) as T;
     } catch {
-      throw new AgentError("The workspace returned an unexpected response.", "unavailable");
+      throw new AgentError(
+        "The workspace returned an unexpected response.",
+        "unavailable",
+      );
     }
   }
 

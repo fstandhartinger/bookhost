@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { EmailSource, type EmailMetadata } from "./intake-email-source";
+import { AgentSource, type AgentMetadata } from "./intake-agent-source";
 import { EmailIntake } from "./email-intake";
 import { cleanHtml } from "@/lib/intake/html";
 import type { Destination } from "@/lib/intake/bookstack";
@@ -14,7 +15,8 @@ type Item = {
   error?: string;
 };
 type Review = Item & {
-  source_metadata?: EmailMetadata;
+  source_metadata?: EmailMetadata & AgentMetadata;
+  host?: string;
   target_book_id: number;
   target_chapter_id: number | null;
   target_book_name: string;
@@ -25,6 +27,8 @@ type Review = Item & {
   can_publish: boolean;
   url: string | null;
 };
+const sourcePrefix = (source?: string) =>
+  source === "email" ? "E-mail · " : source === "agent" ? "Agent · " : "";
 async function api(url: string, init?: RequestInit) {
   const response = await fetch(url, init);
   const result = await response.json();
@@ -131,24 +135,33 @@ export function Intake({
     setReviewError("");
     if (!review) return;
     setBusy(
-      action === "publish" ? "Publishing to BookStack…" : "Rejecting draft…",
+      action === "reject"
+        ? "Rejecting draft…"
+        : review.source === "agent"
+          ? "Applying the agent proposal…"
+          : "Publishing to BookStack…",
     );
     setError("");
     try {
       await api(`/api/intake/${review.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action,
-          tags: tags
-            .split(",")
-            .map((t) => t.trim())
-            .filter(Boolean),
-          title,
-          html,
-          book_id: Number(targetBook),
-          chapter_id: targetChapter ? Number(targetChapter) : null,
-        }),
+        // Agent proposals are approved exactly as proposed: no edits travel.
+        body: JSON.stringify(
+          review.source === "agent"
+            ? { action }
+            : {
+                action,
+                tags: tags
+                  .split(",")
+                  .map((t) => t.trim())
+                  .filter(Boolean),
+                title,
+                html,
+                book_id: Number(targetBook),
+                chapter_id: targetChapter ? Number(targetChapter) : null,
+              },
+        ),
       });
       await open(review.id);
       await refresh();
@@ -159,6 +172,7 @@ export function Intake({
       setBusy("");
     }
   }
+  const isAgent = review?.source === "agent";
   return (
     <div className="mt-8 space-y-6">
       {tenants.length > 1 && (
@@ -231,13 +245,16 @@ export function Intake({
                 drafting and stored for review. The original file is not
                 retained. Scanned PDFs need OCR first.
               </p>
-            <p className="mt-2 text-xs leading-5 text-amber-800">
-              Beta restriction: uploads of documents with personal data remain
-              restricted until the updated processing conditions are
-              independently verified. Until then, upload only documents
-              without personal data. See the{" "}
-              <Link className="underline" href="/legal/datenschutz">privacy notice</Link>.
-            </p>
+              <p className="mt-2 text-xs leading-5 text-amber-800">
+                Beta restriction: uploads of documents with personal data remain
+                restricted until the updated processing conditions are
+                independently verified. Until then, upload only documents
+                without personal data. See the{" "}
+                <Link className="underline" href="/legal/datenschutz">
+                  privacy notice
+                </Link>
+                .
+              </p>
               <label className="block text-sm font-medium">
                 Book
                 <select
@@ -323,7 +340,7 @@ export function Intake({
                       {i.draft_title || i.filename}
                     </span>
                     <span className="mt-1 block text-xs capitalize text-slate-500">
-                      {i.source === "email" ? "E-mail · " : ""}
+                      {sourcePrefix(i.source)}
                       {i.status}
                     </span>
                   </button>
@@ -344,15 +361,23 @@ export function Intake({
           ) : (
             <div className="space-y-5">
               <div className="flex flex-wrap justify-between gap-2">
-                <h2 className="text-2xl">Review draft</h2>
+                <h2 className="text-2xl">
+                  {isAgent ? "Review agent proposal" : "Review draft"}
+                </h2>
                 <span className="badge">{review.status}</span>
               </div>
               <p className="break-words text-sm text-slate-500">
-                Source: {review.source === "email" ? "E-mail · " : ""}
+                Source: {sourcePrefix(review.source)}
                 {review.filename}
               </p>
               {review.source === "email" && (
                 <EmailSource metadata={review.source_metadata} />
+              )}
+              {isAgent && (
+                <AgentSource
+                  metadata={review.source_metadata}
+                  host={review.host}
+                />
               )}
               <p className="text-sm">
                 Destination:{" "}
@@ -363,13 +388,17 @@ export function Intake({
               </p>
               {review.source_preview && (
                 <details>
-                  <summary>Compare source (first 2,000 characters)</summary>
+                  <summary>
+                    {isAgent
+                      ? "Agent's Markdown (first 2,000 characters)"
+                      : "Compare source (first 2,000 characters)"}
+                  </summary>
                   <pre className="whitespace-pre-wrap text-sm p-3">
                     {review.source_preview}
                   </pre>
                 </details>
               )}
-              {["draft", "failed"].includes(review.status) && (
+              {!isAgent && ["draft", "failed"].includes(review.status) && (
                 <div className="space-y-3">
                   <label className="block">
                     Destination book
@@ -433,7 +462,32 @@ export function Intake({
                   this status persists.
                 </p>
               )}
-              {review.draft_html && (
+              {isAgent && (
+                <>
+                  <p className="text-sm">
+                    Page title:{" "}
+                    <strong className="break-words">
+                      {review.draft_title || "(unchanged)"}
+                    </strong>
+                  </p>
+                  {review.draft_html && (
+                    <div className="overflow-x-auto rounded-xl border bg-white p-5">
+                      <p className="mb-4 text-xs uppercase tracking-wider text-slate-500">
+                        {review.source_metadata?.kind === "append"
+                          ? "Section to append"
+                          : "Proposed page content"}
+                      </p>
+                      {/* Sanitized server-side by the intake item route. */}
+                      <article
+                        className="intake-preview"
+                        aria-label="Proposed page content"
+                        dangerouslySetInnerHTML={{ __html: review.draft_html }}
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+              {!isAgent && review.draft_html && (
                 <>
                   <label className="block text-sm font-medium">
                     Page title
@@ -507,9 +561,9 @@ export function Intake({
                 (review.status === "failed" && review.draft_html)) && (
                 <>
                   <p className="rounded-lg bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-                    AI can make mistakes. Check the summary, facts and reviewer
-                    checklist before publishing. Publishing creates a normal
-                    page visible according to your BookStack book’s permissions.
+                    {isAgent
+                      ? "AI agents can make mistakes. Check the proposed content before approving. Approving writes it to BookStack as BookHost's intake user."
+                      : "AI can make mistakes. Check the summary, facts and reviewer checklist before publishing. Publishing creates a normal page visible according to your BookStack book’s permissions."}
                   </p>
                   {!review.can_publish && (
                     <p className="text-sm">
@@ -519,11 +573,11 @@ export function Intake({
                   <div className="flex flex-wrap gap-3">
                     {review.can_publish && (
                       <button
-                        disabled={!!busy || !title.trim()}
+                        disabled={!!busy || (!isAgent && !title.trim())}
                         className="button"
                         onClick={() => decide("publish")}
                       >
-                        Publish to BookStack
+                        {isAgent ? "Approve and apply" : "Publish to BookStack"}
                       </button>
                     )}
                     <button
@@ -557,8 +611,9 @@ export function Intake({
               )}
               {review.status === "rejected" && (
                 <p>
-                  This document was rejected. Upload a new version to start
-                  again.
+                  {isAgent
+                    ? "This agent proposal was rejected."
+                    : "This document was rejected. Upload a new version to start again."}
                 </p>
               )}
             </div>

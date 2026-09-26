@@ -5,4 +5,9 @@ import { handleMcp } from "@/lib/agents/mcp";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 const handler = (request: Request) => handleMcp(request);
-export { handler as GET, handler as POST, handler as OPTIONS, handler as DELETE };
+export {
+  handler as GET,
+  handler as POST,
+  handler as OPTIONS,
+  handler as DELETE,
+};

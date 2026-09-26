@@ -37,6 +37,10 @@ export const faqs = [
     "Intake is a shared inbox for your BookHost dashboard team: all team members can see its drafts and available destinations. It does not mirror each person's BookStack permissions. Only workspace owners/admins can publish; members can upload and review. BookStack page permissions apply after publication. A beta \"Ask your wiki\" is available now to workspace owners and admins: it finds the matching pages and shows the page and section behind each one. The beta already writes its answers with AI and names the source page and section behind every answer. Email intake and answers scoped to each member's own BookStack permissions are planned and are not available today. There is no committed release date for the planned parts.",
   ],
   [
+    "Can AI agents such as Claude Code or Cursor use our wiki?",
+    "Yes, in beta. Every workspace has an MCP endpoint that Claude Code, Cursor, VS Code and the Codex CLI can connect to; Claude Desktop works through the mcp-remote bridge. Owners and admins create an agent user with a BookStack role in the dashboard, so BookStack permissions decide what the agent can read and change. By default, agent edits wait in the review queue for an owner or admin; direct edits can be allowed per workspace. BookHost does not send page content to an AI model for this feature; it goes only to the agent you connect. Claude.ai web connectors and ChatGPT connectors need OAuth sign-in, which is planned and not available yet. Setup: https://bookhost.co/agents",
+  ],
+  [
     "Do I need a card for the trial, and will I be charged automatically?",
     "No card is required for the 14-day trial. Your trial starts when you sign up; your workspace is usually ready within 5 minutes. Add a payment method through Manage billing if you want to continue at €39/month plus applicable VAT after the trial. Without a payment method, the subscription ends automatically without a charge. Export anything you want to keep before the trial ends.",
   ],

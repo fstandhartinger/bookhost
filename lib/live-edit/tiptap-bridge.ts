@@ -1,5 +1,5 @@
 import * as Y from "yjs";
-import { generateJSON, generateHTML } from "@tiptap/html";
+import { generateJSON, generateHTML } from "@tiptap/html/server";
 import { TiptapTransformer } from "@hocuspocus/transformer";
 import sanitizeHtml from "sanitize-html";
 import { LIVE_EDIT_EXTENSIONS } from "./extensions";

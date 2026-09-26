@@ -24,7 +24,9 @@ export async function workspace(userId: string, tenantId: string) {
   if (
     row.status !== "running" ||
     row.desired_state !== "running" ||
-    !["trialing", "active", "past_due", "unpaid"].includes(row.subscription_status)
+    !["trialing", "active", "past_due", "unpaid"].includes(
+      row.subscription_status,
+    )
   )
     throw new IntakeError("Your workspace is not running.", 409);
   return row;
@@ -38,10 +40,15 @@ export async function itemForUser(userId: string, id: string) {
     )
   ).rows[0];
   if (!row) throw new IntakeError("Document not found.", 404);
+  // Agent proposals are visible to the owners/admins who review them only.
+  if (row.source === "agent" && !["owner", "admin"].includes(row.role))
+    throw new IntakeError("Document not found.", 404);
   if (
     row.tenant_status !== "running" ||
     row.desired_state !== "running" ||
-    !["trialing", "active", "past_due", "unpaid"].includes(row.subscription_status)
+    !["trialing", "active", "past_due", "unpaid"].includes(
+      row.subscription_status,
+    )
   )
     throw new IntakeError("Your workspace is not running.", 409);
   return row;

@@ -224,8 +224,10 @@ export default function AgentsDocsPage() {
             ))}
           </ul>
           <p>
-            In every mode, BookStack permissions still apply: an agent whose
-            role cannot edit a book cannot propose or make changes there either.
+            BookStack permissions decide what an agent can read and what it can
+            change directly. A proposal needs only read access to the page or
+            book; whether it is applied is the reviewing owner&rsquo;s or
+            admin&rsquo;s decision.
           </p>
 
           <h2 id="security">Security and privacy</h2>
@@ -235,6 +237,12 @@ export default function AgentsDocsPage() {
               changes exactly what its BookStack user may. Give it a role with
               access only to the books it needs. Admin and guest roles cannot be
               assigned to dashboard-created agents.
+            </li>
+            <li>
+              <strong>Dashboard tokens work only through BookHost.</strong> The
+              token of an agent created in the dashboard is accepted on the MCP
+              endpoint only; BookStack&rsquo;s own API rejects it. So the write
+              mode, revocation and the kill switch always apply to it.
             </li>
             <li>
               <strong>One token, one workspace.</strong> The workspace is chosen

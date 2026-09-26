@@ -20,6 +20,7 @@ type Item = {
     kind?: "create" | "update" | "append";
     page_id?: number | null;
     base_revision_count?: number | null;
+    apply_revision?: number | null;
   };
 };
 
@@ -86,6 +87,15 @@ export async function publishAgentProposal(item: Item, userId: string) {
       if (!Number.isSafeInteger(pageId) || pageId < 1)
         throw new IntakeError("This proposal is incomplete. Reject it.", 409);
       const page = await client.request<Page>(`pages/${pageId}`);
+      // A retry after an uncertain write must not apply the change twice.
+      if (
+        typeof meta.apply_revision === "number" &&
+        page.revision_count !== meta.apply_revision
+      )
+        throw new IntakeError(
+          "The page changed after the first attempt to apply this proposal, so it may already be applied. Check the page in BookStack and reject this proposal if the change is there.",
+          409,
+        );
       if (
         kind === "update" &&
         typeof meta.base_revision_count === "number" &&
@@ -111,8 +121,13 @@ export async function publishAgentProposal(item: Item, userId: string) {
                 ? { markdown: item.extracted_text }
                 : {}),
             };
-      if (Object.keys(body).length)
+      if (Object.keys(body).length) {
+        await db.query(
+          "UPDATE intake_items SET source_metadata=source_metadata||jsonb_build_object('apply_revision',$2::int) WHERE id=$1",
+          [item.id, page.revision_count],
+        );
         await client.request(`pages/${pageId}`, body, "PUT");
+      }
     }
     if (!Number.isSafeInteger(pageId) || pageId < 1)
       throw new Error("Invalid page response");

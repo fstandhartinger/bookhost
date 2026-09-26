@@ -1,4 +1,5 @@
-import { createHash } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
+import { decrypt } from "@/lib/intake/crypto";
 import { db } from "@/lib/db";
 import { tenantHost } from "@/lib/tenant-host";
 import { TENANT_DOMAINS } from "@/lib/config";
@@ -111,45 +112,66 @@ export type AgentIdentity = {
   label: string;
 };
 
+const sha256 = (value: string) => createHash("sha256").update(value).digest();
+
 // Local checks that must hold before any BookStack call: the internal service
-// token never works here, and dashboard-revoked agent tokens stop immediately
-// (before the host worker has deleted them in BookStack).
+// token never works here, dashboard-revoked agents stop immediately, and a
+// dashboard agent's gateway secret is exchanged for its BookStack credential,
+// which only BookHost holds. Other tokens are the caller's own BookStack token
+// and are forwarded unchanged.
 export async function localTokenCheck(
-  tenantId: string,
+  workspace: { id: string; slug: string },
   token: ParsedToken,
 ): Promise<
-  { ok: true; identity: AgentIdentity } | { ok: false; reason: string }
+  | { ok: true; identity: AgentIdentity; upstream: string }
+  | { ok: false; reason: string; authFailure: boolean }
 > {
   const service = (
     await db.query("SELECT api_id FROM tenant_secrets WHERE tenant_id=$1", [
-      tenantId,
+      workspace.id,
     ])
   ).rows[0];
   if (service && service.api_id === token.tokenId)
     return {
       ok: false,
+      authFailure: true,
       reason:
         "This token belongs to BookHost's internal service user and cannot be used for agent access.",
     };
   const agent = (
     await db.query(
-      "SELECT id,name,status FROM agents WHERE tenant_id=$1 AND token_id=$2",
-      [tenantId, token.tokenId],
+      "SELECT id,name,status,gateway_hash,bookstack_secret_enc FROM agents WHERE tenant_id=$1 AND token_id=$2",
+      [workspace.id, token.tokenId],
     )
   ).rows[0];
-  if (agent) {
-    if (agent.status === "pending")
-      return {
-        ok: false,
-        reason:
-          "This agent token is still being set up. Try again in a minute.",
-      };
-    if (agent.status !== "active")
-      return { ok: false, reason: "This agent token was revoked." };
-    return { ok: true, identity: { agentId: agent.id, label: agent.name } };
-  }
+  if (!agent)
+    return {
+      ok: true,
+      identity: {
+        agentId: null,
+        label: `BookStack token ${token.fingerprint}`,
+      },
+      upstream: token.token,
+    };
+  const expected = Buffer.from(String(agent.gateway_hash), "hex");
+  const given = sha256(token.token.slice(token.tokenId.length + 1));
+  if (expected.length !== given.length || !timingSafeEqual(expected, given))
+    return { ok: false, authFailure: true, reason: "Invalid agent token." };
+  if (agent.status === "pending")
+    return {
+      ok: false,
+      authFailure: false,
+      reason: "This agent token is still being set up. Try again in a minute.",
+    };
+  if (agent.status !== "active" || !agent.bookstack_secret_enc)
+    return {
+      ok: false,
+      authFailure: false,
+      reason: "This agent token was revoked.",
+    };
   return {
     ok: true,
-    identity: { agentId: null, label: `BookStack token ${token.fingerprint}` },
+    identity: { agentId: agent.id, label: agent.name },
+    upstream: `${token.tokenId}:${decrypt(agent.bookstack_secret_enc, workspace.slug)}`,
   };
 }

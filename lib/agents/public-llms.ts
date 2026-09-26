@@ -8,7 +8,8 @@ import type { AgentWorkspace } from "./access";
 const MAX_BOOK_PAGES = 5;
 const MAX_BOOKS = 25;
 const MAX_PAGES_PER_BOOK = 60;
-const TTL_MS = 10 * 60_000;
+// Short: a page made private must drop out of the listing quickly.
+const TTL_MS = 60_000;
 const cache = new Map<string, { body: string; expires: number }>();
 
 type Entry = { type: "book" | "page"; id: number; url: string; name: string };

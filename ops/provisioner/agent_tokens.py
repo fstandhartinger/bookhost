@@ -3,9 +3,11 @@
 
 BookStack has no API for creating API tokens, so the control plane queues the
 request in `agents` and this worker step applies it with the tenant's own PHP
-runtime. The secret travels only encrypted (tenant-bound AES-GCM) through the
-database and is removed as soon as the token is installed. Diagnostics never
-contain names, tokens or secrets.
+runtime. The BookStack secret travels only encrypted (tenant-bound AES-GCM)
+through the database. The agent itself never receives it: it holds a separate
+gateway secret that only the MCP endpoint accepts, so the BookStack token cannot
+be used around BookHost's write mode, revocation or kill switch. Diagnostics
+never contain names, tokens or secrets.
 """
 from tenant import ROOT, valid_slug, php
 from bookstack_api_token import decrypt, kms_key
@@ -70,11 +72,12 @@ def install(db, row, key, run_php=php):
         'secret': secret,
     }))
     if result.get('error') == 'role':
-        db.execute("UPDATE agents SET status='failed',pending_secret_enc=NULL,error=%s,updated_at=now() WHERE id=%s AND status='pending'",
+        db.execute("UPDATE agents SET status='failed',bookstack_secret_enc=NULL,error=%s,updated_at=now() WHERE id=%s AND status='pending'",
                    ('The chosen BookStack role cannot be given to an agent. Create the agent again with another role.', ident))
         return 'failed'
     user_id = int(result['user_id'])
-    updated = db.execute("UPDATE agents SET status='active',pending_secret_enc=NULL,bookstack_user_id=%s,error=NULL,updated_at=now() WHERE id=%s AND status='pending' RETURNING id",
+    # The encrypted secret stays: the MCP gateway uses it for upstream calls.
+    updated = db.execute("UPDATE agents SET status='active',bookstack_user_id=%s,error=NULL,updated_at=now() WHERE id=%s AND status='pending' RETURNING id",
                          (user_id, ident)).fetchone()
     if not updated:
         # Revoked while we installed it: never leave a live token behind.
@@ -90,7 +93,7 @@ def revoke(db, row, run_php=php):
     elif (ROOT / slug).exists():
         return 'skip'
     # A workspace without an instance has no token left to delete.
-    db.execute("UPDATE agents SET status='revoked',pending_secret_enc=NULL,revoked_at=now(),updated_at=now() WHERE id=%s AND status='revoke_requested'", (ident,))
+    db.execute("UPDATE agents SET status='revoked',bookstack_secret_enc=NULL,revoked_at=now(),updated_at=now() WHERE id=%s AND status='revoke_requested'", (ident,))
     return 'revoked'
 
 
@@ -101,8 +104,8 @@ def reconcile_agents(db, instance, run_php=php):
     Before migration 038 the tables do not exist; the caller logs and retries.
     """
     pending = db.execute(
-        "SELECT a.id,n.slug,a.name,a.role_id,a.token_id,a.pending_secret_enc FROM agents a JOIN tenants n ON n.id=a.tenant_id "
-        "WHERE a.status='pending' AND a.pending_secret_enc IS NOT NULL AND n.status='running' AND COALESCE(n.provisioner_instance,'production')=%s "
+        "SELECT a.id,n.slug,a.name,a.role_id,a.token_id,a.bookstack_secret_enc FROM agents a JOIN tenants n ON n.id=a.tenant_id "
+        "WHERE a.status='pending' AND a.bookstack_secret_enc IS NOT NULL AND n.status='running' AND COALESCE(n.provisioner_instance,'production')=%s "
         "ORDER BY a.created_at LIMIT 20", (instance,)).fetchall()
     key = kms_key() if pending else None
     for row in pending:
@@ -111,7 +114,7 @@ def reconcile_agents(db, instance, run_php=php):
         except Exception:
             print('Agent token install failed; retry next run', flush=True)
     db.execute(
-        "UPDATE agents a SET pending_secret_enc=NULL,status='failed',error=%s,updated_at=now() FROM tenants n "
+        "UPDATE agents a SET bookstack_secret_enc=NULL,status='failed',error=%s,updated_at=now() FROM tenants n "
         "WHERE n.id=a.tenant_id AND COALESCE(n.provisioner_instance,'production')=%s AND a.status='pending' AND a.created_at<now()-make_interval(mins => %s)",
         ('Setting up this agent took too long. Revoke it and create a new one.', instance, STALE_MINUTES))
     revoking = db.execute(

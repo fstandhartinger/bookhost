@@ -24,7 +24,7 @@ class AgentTokenTests(unittest.TestCase):
         self.patch.stop()
         self.folder.cleanup()
 
-    def test_install_passes_secret_only_via_stdin_payload_and_clears_ciphertext(self):
+    def test_install_passes_secret_only_via_stdin_payload(self):
         db = MagicMock()
         db.execute.return_value.fetchone.return_value = ('agent-id',)
         php = MagicMock(return_value=json.dumps({'user_id': 42}).encode())
@@ -36,7 +36,8 @@ class AgentTokenTests(unittest.TestCase):
         self.assertEqual(payload['role_id'], 3)
         self.assertIn("'admin','public','wissen-intake','bookhost-agent-api'", code)
         sql, params = db.execute.call_args.args
-        self.assertIn("status='active',pending_secret_enc=NULL", sql)
+        self.assertIn("status='active'", sql)
+        self.assertNotIn("bookstack_secret_enc=NULL", sql)
         self.assertEqual(params[0], 42)
 
     def test_install_revoked_meanwhile_deletes_the_new_token(self):
@@ -53,7 +54,7 @@ class AgentTokenTests(unittest.TestCase):
         php = MagicMock(return_value=json.dumps({'error': 'role'}).encode())
         row = ('id', 'acme', 'Claude', 1, 'T' * 32, encrypt('S' * 32, 'acme', KEY))
         self.assertEqual(agent_tokens.install(db, row, KEY, php), 'failed')
-        self.assertIn("status='failed',pending_secret_enc=NULL", db.execute.call_args.args[0])
+        self.assertIn("status='failed',bookstack_secret_enc=NULL", db.execute.call_args.args[0])
 
     def test_ciphertext_is_bound_to_the_tenant(self):
         db = MagicMock()

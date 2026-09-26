@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     return new Response(await workspaceLlmsTxt(ws), {
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
-        "Cache-Control": "public, max-age=600",
+        "Cache-Control": "public, max-age=60",
       },
     });
   }

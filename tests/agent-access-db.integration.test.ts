@@ -11,7 +11,9 @@ import { db } from "@/lib/db";
 import { handleMcp, LIMITS } from "@/lib/agents/mcp";
 import { workspaceLlmsTxt } from "@/lib/agents/public-llms";
 import { publishAgentProposal } from "@/lib/agents/review";
-import { encrypt } from "@/lib/intake/crypto";
+import { decrypt, encrypt } from "@/lib/intake/crypto";
+import { createAgent, revokeAgent, setAccess } from "@/lib/agents/manage";
+import { itemForUser } from "@/lib/intake/access";
 
 // End-to-end through the real MCP handler and a disposable Postgres (see
 // ops/testdb.sh). BookStack is replaced by an in-memory fake with one token
@@ -89,6 +91,15 @@ function fakeBookStack(
   );
   const api = url.pathname.slice(5);
   let m: RegExpExecArray | null;
+  if (api.startsWith("roles"))
+    return json({
+      data: [
+        { id: 1, display_name: "Admin", system_name: "admin" },
+        { id: 2, display_name: "Editor", system_name: "" },
+        { id: 3, display_name: "Viewer", system_name: "" },
+      ],
+      total: 3,
+    });
   if (api === "books" && method === "GET")
     return json({
       data: [{ id: 1, name: "Handbook", slug: "handbook" }],
@@ -597,36 +608,162 @@ describe.skipIf(!RUN)("agent access (MCP) against Postgres", () => {
     ).toContain("add_comment");
   });
 
-  it("kill switch and revoked dashboard tokens stop access immediately", async () => {
-    await db.query(
-      "INSERT INTO agent_settings(tenant_id,access_enabled,disabled_at) VALUES($1,false,now())",
-      [tenantA],
-    );
+  it("dashboard agents: gateway token works only via MCP; revoke and kill switch apply at once", async () => {
+    const created = await createAgent(ownerA, tenantA, {
+      name: "Claude",
+      role_id: 2,
+    });
+    const [tokenId, gatewaySecret] = created.token.split(":");
+    const row = (
+      await db.query("SELECT * FROM agents WHERE id=$1", [created.agent.id])
+    ).rows[0];
+    expect(row.gateway_hash).toMatch(/^[a-f0-9]{64}$/);
+    expect(JSON.stringify(row)).not.toContain(gatewaySecret);
+    // Pending: not usable yet.
+    expect(
+      (
+        await call(hostA, created.token, {
+          jsonrpc: "2.0",
+          id: 1,
+          method: "ping",
+        })
+      ).status,
+    ).toBe(403);
+    // What the host worker does: install the BookStack token, mark active.
+    const slug = (
+      await db.query("SELECT slug FROM tenants WHERE id=$1", [tenantA])
+    ).rows[0].slug;
+    const bookstackSecret = decrypt(row.bookstack_secret_enc, slug);
+    expect(bookstackSecret).not.toBe(gatewaySecret);
+    instances[hostA].tokens[`${tokenId}:${bookstackSecret}`] = "dash-agent";
+    await db.query("UPDATE agents SET status='active' WHERE id=$1", [
+      created.agent.id,
+    ]);
+    const read = await tool(hostA, created.token, "read_page", { page_id: 1 });
+    expect(read.body.result.isError).toBe(false);
+    expect(instances[hostA].requests.at(-1)).toMatchObject({
+      user: "dash-agent",
+    });
+    // The agent's own credential is useless against BookStack's API directly.
+    const direct = await fakeBookStack(`https://${hostA}/api/pages`, {
+      method: "POST",
+      headers: { Authorization: `Token ${created.token}` },
+      body: "{}",
+    });
+    expect(direct.status).toBe(401);
+    // A wrong gateway secret for a known token id is an auth failure.
+    expect(
+      (
+        await call(hostA, `${tokenId}:${"x".repeat(32)}`, {
+          jsonrpc: "2.0",
+          id: 1,
+          method: "ping",
+        })
+      ).status,
+    ).toBe(403);
+    // Revocation stops it immediately, before the worker deletes it in BookStack.
+    await revokeAgent(ownerA, tenantA, created.agent.id);
+    const revoked = await call(hostA, created.token, {
+      jsonrpc: "2.0",
+      id: 1,
+      method: "ping",
+    });
+    expect(revoked.status).toBe(403);
+    expect(revoked.body.error.message).toMatch(/revoked/);
+    expect(
+      (
+        await db.query("SELECT bookstack_secret_enc FROM agents WHERE id=$1", [
+          created.agent.id,
+        ])
+      ).rows[0].bookstack_secret_enc,
+    ).toBeNull();
+    // Kill switch: every token is refused and dashboard agents are queued for revocation.
+    const second = await createAgent(ownerA, tenantA, {
+      name: "Cursor",
+      role_id: 3,
+    });
+    await setAccess(ownerA, tenantA, false);
     expect(
       (await call(hostA, TOKEN_A, { jsonrpc: "2.0", id: 1, method: "ping" }))
         .status,
     ).toBe(403);
-    await db.query(
-      "UPDATE agent_settings SET access_enabled=true WHERE tenant_id=$1",
-      [tenantA],
-    );
-    const agent = (
-      await db.query(
-        "INSERT INTO agents(tenant_id,name,role_id,role_name,token_id,status) VALUES($1,'Claude',3,'Editor',$2,'revoke_requested') RETURNING id",
-        [tenantA, TOKEN_A.split(":")[0]],
-      )
+    expect(
+      (
+        await db.query("SELECT status FROM agents WHERE id=$1", [
+          second.agent.id,
+        ])
+      ).rows[0].status,
+    ).toBe("revoke_requested");
+    await expect(
+      createAgent(ownerA, tenantA, { name: "Late", role_id: 2 }),
+    ).rejects.toThrow(/switched off/);
+    await setAccess(ownerA, tenantA, true);
+    await expect(
+      createAgent(ownerA, tenantA, { name: "Admin agent", role_id: 1 }),
+    ).rejects.toThrow(/cannot be given/);
+    await db.query("DELETE FROM agents WHERE tenant_id=$1", [tenantA]);
+  });
+
+  it("members never see agent proposals; oversized, batched and version-mismatched requests are refused", async () => {
+    const member = (
+      await db.query("INSERT INTO users(email) VALUES($1) RETURNING id", [
+        `agent-member-${crypto.randomUUID()}@example.invalid`,
+      ])
     ).rows[0].id;
-    try {
-      const r = await call(hostA, TOKEN_A, {
-        jsonrpc: "2.0",
-        id: 1,
-        method: "ping",
+    ids.users.push(member);
+    await db.query(
+      "INSERT INTO memberships(user_id,team_id,role) VALUES($1,(SELECT team_id FROM tenants WHERE id=$2),'member')",
+      [member, tenantA],
+    );
+    const item = (
+      await db.query(
+        "SELECT id FROM intake_items WHERE tenant_id=$1 AND source='agent' LIMIT 1",
+        [tenantA],
+      )
+    ).rows[0];
+    if (item) {
+      await expect(itemForUser(member, item.id)).rejects.toThrow(/not found/i);
+      await expect(itemForUser(ownerA, item.id)).resolves.toMatchObject({
+        id: item.id,
       });
-      expect(r.status).toBe(403);
-      expect(r.body.error.message).toMatch(/revoked/);
-    } finally {
-      await db.query("DELETE FROM agents WHERE id=$1", [agent]);
     }
+    await db.query("DELETE FROM memberships WHERE user_id=$1", [member]);
+    const big = await call(hostA, TOKEN_A, {
+      jsonrpc: "2.0",
+      id: 1,
+      method: "ping",
+      params: { pad: "x".repeat(600 * 1024) },
+    });
+    expect(big.status).toBe(413);
+    const batch = await call(
+      hostA,
+      TOKEN_A,
+      Array.from({ length: 6 }, (_, i) => ({
+        jsonrpc: "2.0",
+        id: i,
+        method: "ping",
+      })),
+    );
+    expect(batch.status).toBe(400);
+    const small = await call(hostA, TOKEN_A, [
+      { jsonrpc: "2.0", id: 1, method: "ping" },
+      { jsonrpc: "2.0", id: 2, method: "ping" },
+    ]);
+    expect(small.body).toHaveLength(2);
+    const versioned = await handleMcp(
+      new Request(`https://${hostA}/mcp`, {
+        method: "POST",
+        headers: {
+          host: hostA,
+          "x-real-ip": "198.51.100.250",
+          authorization: `Bearer ${TOKEN_A}`,
+          "mcp-protocol-version": "1999-01-01",
+        },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping" }),
+      }),
+      { fetcher: fakeBookStack as typeof fetch },
+    );
+    expect(versioned.status).toBe(400);
   });
 
   it("rate-limits per token", async () => {

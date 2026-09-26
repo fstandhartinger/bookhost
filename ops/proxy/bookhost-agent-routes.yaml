@@ -1,0 +1,17 @@
+# Traefik (Coolify proxy) file-provider route: the agent endpoints of every
+# workspace are served by the control plane, everything else on a workspace
+# host stays with that workspace's BookStack container.
+#   https://<workspace>.bookhost.co/mcp       -> MCP server (lib/agents/mcp.ts)
+#   https://<workspace>.bookhost.co/llms.txt  -> workspace llms.txt
+# Install: sudo install -m 644 ops/proxy/bookhost-agent-routes.yaml /data/coolify/proxy/dynamic/
+# Traefik watches the directory; no restart is needed. Remove the file to roll back.
+# TLS uses the certificates the workspace routers already obtained (matched by SNI).
+http:
+  routers:
+    bookhost-workspace-agent-endpoints:
+      entryPoints:
+        - https
+      rule: 'HostRegexp(`^[a-z0-9][a-z0-9-]{0,61}[a-z0-9]\.bookhost\.co$`) && (Path(`/mcp`) || Path(`/llms.txt`))'
+      priority: 10000
+      service: https-0-bitukcubhv5whaglfdans2xz@docker
+      tls: {}

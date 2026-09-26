@@ -13,6 +13,7 @@ import {
 } from "./access";
 import { logActivity } from "./activity";
 import { AgentError, UserBookStack } from "./bookstack-user";
+import { boundedBody, IntakeError } from "@/lib/intake/access";
 import { toolsFor, UNTRUSTED, type ToolContext } from "./tools";
 
 // Stateless MCP server over Streamable HTTP (JSON responses, no SSE stream,
@@ -25,6 +26,8 @@ export const SUPPORTED_PROTOCOL_VERSIONS = [
 ];
 const LATEST = SUPPORTED_PROTOCOL_VERSIONS[0];
 const MAX_BODY = 512 * 1024;
+const MAX_BATCH = 5;
+const MAX_RESOURCE_CHARS = 200_000;
 
 export const LIMITS = {
   perMinute: 120,
@@ -76,19 +79,25 @@ const rpcError = (id: JsonRpcRequest["id"], code: number, message: string) => ({
 const validated = new Map<string, number>();
 const VALID_MS = 60_000;
 
-async function authFailureBlocked(ip: string | null) {
-  if (!ip) return false;
-  const row = (
+// Failed authentication is counted per client address and per token id, so
+// guessing secrets for one token id from many addresses is limited as well.
+const failureKeys = (ip: string | null, tenantId: string, tokenId?: string) => [
+  ...(ip ? [`mcp:authfail:${ip}`] : []),
+  ...(tokenId ? [`mcp:authfail:tok:${tenantId}:${tokenId}`] : []),
+];
+async function authFailureBlocked(keys: string[]) {
+  if (!keys.length) return false;
+  const rows = (
     await db.query(
-      "SELECT hits FROM rate_limits WHERE key=$1 AND expires_at>now()",
-      [`mcp:authfail:${ip}`],
+      "SELECT hits FROM rate_limits WHERE key=ANY($1) AND expires_at>now()",
+      [keys],
     )
-  ).rows[0];
-  return Boolean(row && row.hits >= LIMITS.authFailuresPer15Min);
+  ).rows;
+  return rows.some((row) => row.hits >= LIMITS.authFailuresPer15Min);
 }
-async function recordAuthFailure(ip: string | null) {
-  if (ip)
-    await rateLimit(`mcp:authfail:${ip}`, LIMITS.authFailuresPer15Min, 900);
+async function recordAuthFailure(keys: string[]) {
+  for (const key of keys)
+    await rateLimit(key, LIMITS.authFailuresPer15Min, 900);
 }
 
 function unauthorized(message: string, ws?: AgentWorkspace) {
@@ -166,7 +175,9 @@ export async function handleMcp(
     );
 
   const ip = clientIp(request);
-  if (await authFailureBlocked(ip))
+  const token = parseToken(request.headers.get("authorization"));
+  const failures = failureKeys(ip, ws.id, token?.tokenId);
+  if (await authFailureBlocked(failures))
     return reply(
       rpcError(
         null,
@@ -176,17 +187,16 @@ export async function handleMcp(
       429,
       { "Retry-After": "900" },
     );
-  const token = parseToken(request.headers.get("authorization"));
   if (!token) {
-    await recordAuthFailure(ip);
+    await recordAuthFailure(failures);
     return unauthorized(
       "Missing or malformed token. Send Authorization: Bearer <BookStack token id>:<token secret>.",
       ws,
     );
   }
-  const local = await localTokenCheck(ws.id, token);
+  const local = await localTokenCheck(ws, token);
   if (!local.ok) {
-    await recordAuthFailure(ip);
+    if (local.authFailure) await recordAuthFailure(failures);
     await logActivity({
       tenantId: ws.id,
       agentId: null,
@@ -222,17 +232,25 @@ export async function handleMcp(
     );
   }
 
-  const contentLength = Number(request.headers.get("content-length") || 0);
-  if (contentLength > MAX_BODY)
-    return reply(rpcError(null, -32600, "Request too large."), 413);
+  const version = request.headers.get("mcp-protocol-version");
+  if (version && !SUPPORTED_PROTOCOL_VERSIONS.includes(version))
+    return reply(
+      rpcError(
+        null,
+        -32600,
+        `Unsupported MCP-Protocol-Version: ${version.slice(0, 20)}`,
+      ),
+      400,
+    );
   let text: string;
   try {
-    text = await request.text();
-  } catch {
+    // Streams with a byte budget and stops reading once it is exceeded.
+    text = await (await boundedBody(request, MAX_BODY)).text();
+  } catch (error) {
+    if (error instanceof IntakeError && error.status === 413)
+      return reply(rpcError(null, -32600, "Request too large."), 413);
     return reply(rpcError(null, -32700, "Parse error"), 400);
   }
-  if (text.length > MAX_BODY)
-    return reply(rpcError(null, -32600, "Request too large."), 413);
   let body: unknown;
   try {
     body = JSON.parse(text);
@@ -240,7 +258,7 @@ export async function handleMcp(
     return reply(rpcError(null, -32700, "Parse error"), 400);
   }
 
-  const client = new UserBookStack(ws.host, token.token, deps.fetcher);
+  const client = new UserBookStack(ws.host, local.upstream, deps.fetcher);
   // Every request proves the token against the workspace's own BookStack.
   // A token from another workspace fails here, because each BookStack instance
   // has its own token table.
@@ -252,7 +270,7 @@ export async function handleMcp(
       if (validated.size > 5000) validated.clear();
     } catch (error) {
       if (error instanceof AgentError && error.code === "denied") {
-        await recordAuthFailure(ip);
+        await recordAuthFailure(failures);
         await logActivity({
           tenantId: ws.id,
           agentId: identity.agentId,
@@ -288,8 +306,14 @@ export async function handleMcp(
   const messages = Array.isArray(body) ? body : [body];
   if (!messages.length)
     return reply(rpcError(null, -32600, "Invalid Request"), 400);
+  // Batches (protocol 2025-03-26) are bounded explicitly, never truncated.
+  if (messages.length > MAX_BATCH)
+    return reply(
+      rpcError(null, -32600, `Batches are limited to ${MAX_BATCH} messages.`),
+      400,
+    );
   const responses: unknown[] = [];
-  for (const message of messages.slice(0, 20)) {
+  for (const message of messages) {
     const result = await dispatch(message, ctx, token, identity);
     if (result) responses.push(result);
   }
@@ -517,8 +541,11 @@ async function dispatch(
         if (page.draft) throw new AgentError("Not found", "not_found");
         const exported = await ctx.client.text(
           `pages/${id}/export/markdown`,
-          800_000,
+          MAX_RESOURCE_CHARS * 4,
         );
+        let text = exported.text;
+        if (exported.truncated || text.length > MAX_RESOURCE_CHARS)
+          text = `${text.slice(0, MAX_RESOURCE_CHARS)}\n\n[Truncated by BookHost after ${MAX_RESOURCE_CHARS} characters. Use read_page with max_chars, or open the page in BookStack for the full text.]`;
         await logActivity({
           tenantId: ctx.workspace.id,
           agentId: identity.agentId,
@@ -529,7 +556,7 @@ async function dispatch(
           latencyMs: Date.now() - started,
         });
         return ok({
-          contents: [{ uri, mimeType: "text/markdown", text: exported.text }],
+          contents: [{ uri, mimeType: "text/markdown", text }],
         });
       } catch (error) {
         await logActivity({

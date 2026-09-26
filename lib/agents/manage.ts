@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { db, transaction } from "@/lib/db";
 import { encrypt } from "@/lib/intake/crypto";
 import { clientFor, IntakeError, uuid, workspace } from "@/lib/intake/access";
@@ -148,6 +148,9 @@ export async function setAccess(
   const ws = await managedWorkspace(userId, tenantId);
   if (typeof enabled !== "boolean") throw new IntakeError("Invalid request.");
   return transaction(async (c) => {
+    // Same per-workspace lock as createAgent: no agent can be created between
+    // switching access off and revoking the existing tokens.
+    await c.query("SELECT 1 FROM tenants WHERE id=$1 FOR UPDATE", [ws.id]);
     await c.query(
       `INSERT INTO agent_settings(tenant_id,access_enabled,disabled_at,updated_by) VALUES($1,$2,CASE WHEN $2 THEN NULL ELSE now() END,$3)
        ON CONFLICT(tenant_id) DO UPDATE SET access_enabled=EXCLUDED.access_enabled,disabled_at=EXCLUDED.disabled_at,updated_by=EXCLUDED.updated_by,updated_at=now()`,
@@ -158,7 +161,7 @@ export async function setAccess(
       revoked =
         (
           await c.query(
-            "UPDATE agents SET status='revoke_requested',pending_secret_enc=NULL,updated_at=now() WHERE tenant_id=$1 AND status IN ('pending','active','failed') RETURNING id",
+            "UPDATE agents SET status='revoke_requested',bookstack_secret_enc=NULL,updated_at=now() WHERE tenant_id=$1 AND status IN ('pending','active','failed') RETURNING id",
             [ws.id],
           )
         ).rowCount || 0;
@@ -192,10 +195,25 @@ export async function createAgent(
       400,
     );
   const tokenId = randomToken();
-  const secret = randomToken();
+  // Two different secrets: BookStack gets bookstackSecret (the agent never
+  // sees it); the agent gets gatewaySecret, which only the MCP endpoint accepts.
+  const bookstackSecret = randomToken();
+  const gatewaySecret = randomToken();
   const agent = await transaction(async (c) => {
-    // Serialise per workspace so the agent cap holds under concurrent requests.
+    // Serialise per workspace so the agent cap and the kill switch hold under
+    // concurrent requests.
     await c.query("SELECT 1 FROM tenants WHERE id=$1 FOR UPDATE", [ws.id]);
+    const enabled = (
+      await c.query(
+        "SELECT access_enabled FROM agent_settings WHERE tenant_id=$1",
+        [ws.id],
+      )
+    ).rows[0];
+    if (enabled && !enabled.access_enabled)
+      throw new IntakeError(
+        "Agent access is switched off. Switch it on before creating an agent.",
+        409,
+      );
     const count = Number(
       (
         await c.query(
@@ -211,22 +229,23 @@ export async function createAgent(
       );
     return (
       await c.query(
-        "INSERT INTO agents(tenant_id,name,role_id,role_name,token_id,pending_secret_enc,created_by) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id,name,role_name,status,created_at",
+        "INSERT INTO agents(tenant_id,name,role_id,role_name,token_id,gateway_hash,bookstack_secret_enc,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id,name,role_name,status,created_at",
         [
           ws.id,
           name,
           role.id,
           role.name,
           tokenId,
-          encrypt(secret, ws.slug),
+          createHash("sha256").update(gatewaySecret).digest("hex"),
+          encrypt(bookstackSecret, ws.slug),
           userId,
         ],
       )
     ).rows[0];
   });
-  // Shown once. BookHost keeps only an encrypted copy until the host worker has
-  // installed the token in BookStack (normally within a minute), then deletes it.
-  return { agent, token: `${tokenId}:${secret}` };
+  // Shown once; BookHost stores only its hash. It works on the workspace's MCP
+  // endpoint only — not against the BookStack API directly.
+  return { agent, token: `${tokenId}:${gatewaySecret}` };
 }
 
 export async function revokeAgent(
@@ -238,7 +257,7 @@ export async function revokeAgent(
   if (typeof agentId !== "string" || !uuid(agentId))
     throw new IntakeError("Agent not found.", 404);
   const result = await db.query(
-    "UPDATE agents SET status='revoke_requested',pending_secret_enc=NULL,updated_at=now() WHERE id=$1 AND tenant_id=$2 AND status IN ('pending','active','failed') RETURNING id",
+    "UPDATE agents SET status='revoke_requested',bookstack_secret_enc=NULL,updated_at=now() WHERE id=$1 AND tenant_id=$2 AND status IN ('pending','active','failed') RETURNING id",
     [agentId, ws.id],
   );
   if (!result.rowCount)

@@ -12,8 +12,12 @@ CREATE TABLE IF NOT EXISTS agent_settings (
 );
 
 -- One row per dashboard-created agent. token_id is BookStack's public token
--- identifier (not a secret). pending_secret_enc is the AES-GCM encrypted secret,
--- kept only until the host worker has installed the token; it is then NULLed.
+-- identifier (not a secret). The agent never receives the BookStack secret:
+-- it gets token_id plus a separate gateway secret (only its SHA-256 is stored),
+-- which works on the MCP endpoint only. bookstack_secret_enc is the tenant-bound
+-- AES-GCM encrypted BookStack secret the gateway uses upstream; it is NULLed on
+-- revocation. So write mode, revocation and the kill switch cannot be bypassed
+-- by calling the BookStack API directly with the agent's credential.
 CREATE TABLE IF NOT EXISTS agents (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -22,14 +26,15 @@ CREATE TABLE IF NOT EXISTS agents (
  role_name text NOT NULL,
  bookstack_user_id integer CHECK (bookstack_user_id > 0),
  token_id text NOT NULL UNIQUE CHECK (token_id ~ '^[A-Za-z0-9]{32}$'),
- pending_secret_enc text,
+ gateway_hash text NOT NULL CHECK (gateway_hash ~ '^[a-f0-9]{64}$'),
+ bookstack_secret_enc text,
  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','active','revoke_requested','revoked','failed')),
  error text,
  created_by uuid REFERENCES users(id) ON DELETE SET NULL,
  created_at timestamptz NOT NULL DEFAULT now(),
  updated_at timestamptz NOT NULL DEFAULT now(),
  revoked_at timestamptz,
- CHECK (status NOT IN ('active','revoked','revoke_requested') OR pending_secret_enc IS NULL)
+ CHECK (status IN ('pending','active') OR bookstack_secret_enc IS NULL)
 );
 CREATE INDEX IF NOT EXISTS agents_tenant ON agents(tenant_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS agents_worker_queue ON agents(status) WHERE status IN ('pending','revoke_requested');

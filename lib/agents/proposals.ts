@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { transaction } from "@/lib/db";
 import { AgentError } from "./bookstack-user";
 import type { AgentIdentity, AgentWorkspace } from "./access";
 import { markdownToHtml } from "./markdown";
@@ -35,48 +35,54 @@ export async function createProposal(
 ) {
   if (!workspace.team_id)
     throw new AgentError("This workspace has no review queue.", "invalid");
-  const open = Number(
-    (
-      await db.query(
-        "SELECT count(*) FROM intake_items WHERE tenant_id=$1 AND source='agent' AND status IN ('draft','failed','approved')",
-        [workspace.id],
-      )
-    ).rows[0].count,
-  );
-  if (open >= MAX_OPEN_PROPOSALS)
-    throw new AgentError(
-      `The review queue already holds ${MAX_OPEN_PROPOSALS} open agent proposals. Ask a workspace owner to review them first.`,
-      "rate_limited",
+  // Per-workspace lock keeps the open-proposal cap exact under concurrency.
+  return transaction(async (c) => {
+    await c.query("SELECT 1 FROM tenants WHERE id=$1 FOR UPDATE", [
+      workspace.id,
+    ]);
+    const open = Number(
+      (
+        await c.query(
+          "SELECT count(*) FROM intake_items WHERE tenant_id=$1 AND source='agent' AND status IN ('draft','failed','approved')",
+          [workspace.id],
+        )
+      ).rows[0].count,
     );
-  const row = (
-    await db.query(
-      `INSERT INTO intake_items(team_id,tenant_id,filename,mime,extracted_text,status,draft_title,draft_html,draft_tags,target_book_id,target_chapter_id,target_book_name,target_chapter_name,source,source_metadata)
+    if (open >= MAX_OPEN_PROPOSALS)
+      throw new AgentError(
+        `The review queue already holds ${MAX_OPEN_PROPOSALS} open agent proposals. Ask a workspace owner to review them first.`,
+        "rate_limited",
+      );
+    const row = (
+      await c.query(
+        `INSERT INTO intake_items(team_id,tenant_id,filename,mime,extracted_text,status,draft_title,draft_html,draft_tags,target_book_id,target_chapter_id,target_book_name,target_chapter_name,source,source_metadata)
        VALUES($1,$2,$3,'text/markdown',$4,'draft',$5,$6,'[]'::jsonb,$7,$8,$9,$10,'agent',$11) RETURNING id`,
-      [
-        workspace.team_id,
-        workspace.id,
-        `Agent proposal: ${proposal.title}`.slice(0, 255),
-        proposal.markdown,
-        proposal.title,
-        proposal.markdown === null ? "" : markdownToHtml(proposal.markdown),
-        proposal.bookId,
-        proposal.chapterId,
-        proposal.bookName,
-        proposal.chapterName,
-        JSON.stringify({
-          kind: proposal.kind,
-          agent_name: identity.label,
-          agent_id: identity.agentId,
-          token_fingerprint: fingerprint,
-          page_id: proposal.pageId ?? null,
-          page_name: proposal.pageName ?? null,
-          base_revision_count: proposal.baseRevisionCount ?? null,
-          base_updated_at: proposal.baseUpdatedAt ?? null,
-          note: proposal.note.slice(0, 2000),
-          proposed_at: new Date().toISOString(),
-        }),
-      ],
-    )
-  ).rows[0];
-  return row.id as string;
+        [
+          workspace.team_id,
+          workspace.id,
+          `Agent proposal: ${proposal.title}`.slice(0, 255),
+          proposal.markdown,
+          proposal.title,
+          proposal.markdown === null ? "" : markdownToHtml(proposal.markdown),
+          proposal.bookId,
+          proposal.chapterId,
+          proposal.bookName,
+          proposal.chapterName,
+          JSON.stringify({
+            kind: proposal.kind,
+            agent_name: identity.label,
+            agent_id: identity.agentId,
+            token_fingerprint: fingerprint,
+            page_id: proposal.pageId ?? null,
+            page_name: proposal.pageName ?? null,
+            base_revision_count: proposal.baseRevisionCount ?? null,
+            base_updated_at: proposal.baseUpdatedAt ?? null,
+            note: proposal.note.slice(0, 2000),
+            proposed_at: new Date().toISOString(),
+          }),
+        ],
+      )
+    ).rows[0];
+    return row.id as string;
+  });
 }

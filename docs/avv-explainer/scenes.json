@@ -1,0 +1,44 @@
+[
+  {
+    "id": "s1",
+    "title": "Was ist das Thema?",
+    "narration": "„AVV und Drittlandtransfer für Chutes“ — was soll das heißen, geht es um Datenschutz, und musst du etwas tun? Kurz gesagt: Ja, das ist ein Datenschutzthema. Und vorweg: Nach dem aktuellen Stand musst du nichts tun.",
+    "tts": "„A-V-V und Drittlandtransfer für Chutes“ — was soll das heißen, geht es um Datenschutz, und musst du etwas tun? Kurz gesagt: Ja, das ist ein Datenschutzthema. Und vorweg: Nach dem aktuellen Stand musst du nichts tun."
+  },
+  {
+    "id": "s2",
+    "title": "Der AVV",
+    "narration": "AVV heißt Auftragsverarbeitungsvertrag nach Artikel 28 DSGVO. Der Kunde verantwortet die Inhalte seines Wikis; er ist der Verantwortliche. BookHost verarbeitet sie in seinem Auftrag, und der AVV legt fest, was BookHost damit tun darf. Auch die Dienstleister von BookHost stehen dort, etwa Hetzner für die Server und der KI-Anbieter als Unterauftragsverarbeiter.",
+    "tts": "A-V-V heißt Auftragsverarbeitungsvertrag nach Artikel 28 D-S-G-V-O. Der Kunde verantwortet die Inhalte seines Wikis; er ist der Verantwortliche. BookHost verarbeitet sie in seinem Auftrag, und der A-V-V legt fest, was BookHost damit tun darf. Auch die Dienstleister von BookHost stehen dort, etwa Hetzner für die Server und der KI-Anbieter als Unterauftragsverarbeiter."
+  },
+  {
+    "id": "s3",
+    "title": "Drittlandtransfer",
+    "narration": "Verlassen personenbezogene Daten die EU oder den EWR, spricht man von einem Drittlandtransfer. Nach Artikel 44 ff. DSGVO braucht so etwas eine Grundlage: etwa einen Angemessenheitsbeschluss oder EU-Standardvertragsklauseln mit einer dokumentierten Prüfung.",
+    "tts": "Verlassen personenbezogene Daten die E-U oder den E-W-R, spricht man von einem Drittlandtransfer. Nach Artikel 44 ff. D-S-G-V-O braucht so etwas eine Grundlage: etwa einen Angemessenheitsbeschluss oder E-U-Standardvertragsklauseln mit einer dokumentierten Prüfung."
+  },
+  {
+    "id": "s4",
+    "title": "Warum Chutes Thema war",
+    "narration": "Die KI-Funktionen — Dokument-Eingang und Antworten aus dem Wiki — schicken Kundentext an einen KI-Anbieter. Chutes sitzt außerhalb der EU. Für personenbezogene Kundendaten hätte es dafür eine Transfergrundlage und zusätzliche Unterlagen gebraucht.",
+    "tts": "Die KI-Funktionen — Dokument-Eingang und Antworten aus dem Wiki — schicken Kundentext an einen KI-Anbieter. Chutes sitzt außerhalb der E-U. Für personenbezogene Kundendaten hätte es dafür eine Transfergrundlage und zusätzliche Unterlagen gebraucht."
+  },
+  {
+    "id": "s5",
+    "title": "Die Entscheidung",
+    "narration": "Am 14. und 15. September 2026 entschied Florian sich für den EU-Weg: TensorX Limited aus Dublin, Irland. Laut Anbieter stehen die Rechner in Dublin und Helsinki, und Eingaben und Antworten werden nicht gespeichert. Die Datenschutzerklärung und der AVV von BookHost nennen TensorX.",
+    "tts": "Am 14. und 15. September 2026 entschied Florian sich für den E-U-Weg: TensorX Limited aus Dublin, Irland. Laut Anbieter stehen die Rechner in Dublin und Helsinki, und Eingaben und Antworten werden nicht gespeichert. Die Datenschutzerklärung und der A-V-V von BookHost nennen TensorX."
+  },
+  {
+    "id": "s6",
+    "title": "Stand heute",
+    "narration": "Die KI-Funktionen sind technisch als Beta verfügbar. Für personenbezogene Kundendaten gelten sie erst als freigegeben, wenn die Unterlagen von TensorX abschließend geprüft sind: der Vertrag zur Auftragsverarbeitung, die Unterauftragsverarbeiterliste und die Verarbeitungsorte. Bis dahin laufen nur Beispieldokumente ohne Personenbezug.",
+    "tts": "Die KI-Funktionen sind technisch als Beta verfügbar. Für personenbezogene Kundendaten gelten sie erst als freigegeben, wenn die Unterlagen von TensorX abschließend geprüft sind: der Vertrag zur Auftragsverarbeitung, die Unterauftragsverarbeiterliste und die Verarbeitungsorte. Bis dahin laufen nur Beispieldokumente ohne Personenbezug."
+  },
+  {
+    "id": "s7",
+    "title": "Deine Aufgabe",
+    "narration": "Im Moment musst du nichts tun. Den letzten Prüfschritt bereiten wir vor, und erst danach werben wir bei Kunden mit den KI-Funktionen. Das ist eine Erklärung, keine Rechtsberatung.",
+    "tts": "Im Moment musst du nichts tun. Den letzten Prüfschritt bereiten wir vor, und erst danach werben wir bei Kunden mit den KI-Funktionen. Das ist eine Erklärung, keine Rechtsberatung."
+  }
+]

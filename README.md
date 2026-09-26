@@ -511,3 +511,35 @@ INSERTs in lib/ and app/; dynamic/reordered event INSERTs fail closed until the
 extractor is extended.
 
 Customer-owned domains: see [setup, DNS verification and activation](ops/provisioner/CUSTOM-DOMAINS.md).
+
+## Agent access over MCP (beta)
+
+Every workspace has a remote MCP server (Streamable HTTP, stateless JSON responses) at
+`https://<workspace>.bookhost.co/mcp` and a workspace `llms.txt`. Both paths are routed to this
+control plane by the Traefik file route `ops/proxy/bookhost-agent-routes.yaml` (install into
+`/data/coolify/proxy/dynamic/`; remove the file to roll back). All other workspace paths stay with
+BookStack. Code: `lib/agents/` (`mcp.ts` protocol + auth, `tools.ts` tools, `access.ts` host/token
+checks), dashboard `app/app/agents`, API `app/api/agents`, public docs `/agents`, `/bookstack-mcp`,
+`/llms-full.txt`. Migration 038 adds `agent_settings`, `agents`, `agent_activity`.
+
+- **Auth:** `Authorization: Bearer <token id>:<secret>`. The workspace is chosen by the Host only.
+  A personal BookStack token is forwarded unchanged. A dashboard-created agent gets a separate
+  gateway secret (only its SHA-256 is stored); BookHost exchanges it for the agent's BookStack
+  secret (KMS-encrypted, tenant-bound), so dashboard tokens do not work on BookStack's API directly
+  and write mode, revocation and the kill switch always apply. The intake service token is refused.
+- **Agent users:** BookStack has no token API, so the host worker (`ops/provisioner/agent_tokens.py`,
+  called from `worker.py`) creates the agent's BookStack user (chosen role + a `bookhost-agent-api`
+  role with only `access-api`) and installs/deletes tokens within about a minute. Admin, guest and
+  service roles are refused in both places.
+- **Write mode** per workspace: `off`, `propose` (default; changes become `intake_items` with
+  `source='agent'`, visible to owners/admins only, applied by the intake service user on approval
+  with a revision check), `direct` (written with the agent's own token).
+- **Limits:** 120 requests/min, 1,500/h, 60 writes/h per token; 30 failed authentications per
+  15 min per IP and per token id; 512 KiB bodies, batches of at most 5, 45 s per request.
+- **Logs:** `agent_activity` holds metadata only (token fingerprint, tool, object id, result,
+  latency) and is deleted after 90 days by the hourly cleanup.
+- **Tests:** `tests/agent-access.test.ts`, `tests/agent-access-db.integration.test.ts` (run by
+  `ops/testdb.sh`), `ops/provisioner/test_agent_tokens.py`, and the opt-in real-BookStack check
+  `LOCAL_BOOKSTACK_E2E=<fixture.json> npx vitest run tests/agent-tools-bookstack.e2e.test.ts`.
+- **Phase 2:** OAuth 2.1 (MCP authorization spec) for claude.ai/ChatGPT connectors, MCP registry
+  listing, per-agent scopes beyond BookStack roles, events/webhooks.

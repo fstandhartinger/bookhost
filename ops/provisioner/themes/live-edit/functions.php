@@ -178,7 +178,7 @@ Theme::listen(ThemeEvents::ROUTES_REGISTER_WEB, function (Router $router) {
 
             $updated = app(PageRepo::class)->update($page, [
                 'html' => $html,
-                'changelog' => 'Live edit session',
+                'summary' => 'Live edit session',
             ]);
             return response()->json(['revisionCount' => (int) $updated->revision_count]);
         });

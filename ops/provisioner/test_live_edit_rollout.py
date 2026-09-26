@@ -49,6 +49,10 @@ class ThemeRouteProbeTests(unittest.TestCase):
         source = live_edit_rollout.THEME_SOURCE.read_text()
         self.assertIn('Auth::guard()->onceUsingId($bookstackUserId)', source)
 
+    def test_page_repo_receives_the_revision_summary_field(self):
+        source = live_edit_rollout.THEME_SOURCE.read_text()
+        self.assertIn("'summary' => 'Live edit session'", source)
+
     def test_accepts_registered_route_redirecting_to_bookstack_login(self):
         response = MagicMock()
         response.status = 200

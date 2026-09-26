@@ -10,6 +10,9 @@ import {
   itemForUser,
 } from "@/lib/intake/access";
 import { canPublish, canTransition, cleanHtml } from "@/lib/intake/content";
+import { publishAgentProposal } from "@/lib/agents/review";
+import { PAGE_HTML_OPTIONS } from "@/lib/agents/markdown";
+import sanitizeHtml from "sanitize-html";
 type Context = { params: Promise<{ id: string }> };
 export async function GET(_request: Request, context: Context) {
   try {
@@ -34,7 +37,10 @@ export async function GET(_request: Request, context: Context) {
         filename,
         status,
         draft_title,
-        draft_html: cleanHtml(draft_html || ""),
+        draft_html:
+          item.source === "agent"
+            ? sanitizeHtml(draft_html || "", PAGE_HTML_OPTIONS)
+            : cleanHtml(draft_html || ""),
         draft_tags,
         error,
         target_book_id: item.target_book_id,
@@ -77,6 +83,8 @@ export async function POST(request: Request, context: Context) {
     }
     if (body.action !== "publish")
       throw new IntakeError("Unknown review action.");
+    if (item.source === "agent")
+      return Response.json(await publishAgentProposal(item, session.user.id));
     if (!canPublish(item.role))
       throw new IntakeError("Only team owners and admins can publish.", 403);
     if (item.status === "published")

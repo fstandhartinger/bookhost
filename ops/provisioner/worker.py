@@ -17,6 +17,7 @@ from tenant import HERE, ROOT, env_read, valid_slug, compose
 from bookstack_api_token import store_token
 from capacity import disk_state, running_tenants, thresholds, CUSTOMER_ERROR
 from storage_usage import record_storage
+from agent_tokens import reconcile_agents
 
 DEFAULT_RESERVED_TEST_PREFIXES = ('rc-', 'fb-', 'nh-', 'dom-', 'bh-', 'tmp-', 'test-')
 
@@ -197,6 +198,10 @@ def once():
         if instance == 'production':
             db.execute((HERE/'schema.sql').read_text())
         reconcile_domains(db, instance)
+        try:
+            reconcile_agents(db, instance)
+        except Exception:
+            print('Agent token reconciliation failed; retry next run', flush=True)
         # run-worker.sh flock spans the whole command: no live worker is reclaimed.
         stale=db.execute("SELECT id,slug FROM tenants WHERE COALESCE(provisioner_instance,'production')=%s AND status='provisioning' AND updated_at < now()-interval '20 minutes'",(instance,)).fetchall()
         for ident,slug in stale:

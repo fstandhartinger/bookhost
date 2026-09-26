@@ -400,6 +400,33 @@ export default function Home() {
         </div>
       </section>
 
+      <section id="live-edit" className="defer scroll-mt-20 border-t border-ink/10 py-16 md:py-24">
+        <div className="grid gap-10 lg:grid-cols-[1fr_1.15fr] lg:items-start">
+          <div>
+            <p className="eyebrow">Live collaborative editing · beta</p>
+            <h2>See page edits and cursors as your team works.</h2>
+            <p className="mt-5 text-sm leading-7 text-muted">
+              Live Edit is an add-on editor overlay for BookStack. A workspace
+              owner or admin can turn it on in the BookHost dashboard; then open
+              a page&rsquo;s Live Edit view to see other editors&rsquo; cursors
+              and changes as they type.
+            </p>
+          </div>
+          <ul className="checklist text-sm leading-6 text-muted">
+            <li>Off by default and enabled separately for each workspace.</li>
+            <li>
+              The Live Edit overlay and BookStack&rsquo;s native editor are two
+              separate editing surfaces during this beta.
+            </li>
+            <li>
+              BookStack keeps control of page permissions and revision history;
+              known content limits, such as drawings, callouts and page
+              includes, are explained before you join.
+            </li>
+          </ul>
+        </div>
+      </section>
+
       <section className="defer section">
         <div className="grid gap-10 lg:grid-cols-[1fr_1.6fr] lg:items-start">
           <div>

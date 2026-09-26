@@ -66,6 +66,7 @@ export async function publishAgentProposal(item: Item, userId: string) {
       [item.id, message],
     );
   };
+  let warning: string | null = null;
   try {
     let pageId: number;
     if (kind === "create") {
@@ -126,16 +127,31 @@ export async function publishAgentProposal(item: Item, userId: string) {
           "UPDATE intake_items SET source_metadata=source_metadata||jsonb_build_object('apply_revision',$2::int) WHERE id=$1",
           [item.id, page.revision_count],
         );
-        await client.request(`pages/${pageId}`, body, "PUT");
+        const saved = await client.request<{ revision_count?: number }>(
+          `pages/${pageId}`,
+          body,
+          "PUT",
+        );
+        // BookStack has no conditional update. If another save landed between
+        // our read and write, say so instead of hiding it.
+        if (
+          typeof saved?.revision_count === "number" &&
+          saved.revision_count !== page.revision_count + 1
+        )
+          warning =
+            "Applied, but someone else saved this page at the same moment. Check the page's revision history in BookStack.";
       }
     }
     if (!Number.isSafeInteger(pageId) || pageId < 1)
       throw new Error("Invalid page response");
     await db.query(
-      "UPDATE intake_items SET status='published',extracted_text=NULL,bookstack_page_id=$2,error=NULL,updated_at=now() WHERE id=$1 AND status='approved'",
-      [item.id, pageId],
+      "UPDATE intake_items SET status='published',extracted_text=NULL,bookstack_page_id=$2,error=$3,updated_at=now() WHERE id=$1 AND status='approved'",
+      [item.id, pageId, warning],
     );
-    return { url: `${client.base}/link/${pageId}` };
+    return {
+      url: `${client.base}/link/${pageId}`,
+      ...(warning ? { warning } : {}),
+    };
   } catch (error) {
     await fail(
       error instanceof IntakeError

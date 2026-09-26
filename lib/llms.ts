@@ -115,7 +115,7 @@ Client instructions checked against each client's documentation on ${AGENT_DOCS_
 - Every workspace has its own MCP server: https://<workspace>.bookhost.co/mcp (Streamable HTTP).
 - Header: \`Authorization: Bearer <token id>:<token secret>\` — a BookStack API token of a user in that workspace. The user's role needs the "Access system API" permission.
 - Recommended: in the BookHost dashboard, open Agents (owners and admins), create an agent user and pick its BookStack role. BookHost creates a dedicated BookStack user with API access and shows the agent's token once. That token works only on the MCP endpoint (BookStack's own API rejects it), so write mode, revocation and the kill switch always apply. Tokens can be revoked at any time.
-- Alternatively, use your own BookStack API token (BookStack profile → API tokens); its role needs the "Access system API" permission.
+- Alternatively, use your own BookStack API token (BookStack profile → API tokens); its role needs the "Access system API" permission. That token also works on BookStack's API directly, where BookHost's write mode and kill switch do not apply; use dashboard agents when those controls matter.
 - Every call acts as that BookStack user, so BookStack roles and permissions decide what the agent reads and what it may change directly. A proposal needs only read access; an owner or admin decides whether it is applied. A token works only on its own workspace; the workspace is chosen by the address, never by the token.
 
 ### Setup

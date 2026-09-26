@@ -27,6 +27,7 @@ export const SUPPORTED_PROTOCOL_VERSIONS = [
 const LATEST = SUPPORTED_PROTOCOL_VERSIONS[0];
 const MAX_BODY = 512 * 1024;
 const MAX_BATCH = 5;
+const REQUEST_DEADLINE_MS = 45_000;
 const MAX_RESOURCE_CHARS = 200_000;
 
 export const LIMITS = {
@@ -313,7 +314,25 @@ export async function handleMcp(
       400,
     );
   const responses: unknown[] = [];
+  // Every message in a batch counts against the token's request allowance.
+  for (let i = 1; i < messages.length; i++) {
+    await rateLimit(`mcp:m:${ws.id}:${token.key}`, LIMITS.perMinute, 60);
+    await rateLimit(`mcp:h:${ws.id}:${token.key}`, LIMITS.perHour, 3600);
+  }
+  const deadline = Date.now() + REQUEST_DEADLINE_MS;
   for (const message of messages) {
+    const id = (message as { id?: JsonRpcRequest["id"] })?.id;
+    if (Date.now() > deadline) {
+      if (id !== undefined)
+        responses.push(
+          rpcError(
+            id,
+            -32000,
+            "Request deadline exceeded; send fewer messages per batch.",
+          ),
+        );
+      continue;
+    }
     const result = await dispatch(message, ctx, token, identity);
     if (result) responses.push(result);
   }

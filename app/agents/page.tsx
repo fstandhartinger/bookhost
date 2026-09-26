@@ -242,7 +242,11 @@ export default function AgentsDocsPage() {
               <strong>Dashboard tokens work only through BookHost.</strong> The
               token of an agent created in the dashboard is accepted on the MCP
               endpoint only; BookStack&rsquo;s own API rejects it. So the write
-              mode, revocation and the kill switch always apply to it.
+              mode, revocation and the kill switch always apply to it. A
+              personal BookStack API token is different: it is that user&rsquo;s
+              own key and also works on BookStack&rsquo;s API directly, where
+              BookHost&rsquo;s write mode and kill switch do not apply. Use
+              dashboard agents when those controls matter.
             </li>
             <li>
               <strong>One token, one workspace.</strong> The workspace is chosen

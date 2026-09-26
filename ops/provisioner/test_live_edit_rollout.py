@@ -43,6 +43,35 @@ class EnvWriteTests(unittest.TestCase):
         self.assertEqual(shlex.split(line)[0].split('=', 1)[1], secret)
 
 
+class ThemeRouteProbeTests(unittest.TestCase):
+    def test_accepts_registered_route_redirecting_to_bookstack_login(self):
+        response = MagicMock()
+        response.status = 200
+        response.geturl.return_value = 'https://acme.bookhost.co/login'
+        response.read.return_value = b'<title>BookStack</title><a>Log in</a>'
+        response.__enter__.return_value = response
+        with patch.object(live_edit_rollout.urllib.request, 'urlopen', return_value=response):
+            self.assertTrue(live_edit_rollout._probe_ticket_route('https://acme.bookhost.co'))
+
+    def test_rejects_unregistered_path_that_stays_404(self):
+        response = MagicMock()
+        response.status = 404
+        response.geturl.return_value = 'https://acme.bookhost.co/live-edit/ticket/999999999'
+        response.read.return_value = b'<title>BookStack</title><a>Log in</a>'
+        response.__enter__.return_value = response
+        with patch.object(live_edit_rollout.urllib.request, 'urlopen', return_value=response):
+            self.assertFalse(live_edit_rollout._probe_ticket_route('https://acme.bookhost.co'))
+
+    def test_rejects_a_200_response_that_did_not_redirect_to_login(self):
+        response = MagicMock()
+        response.status = 200
+        response.geturl.return_value = 'https://acme.bookhost.co/live-edit/ticket/999999999'
+        response.read.return_value = b'<title>BookStack</title><a>Log in</a>'
+        response.__enter__.return_value = response
+        with patch.object(live_edit_rollout.urllib.request, 'urlopen', return_value=response):
+            self.assertFalse(live_edit_rollout._probe_ticket_route('https://acme.bookhost.co'))
+
+
 class InstallTests(unittest.TestCase):
     def setUp(self):
         self.folder = tempfile.TemporaryDirectory()

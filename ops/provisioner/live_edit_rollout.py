@@ -14,6 +14,7 @@ import re
 import shlex
 import urllib.request
 from pathlib import Path
+from urllib.parse import urlparse
 
 from tenant import ROOT, compose, env_read, php, ready_internal, valid_slug
 from bookstack_api_token import decrypt, kms_key
@@ -150,16 +151,21 @@ def _probe_ticket_route(url):
     """Confirm the theme route is really registered, not just that BookStack answers.
 
     An anonymous request must never see ticket JSON: BookStack's own `auth`
-    middleware should redirect it to the login page first (urllib follows
-    redirects transparently, same as tenant.py's public_ready() check), and a
-    request to a URL BookStack doesn't recognise at all would 404 instead —
-    both distinguishable from a real "did the theme route register" success.
+    middleware redirects it to the login page (urllib follows redirects).
+    BookStack 26.05's login page no longer includes the `_token` form field
+    used by older versions, so identify the redirect by its final URL and
+    login-page markers. An unregistered path remains an HTTP 404.
     """
     request = urllib.request.Request(url.rstrip('/') + '/live-edit/ticket/999999999')
     try:
         with urllib.request.urlopen(request, timeout=15) as response:
             body = response.read()
-            return response.status == 200 and b'name="_token"' in body and b'/login"' in body
+            return (
+                response.status == 200
+                and urlparse(response.geturl()).path.rstrip('/') == '/login'
+                and b'<title>BookStack' in body
+                and b'>Log in<' in body
+            )
     except Exception:
         return False
 

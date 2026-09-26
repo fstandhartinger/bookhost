@@ -56,6 +56,8 @@ describe("agent access helpers", () => {
     expect(html).not.toMatch(/script|onerror|javascript:/i);
     expect(html).toContain('href="https://example.com"');
     expect(html).toContain("<table>");
+    // A numbered step appended on its own keeps its number in the preview.
+    expect(markdownToHtml("4. Post the note")).toContain('<ol start="4">');
   });
 
   it("parses only same-host book and page links from BookStack listings", () => {

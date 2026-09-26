@@ -73,6 +73,7 @@ export const PAGE_HTML_OPTIONS: sanitizeHtml.IOptions = {
   ],
   allowedAttributes: {
     a: ["href"],
+    ol: ["start"],
     input: ["type", "checked", "disabled"],
     th: ["align"],
     td: ["align"],

@@ -90,3 +90,6 @@ slug pattern), the SEO guides `/bookstack-vs-confluence`, `/bookstack-backup-gui
 this decision is unchanged: strict fixed-path allowlist without query strings, nothing stored on or read from
 the device for statistics, no third party, daily-rotated in-memory hash salt, 90-day retention, operator-only
 aggregate output. None of the §-3 reopening conditions is triggered.
+Post-revamp live acceptance executed 2026-09-26 on the deployed revision (portfolio round
+bookhost-r4-01b9f5a8): real browser session counted for a previously counted page and a previously dropped
+page; bot-UA beacon POST uncounted; no third-party analytics request; QA rows removed.

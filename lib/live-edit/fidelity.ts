@@ -1,3 +1,5 @@
+import { parseDocument } from "htmlparser2";
+
 // What survives the BookStack HTML <-> Tiptap round trip in phase 1, and what
 // doesn't. Anything in `blockers` below loses real content or semantics
 // (not just cosmetic formatting), so Live Edit refuses to open the page
@@ -25,14 +27,6 @@ const CHECKS: { test: RegExp; reason: string }[] = [
       "This page includes content from another page. Live Edit can't preserve page includes yet — edit this page in BookStack's normal editor.",
   },
   {
-    // `<p class="callout success|info|warning|danger">`. Phase 1's Tiptap
-    // extension set has no callout node, so importing this would silently
-    // downgrade it to a plain paragraph and lose the callout styling.
-    test: /class="[^"]*\bcallout\s+(?:info|success|warning|danger)\b[^"]*"/i,
-    reason:
-      "This page contains a callout box. Live Edit doesn't support callouts yet — edit this page in BookStack's normal editor.",
-  },
-  {
     // <details><summary> (resources/js/wysiwyg-tinymce/plugins-details.js).
     // No Tiptap node for it; StarterKit would drop the tags and flatten the
     // collapsible section into plain paragraphs.
@@ -41,29 +35,55 @@ const CHECKS: { test: RegExp; reason: string }[] = [
       "This page contains a collapsible details block. Live Edit doesn't support those yet — edit this page in BookStack's normal editor.",
   },
   {
-    // Task lists render as <input type="checkbox"> (plugins-tasklist.js).
-    // Tiptap's schema has no matching node in our extension list, so a
-    // checked/unchecked task item's state would be silently lost.
-    test: /<input\b[^>]*\btype="checkbox"/i,
-    reason:
-      "This page contains a task list. Live Edit doesn't support checkboxes yet — edit this page in BookStack's normal editor.",
-  },
-  {
     // Embeds (video/iframe) aren't in our Tiptap extension list at all.
     test: /<iframe\b/i,
     reason:
       "This page contains an embedded video or iframe. Live Edit doesn't support embeds yet — edit this page in BookStack's normal editor.",
   },
-  {
-    // Inline `style="..."` (TinyMCE's default text-color/alignment/font-size
-    // toolbar output) has no home in our Tiptap schema or the save-back
-    // sanitizer allowlist (lib/live-edit/tiptap-bridge.ts) — it would be
-    // silently stripped on the very next save.
-    test: /\sstyle="[^"]*[a-z]/i,
-    reason:
-      "This page uses custom text styling (color, alignment or size) that Live Edit can't preserve yet — edit this page in BookStack's normal editor.",
-  },
 ];
+
+const REASONS = {
+  callout:
+    "This page contains a callout box. Live Edit doesn't support callouts yet — edit this page in BookStack's normal editor.",
+  taskList:
+    "This page contains a task list. Live Edit doesn't support checkboxes yet — edit this page in BookStack's normal editor.",
+  style:
+    "This page uses custom text styling (color, alignment or size) that Live Edit can't preserve yet — edit this page in BookStack's normal editor.",
+} as const;
+
+// Parse actual HTML attributes so single quotes, unquoted values, entities and
+// whitespace around equals receive the same fidelity checks. Regexes over the
+// raw source can miss these forms or match examples inside unrelated text.
+function tagAttributes(rawHtml: string): Array<{
+  name: string;
+  value: string | null;
+  tagName: string;
+}> {
+  const attributes: Array<{ name: string; value: string | null; tagName: string }> = [];
+  type ParsedNode = {
+    name?: string;
+    attribs?: Record<string, string>;
+    children?: ParsedNode[];
+  };
+  const document = parseDocument(rawHtml, { decodeEntities: true }) as ParsedNode;
+  const stack = [...(document.children || [])];
+  while (stack.length) {
+    const node = stack.pop()!;
+    if (node.name) {
+      for (const [name, value] of Object.entries(node.attribs || {})) {
+        attributes.push({
+          name: name.toLowerCase(),
+          value,
+          tagName: node.name.toLowerCase(),
+        });
+      }
+    }
+    if (node.children?.length) {
+      stack.push(...node.children);
+    }
+  }
+  return attributes;
+}
 
 export function fidelityBlockers(
   rawHtml: string,
@@ -77,5 +97,32 @@ export function fidelityBlockers(
     });
   for (const check of CHECKS)
     if (check.test.test(rawHtml)) blocks.push({ reason: check.reason });
+
+  const attributes = tagAttributes(rawHtml);
+  const classNames = attributes
+    .filter((attribute) => attribute.name === "class")
+    .map((attribute) => attribute.value || "");
+  if (
+    classNames.some((value) =>
+      /(?:^|\s)callout\s+(?:info|success|warning|danger)(?:\s|$)/i.test(value),
+    )
+  )
+    blocks.push({ reason: REASONS.callout });
+  if (
+    attributes.some(
+      (attribute) =>
+        attribute.tagName === "input" &&
+        attribute.name === "type" &&
+        attribute.value?.toLowerCase() === "checkbox",
+    )
+  )
+    blocks.push({ reason: REASONS.taskList });
+  if (
+    attributes.some(
+      (attribute) =>
+        attribute.name === "style" && Boolean(attribute.value?.trim()),
+    )
+  )
+    blocks.push({ reason: REASONS.style });
   return blocks;
 }

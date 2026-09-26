@@ -45,6 +45,20 @@ describe("live edit content fidelity blockers", () => {
     expect(fidelityBlockers(html, "wysiwyg").some((b) => /task list/.test(b.reason))).toBe(true);
   });
 
+  it("blocks equivalent HTML attributes regardless of quoting or spacing", () => {
+    for (const html of [
+      "<input type='checkbox'>",
+      "<input TYPE = checkbox>",
+      "<p style='color:red'>styled</p>",
+      "<span STYLE = color:red>styled</span>",
+      "<p class='callout warning'>Note</p>",
+      "<p class = 'callout info'>Note</p>",
+    ]) {
+      const blockers = fidelityBlockers(html, "wysiwyg");
+      expect(blockers.length, html).toBeGreaterThan(0);
+    }
+  });
+
   it("blocks pages with an embedded iframe", () => {
     const html = '<iframe src="https://example.com"></iframe>';
     expect(fidelityBlockers(html, "wysiwyg").some((b) => /embed/.test(b.reason))).toBe(true);

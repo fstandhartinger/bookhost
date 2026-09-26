@@ -70,6 +70,33 @@ class InstallTests(unittest.TestCase):
         php_fn.assert_not_called()
         self.assertEqual((self.tenant / '.env').read_bytes(), original_env)
 
+    def test_refuses_a_custom_theme_declared_only_in_compose(self):
+        compose_path = self.tenant / 'docker-compose.yml'
+        document = json.loads(compose_path.read_text())
+        document['services']['bookstack']['environment']['APP_THEME'] = 'acme-custom'
+        compose_path.write_text(json.dumps(document))
+        original_env = (self.tenant / '.env').read_bytes()
+        original_compose = compose_path.read_bytes()
+        compose_fn = MagicMock()
+        php_fn = MagicMock()
+        with self.assertRaises(RuntimeError) as ctx:
+            live_edit_rollout.install(self.tenant, 'shh', compose_fn=compose_fn, php_fn=php_fn)
+        self.assertIn('APP_THEME=acme-custom', str(ctx.exception))
+        compose_fn.assert_not_called()
+        php_fn.assert_not_called()
+        self.assertEqual((self.tenant / '.env').read_bytes(), original_env)
+        self.assertEqual(compose_path.read_bytes(), original_compose)
+
+    def test_refuses_a_custom_theme_from_compose_default_interpolation(self):
+        compose_path = self.tenant / 'docker-compose.yml'
+        document = json.loads(compose_path.read_text())
+        document['services']['bookstack']['environment']['APP_THEME'] = '${APP_THEME:-acme-custom}'
+        compose_path.write_text(json.dumps(document))
+        compose_fn = MagicMock()
+        with self.assertRaises(RuntimeError):
+            live_edit_rollout.install(self.tenant, 'shh', compose_fn=compose_fn)
+        compose_fn.assert_not_called()
+
     def test_allows_a_second_run_when_theme_is_already_live_edit(self):
         (self.tenant / '.env').write_text('APP_URL=https://acme.bookhost.co\nAPP_THEME=live-edit\n')
         compose_fn = MagicMock()

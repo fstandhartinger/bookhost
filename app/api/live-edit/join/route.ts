@@ -10,7 +10,7 @@ import { corsHeaders, corsPreflight } from "@/lib/live-edit/cors";
 
 export const dynamic = "force-dynamic";
 
-export function OPTIONS(request: Request) {
+export async function OPTIONS(request: Request) {
   return corsPreflight(request);
 }
 
@@ -27,7 +27,7 @@ function colorFor(bookstackUserId: number) {
 }
 
 export async function POST(request: Request) {
-  const headers = corsHeaders(request);
+  const headers = await corsHeaders(request);
   const json = (body: unknown) => Response.json(body, { headers });
 
   let body: unknown;

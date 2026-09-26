@@ -9,6 +9,7 @@ failure restores the original .env and docker-compose.yml and leaves the
 tenant running on its old configuration, never half-migrated.
 """
 import json
+import os
 import re
 import shlex
 import urllib.request
@@ -74,6 +75,77 @@ def _env_write(path, updates):
     ef.write_text(''.join(out))
 
 
+def _compose_environment(document):
+    value = document.get('services', {}).get('bookstack', {}).get('environment', {})
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, list):
+        result = {}
+        for item in value:
+            if not isinstance(item, str):
+                continue
+            key, separator, setting = item.partition('=')
+            if key:
+                result[key] = setting if separator else None
+        return result
+    return {}
+
+
+def _resolve_compose_value(value, env_values):
+    """Resolve the Compose interpolation forms relevant to APP_THEME.
+
+    Unknown or malformed interpolation is kept as a non-empty value so the
+    caller fails closed instead of replacing a theme it cannot identify.
+    """
+    if value is None:
+        value = ''
+    if not isinstance(value, str):
+        return str(value)
+
+    def variable(match):
+        name, operator, default = match.groups()
+        configured = env_values.get(name)
+        if configured is None:
+            configured = os.environ.get(name)
+        if operator == ':-':
+            return configured if configured else (default or '')
+        if operator == '-':
+            return configured if configured is not None else (default or '')
+        if configured is not None:
+            return configured
+        return '' if name == 'APP_THEME' else '__unresolved_compose_value__'
+
+    resolved = re.sub(
+        r'\$\{([A-Za-z_][A-Za-z0-9_]*)(?:(:-|-)([^}]*))?\}', variable, value)
+    # Bare $VARIABLE interpolation is also valid Compose syntax.
+    resolved = re.sub(
+        r'\$([A-Za-z_][A-Za-z0-9_]*)',
+        lambda match: env_values.get(
+            match.group(1),
+            os.environ.get(
+                match.group(1),
+                '' if match.group(1) == 'APP_THEME' else '__unresolved_compose_value__',
+            ),
+        ),
+        resolved,
+    )
+    return resolved
+
+
+def _configured_themes(path):
+    env_values = env_read(path / '.env')
+    env_theme = env_values.get('APP_THEME', '').strip()
+    try:
+        compose_doc = json.loads((path / 'docker-compose.yml').read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError('Could not safely inspect the existing BookStack theme configuration') from exc
+    compose_env = _compose_environment(compose_doc)
+    compose_theme = ''
+    if 'APP_THEME' in compose_env:
+        compose_theme = _resolve_compose_value(compose_env['APP_THEME'], env_values).strip()
+    return env_theme, compose_theme
+
+
 def _probe_ticket_route(url):
     """Confirm the theme route is really registered, not just that BookStack answers.
 
@@ -98,8 +170,12 @@ def install(path, secret, *, compose_fn=compose, ready_fn=ready_internal, php_fn
     original_compose = (path / 'docker-compose.yml').read_bytes()
     # BookStack supports exactly one active theme; refuse before changing
     # anything rather than silently replacing a tenant's own customization.
-    existing_theme = env_read(path / '.env').get('APP_THEME', '').strip()
-    if existing_theme and existing_theme != 'live-edit':
+    existing_themes = _configured_themes(path)
+    existing_theme = next(
+        (theme for theme in existing_themes if theme and theme != 'live-edit'),
+        '',
+    )
+    if existing_theme:
         raise RuntimeError(
             'This workspace already uses a custom BookStack theme (APP_THEME=%s); '
             'Live Edit cannot be enabled automatically. Contact support.' % existing_theme)

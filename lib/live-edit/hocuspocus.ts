@@ -1,7 +1,12 @@
-import { Hocuspocus } from "@hocuspocus/server";
+import { Hocuspocus, type onStoreDocumentPayload } from "@hocuspocus/server";
 import { db } from "@/lib/db";
 import { clientFor, IntakeError } from "@/lib/intake/access";
 import { tenantHost } from "@/lib/tenant-host";
+import {
+  BookStackConflictSavedError,
+  BookStackSaveError,
+  saveBookStackPage,
+} from "./bookstack-save";
 import { verifyJoinToken } from "./join-token";
 import { seedYdocFromHtml, htmlFromYdoc } from "./tiptap-bridge";
 import { presenceJoin, presenceLeave } from "./presence-store";
@@ -33,14 +38,84 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// The revision_count BookHost last saw for a document, used as a best-effort
-// optimistic-concurrency guard (same pattern already used for agent writes,
-// see lib/agents/tools.ts's expected_revision_count — a client-side
-// read-then-compare check, not an atomic BookStack API feature, since
-// BookStack's API has none). Cleared in afterUnloadDocument.
+// The revision_count BookHost last saw for a document. Saves carry this to the
+// tenant-side theme route, which verifies it under a database row lock. Cleared
+// in afterUnloadDocument.
 const lastKnownRevision = new Map<string, number>();
+const documentTenants = new Map<string, string>();
+const conflictedDocuments = new Set<string>();
+const lastStoreContexts = new Map<string, LiveEditContext>();
+const retryTimers = new Map<string, NodeJS.Timeout>();
+const retryCounts = new Map<string, number>();
 
 let instance: Hocuspocus | null = null;
+let revocationTimer: NodeJS.Timeout | null = null;
+
+function clearSaveRetry(documentName: string) {
+  const timer = retryTimers.get(documentName);
+  if (timer) clearTimeout(timer);
+  retryTimers.delete(documentName);
+  retryCounts.delete(documentName);
+}
+
+function scheduleSaveRetry(data: onStoreDocumentPayload<LiveEditContext>) {
+  const documentName = data.documentName;
+  if (retryTimers.has(documentName) || conflictedDocuments.has(documentName))
+    return;
+  const attempt = (retryCounts.get(documentName) || 0) + 1;
+  retryCounts.set(documentName, attempt);
+  const delayMs = Math.min(30_000, 5_000 * 2 ** Math.min(attempt - 1, 3));
+  const timer = setTimeout(() => {
+    retryTimers.delete(documentName);
+    const server = data.instance;
+    const document = server.documents.get(documentName);
+    if (!document || conflictedDocuments.has(documentName)) return;
+    const context = lastStoreContexts.get(documentName) || data.lastContext;
+    void server.storeDocumentHooks(
+      document,
+      {
+        ...data,
+        document,
+        clientsCount: document.getConnectionsCount(),
+        lastContext: context,
+      },
+      true,
+    );
+  }, delayMs);
+  timer.unref();
+  retryTimers.set(documentName, timer);
+}
+
+function startRevocationMonitor(server: Hocuspocus) {
+  if (revocationTimer) return;
+  revocationTimer = setInterval(() => {
+    void (async () => {
+      const entries = [...documentTenants.entries()];
+      const tenantIds = [...new Set(entries.map(([, tenantId]) => tenantId))];
+      if (!tenantIds.length) return;
+      try {
+        const rows = (
+          await db.query(
+            `SELECT tenant_id FROM live_edit_settings
+             WHERE tenant_id=ANY($1::uuid[]) AND enabled=true AND rollout_status='ready'`,
+            [tenantIds],
+          )
+        ).rows;
+        const ready = new Set(rows.map((row) => row.tenant_id as string));
+        for (const [documentName, tenantId] of entries) {
+          if (ready.has(tenantId)) continue;
+          const document = server.documents.get(documentName);
+          if (document?.getConnectionsCount())
+            server.closeConnections(documentName);
+        }
+      } catch {
+        // A temporary control-plane DB error must not evict healthy sessions.
+        console.error("[live-edit] could not check disabled workspaces");
+      }
+    })();
+  }, 5000);
+  revocationTimer.unref();
+}
 
 // The headless Hocuspocus class (hooks + handleConnection + document
 // registry), not the `Server` export — that one spins up its own HTTP/WS
@@ -60,9 +135,12 @@ export function hocuspocusServer(): Hocuspocus {
       if (!payload) throw new Error("This Live Edit session expired. Reopen Live Edit.");
       if (payload.documentName !== data.documentName)
         throw new Error("Live Edit session does not match this page.");
+      if (conflictedDocuments.has(payload.documentName))
+        throw new Error("This Live Edit session ended after preserving a conflict revision. Reopen the page.");
       const tenant = await tenantForSlug(payload.tenant);
       if (!(await liveEditReady(tenant.id)))
         throw new Error("Live Edit is turned off for this workspace.");
+      documentTenants.set(payload.documentName, tenant.id);
       data.connectionConfig.readOnly = !payload.canEdit;
       presenceJoin(payload.documentName);
       db.query(
@@ -96,13 +174,12 @@ export function hocuspocusServer(): Hocuspocus {
     },
 
     async onStoreDocument(data) {
-      // This runs on a debounce timer shared by every tenant's document, not
-      // tied to one connection's own promise chain — an uncaught rejection
-      // here must never propagate out and take down live sessions for every
-      // other workspace on this one shared server.
+      if (conflictedDocuments.has(data.documentName)) return;
       try {
         const ctx = data.lastContext as LiveEditContext;
-        if (!ctx?.tenantId) return;
+        if (!ctx?.tenantId || !ctx.canEdit)
+          throw new BookStackSaveError("No authorized Live Edit editor is available to save this page.", false);
+        lastStoreContexts.set(data.documentName, ctx);
 
         // Turning the beta off doesn't push-revoke already-open sockets on
         // its own; piggyback the check on this same periodic cycle (every
@@ -113,69 +190,95 @@ export function hocuspocusServer(): Hocuspocus {
           data.instance.closeConnections(data.documentName);
         }
 
-        const client = await clientFor({
-          id: ctx.tenantId,
-          slug: ctx.tenantSlug,
-          host: ctx.tenantHost,
-        });
-
-        // Best-effort optimistic-concurrency guard: if someone saved this
-        // page outside Live Edit since we last saved it ourselves, don't
-        // silently clobber that edit on a routine mid-session debounce —
-        // only the final save (no connections left) goes through regardless,
-        // so a live-edited change is never discarded outright; both ends up
-        // as BookStack revisions, recoverable either way.
-        const before = await client.request<{ revision_count: number }>(
-          `pages/${ctx.pageId}`,
-        );
         const expected = lastKnownRevision.get(data.documentName);
-        if (
-          expected !== undefined &&
-          before.revision_count !== expected &&
-          data.clientsCount > 0
-        ) {
-          console.warn(
-            `[live-edit] skipping save for ${data.documentName}: page changed outside Live Edit (revision ${before.revision_count}, expected ${expected})`,
-          );
-          return;
-        }
+        if (expected === undefined)
+          throw new BookStackSaveError("The original BookStack revision is unavailable.", false);
 
         const html = htmlFromYdoc(data.document);
-        let saved: { revision_count: number } | undefined;
+        let savedRevision: number | undefined;
         let lastError: unknown;
         for (const delayMs of [0, 1000, 3000]) {
           if (delayMs) await sleep(delayMs);
           try {
-            saved = await client.request<{ revision_count: number }>(
-              `pages/${ctx.pageId}`,
-              { html, changelog: "Live edit session" },
-              "PUT",
-            );
+            savedRevision = await saveBookStackPage({
+              tenantId: ctx.tenantId,
+              tenantSlug: ctx.tenantSlug,
+              tenantHost: ctx.tenantHost,
+              pageId: ctx.pageId,
+              bookstackUserId: ctx.bookstackUserId,
+              expectedRevisionCount: expected,
+              html,
+            });
             lastError = undefined;
             break;
           } catch (error) {
+            if (error instanceof BookStackConflictSavedError) {
+              conflictedDocuments.add(data.documentName);
+              lastKnownRevision.set(data.documentName, error.revisionCount);
+              clearSaveRetry(data.documentName);
+              data.document.broadcastStateless(
+                JSON.stringify({
+                  type: "bookhost-live-edit-save-conflict",
+                  message:
+                    "A BookStack edit was saved at the same time. Your Live Edit changes are preserved as a separate revision in BookStack history; this session is closing so neither version overwrites the other.",
+                }),
+              );
+              const closeTimer = setTimeout(
+                () => data.instance.closeConnections(data.documentName),
+                0,
+              );
+              closeTimer.unref();
+              db.query(
+                "UPDATE live_edit_sessions SET saved_revision=true WHERE tenant_id=$1 AND page_id=$2 AND left_at IS NULL",
+                [ctx.tenantId, ctx.pageId],
+              ).catch(() => {});
+              return;
+            }
+            if (error instanceof BookStackSaveError && !error.retryable)
+              throw error;
             lastError = error;
           }
         }
         if (lastError) throw lastError;
 
-        if (saved) lastKnownRevision.set(data.documentName, saved.revision_count);
+        if (savedRevision === undefined)
+          throw new BookStackSaveError("BookStack did not confirm the Live Edit save.");
+        lastKnownRevision.set(data.documentName, savedRevision);
+        clearSaveRetry(data.documentName);
+        data.document.broadcastStateless(
+          JSON.stringify({ type: "bookhost-live-edit-save-ok" }),
+        );
         db.query(
           "UPDATE live_edit_sessions SET saved_revision=true WHERE tenant_id=$1 AND page_id=$2 AND left_at IS NULL",
           [ctx.tenantId, ctx.pageId],
         ).catch(() => {});
       } catch (error) {
-        // Three attempts already failed. The Y.Doc stays in memory and the
-        // next edit's debounce (or the final disconnect) tries again; only a
-        // sustained BookStack outage combined with the document actually
-        // unloading in between would lose this specific increment — earlier
-        // successful saves already landed as real revisions regardless.
-        console.error("[live-edit] onStoreDocument failed after retries", error);
+        const reason =
+          error instanceof BookStackConflictSavedError
+            ? "conflict"
+            : "save-failed";
+        data.document.broadcastStateless(
+          JSON.stringify({
+            type: "bookhost-live-edit-save-error",
+            reason,
+            message:
+              reason === "conflict"
+                ? "The page changed in BookStack. Keep this Live Edit window open while the changes are saved to revision history."
+                : "BookStack has not confirmed this save. Keep this Live Edit window open; Live Edit will retry automatically.",
+          }),
+        );
+        if (!(error instanceof BookStackSaveError) || error.retryable)
+          scheduleSaveRetry(data);
+        throw error;
       }
     },
 
     async afterUnloadDocument(data) {
       lastKnownRevision.delete(data.documentName);
+      documentTenants.delete(data.documentName);
+      conflictedDocuments.delete(data.documentName);
+      lastStoreContexts.delete(data.documentName);
+      clearSaveRetry(data.documentName);
     },
 
     async onDisconnect(data) {
@@ -196,5 +299,23 @@ export function hocuspocusServer(): Hocuspocus {
       }
     },
   });
+  startRevocationMonitor(instance);
   return instance;
+}
+
+// Used by the custom server during graceful shutdown. Hocuspocus fires its
+// pending final store when the last connection closes; wait for the document
+// registry to drain before allowing the process to exit.
+export async function waitForLiveEditFlush(timeoutMs = 25_000) {
+  if (!instance) return;
+  instance.closeConnections();
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (instance.getConnectionsCount() === 0 && instance.getDocumentsCount() === 0)
+      return;
+    await sleep(100);
+  }
+  console.error(
+    `[live-edit] shutdown flush timed out with ${instance.getDocumentsCount()} documents still in memory`,
+  );
 }

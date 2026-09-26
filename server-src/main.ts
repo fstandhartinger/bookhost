@@ -13,7 +13,10 @@ import type { Socket } from "node:net";
 import next from "next";
 import crossws from "crossws/adapters/node";
 import type { Hocuspocus, WebSocketLike } from "@hocuspocus/server";
-import { hocuspocusServer } from "@/lib/live-edit/hocuspocus";
+import {
+  hocuspocusServer,
+  waitForLiveEditFlush,
+} from "@/lib/live-edit/hocuspocus";
 
 // Hocuspocus doesn't publicly export the ClientConnection class its own
 // handleConnection() returns; derive the type from that method instead of
@@ -73,6 +76,21 @@ async function main() {
   server.listen(port, hostname, () => {
     console.log(`> Ready on http://${hostname}:${port} (Live Edit WS at ${LIVE_EDIT_WS_PATH})`);
   });
+
+  let shuttingDown = false;
+  const shutdown = (signal: NodeJS.Signals) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`[live-edit] ${signal}: saving active documents before shutdown`);
+    const forceExit = setTimeout(() => process.exit(1), 30_000);
+    server.close();
+    void waitForLiveEditFlush(25_000).finally(() => {
+      clearTimeout(forceExit);
+      process.exit(0);
+    });
+  };
+  process.once("SIGTERM", shutdown);
+  process.once("SIGINT", shutdown);
 }
 
 main().catch((error) => {

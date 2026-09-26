@@ -7,7 +7,7 @@ import { corsHeaders } from "@/lib/live-edit/cors";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const headers = { ...corsHeaders(request), "Cache-Control": "no-store" };
+  const headers = { ...(await corsHeaders(request)), "Cache-Control": "no-store" };
   const url = new URL(request.url);
   try {
     const claim = await verifyBookStackTicket(

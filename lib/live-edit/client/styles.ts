@@ -127,6 +127,19 @@ const CSS = `
   padding: 2px 8px;
   border-radius: 999px;
 }
+#live-edit-save-notice {
+  flex-shrink: 0;
+  padding: 9px 16px;
+  background: #fff3cd;
+  color: #664d03;
+  border-bottom: 1px solid #ffe69c;
+  font: 500 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+#live-edit-save-notice.live-edit-save-conflict {
+  background: #f8d7da;
+  color: #58151c;
+  border-bottom-color: #f1aeb5;
+}
 #live-edit-overlay .live-edit-viewonly-label {
   font-size: 11px;
   font-weight: 700;

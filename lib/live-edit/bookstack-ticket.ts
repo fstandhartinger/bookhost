@@ -29,6 +29,21 @@ export class TicketError extends Error {
   }
 }
 
+export async function liveEditTenantSecret(
+  tenantId: string,
+  tenantSlug: string,
+): Promise<string> {
+  const settings = (
+    await db.query(
+      "SELECT hmac_secret_enc FROM live_edit_settings WHERE tenant_id=$1",
+      [tenantId],
+    )
+  ).rows[0];
+  if (!settings?.hmac_secret_enc)
+    throw new TicketError("Live Edit is not set up for this workspace.", 404);
+  return decrypt(settings.hmac_secret_enc, tenantSlug);
+}
+
 function isTicket(value: unknown): value is BookStackTicket {
   if (!value || typeof value !== "object") return false;
   const v = value as Record<string, unknown>;

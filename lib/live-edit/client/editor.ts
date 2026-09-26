@@ -94,7 +94,14 @@ export function mountEditor(options: EditorMountOptions): void {
   const editorRoot = document.createElement("div");
   editorRoot.id = "live-edit-editor-root";
 
+  const saveNotice = document.createElement("div");
+  saveNotice.id = "live-edit-save-notice";
+  saveNotice.setAttribute("role", "status");
+  saveNotice.setAttribute("aria-live", "polite");
+  saveNotice.hidden = true;
+
   overlay.appendChild(header);
+  overlay.appendChild(saveNotice);
   overlay.appendChild(editorRoot);
   document.body.appendChild(overlay);
 
@@ -160,6 +167,37 @@ export function mountEditor(options: EditorMountOptions): void {
       onDisconnect: () => {
         console.warn("[live-edit] disconnected from live edit session");
       },
+    });
+
+    provider.on("stateless", ({ payload }: { payload: string }) => {
+      try {
+        const message = JSON.parse(payload) as {
+          type?: string;
+          message?: string;
+        };
+        if (message.type === "bookhost-live-edit-save-ok") {
+          saveNotice.hidden = true;
+          return;
+        }
+        if (
+          message.type === "bookhost-live-edit-save-error" ||
+          message.type === "bookhost-live-edit-save-conflict"
+        ) {
+          saveNotice.textContent =
+            message.message || "Live Edit could not confirm this save.";
+          saveNotice.hidden = false;
+          saveNotice.classList.toggle(
+            "live-edit-save-conflict",
+            message.type === "bookhost-live-edit-save-conflict",
+          );
+          if (message.type === "bookhost-live-edit-save-conflict") {
+            editor?.setEditable(false);
+            provider?.destroy();
+          }
+        }
+      } catch (error) {
+        console.warn("[live-edit] invalid save status message", error);
+      }
     });
 
     provider.awareness?.on("update", renderCollaborators);

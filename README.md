@@ -543,3 +543,66 @@ checks), dashboard `app/app/agents`, API `app/api/agents`, public docs `/agents`
   `LOCAL_BOOKSTACK_E2E=<fixture.json> npx vitest run tests/agent-tools-bookstack.e2e.test.ts`.
 - **Phase 2:** OAuth 2.1 (MCP authorization spec) for claude.ai/ChatGPT connectors, MCP registry
   listing, per-agent scopes beyond BookStack roles, events/webhooks.
+
+## Live Edit (beta)
+
+Real-time collaborative editing of a BookStack page (Yjs + Hocuspocus + Tiptap core, all
+MIT-licensed), off by default per workspace. A single Hocuspocus server runs embedded in this
+same Next.js process (`server-src/main.ts`, bundled by `scripts/build-server.mjs` into
+`live-edit-server.js`, which replaces Next's auto-generated standalone `server.js` — see
+`scripts/entrypoint.sh`) with a WebSocket upgrade path at `/live-edit-ws`, so no second Coolify
+service or Traefik route is needed. Code: `lib/live-edit/` (`hocuspocus.ts` server + hooks,
+`bookstack-ticket.ts` + `join-token.ts` auth, `tiptap-bridge.ts` HTML⇄Yjs conversion,
+`fidelity.ts` content-loss detection, `client/` the injected browser bundle), dashboard
+`app/app/live-edit`, API `app/api/live-edit-settings`, `app/api/live-edit/join`,
+`app/api/live-edit/presence`. Migration 039 adds `live_edit_settings`, `live_edit_sessions`.
+
+- **Auth (BookStack stays the only permission source):** enabling the beta installs a small
+  BookStack theme (`ops/provisioner/themes/live-edit/functions.php`, Logical Theme System,
+  `ROUTES_REGISTER_WEB_AUTH`) that registers `GET live-edit/ticket/{pageId}` inside BookStack's
+  own `web+auth` middleware group. It uses BookStack's real `userCan('page-view'|'page-update',
+  $page)` for the exact signed-in user and returns a short-lived ticket HMAC-signed with a
+  per-tenant secret (`LIVE_EDIT_HMAC_SECRET`, KMS-encrypted at rest via the existing
+  `INTAKE_KMS_KEY`/`lib/intake/crypto.ts` envelope, tenant-bound AAD). The control plane
+  (`lib/live-edit/bookstack-ticket.ts`) only re-verifies that signature and expiry — it never
+  recomputes BookStack permissions itself. A second, control-plane-signed join token
+  (`lib/live-edit/join-token.ts`) then authorizes exactly one WebSocket join to exactly one Yjs
+  document (`{tenant}:{pageId}`); Hocuspocus's own `connectionConfig.readOnly` (verified against
+  real Hocuspocus source: `MessageReceiver.ts` rejects `SyncStep2`/`Update` messages from a
+  read-only connection before they ever touch the document) is the real enforcement point for
+  viewers, not just a UI hint.
+- **Rollout:** enabling the toggle queues `live_edit_settings.rollout_status='pending'`; the host
+  worker (`ops/provisioner/live_edit_rollout.py`, called from `worker.py`) installs the theme file
+  into the tenant's persistent `/config/www/themes/live-edit` (bind-mounted, survives image
+  upgrades), adds `APP_THEME`/`LIVE_EDIT_TENANT_SLUG`/`LIVE_EDIT_HMAC_SECRET` to the tenant's own
+  `docker-compose.yml`/`.env` (a surgical edit, not a full regenerate), recreates only the
+  `bookstack` service (`--no-deps`, database untouched), and probes the new route before
+  advertising the feature. Any failure restores the original `.env`/`docker-compose.yml` and
+  leaves the tenant on its old, working configuration. Disabling only flips the control-plane gate
+  (`live_edit_settings.enabled`) — the harmless, unused theme route stays installed so
+  re-enabling is instant.
+- **Save-back:** `onLoadDocument` seeds the Y.Doc from `GET pages/{id}` (tenant admin token, same
+  client as `lib/intake/bookstack.ts`); `onStoreDocument` debounces 5s (capped at 15s under
+  continuous typing) and flushes on last disconnect, writing `PUT pages/{id}` with
+  `changelog: "Live edit session"` — every save is a normal BookStack revision. A crash loses at
+  most the unsaved seconds since the last debounced save, never the whole session.
+- **Content fidelity:** Tiptap StarterKit + Table + Underline + Image + CodeBlockLowlight
+  round-trip cleanly (proven by `tests/live-edit-tiptap-bridge.test.ts` against the real
+  extension list in `lib/live-edit/extensions.ts`, shared by client and server). Pages with a
+  diagrams.net drawing (`drawio-diagram` attribute), a page include (`{{@id}}`), a callout box
+  (`.callout`), or BookStack's Markdown editor are blocked before a join token is issued
+  (`lib/live-edit/fidelity.ts`), with the specific reason shown to the user.
+- **Soft lock:** the same injected script polls `GET /api/live-edit/presence` (ticket-gated) on
+  BookStack's native edit route and shows a dismissible "N people are editing live — join instead"
+  banner; no hard lock, matching the maintainer's own anti-lock position on
+  [BookStackApp/BookStack#395](https://github.com/BookStackApp/BookStack/issues/395).
+- **Tests:** `tests/live-edit-ticket.test.ts`, `tests/live-edit-join-token.test.ts`,
+  `tests/live-edit-fidelity.test.ts`, `tests/live-edit-tiptap-bridge.test.ts` (all unit, no DB),
+  `tests/live-edit-settings-db.integration.test.ts` (reuses `INTAKE_DB_TEST` like
+  `agent-access-db.integration.test.ts`, run by `ops/testdb.sh`), `ops/provisioner/test_live_edit_rollout.py`.
+  Opt-in live check against a real, isolated QA tenant with two real browser sessions:
+  `scripts/live-edit-e2e-check.mjs` (never run against `demo.bookhost.co` or a customer workspace).
+- **Phase 2 (design only, not built):** agents as live co-editors via Hocuspocus's
+  `openDirectConnection()` + Yjs awareness, starting in suggestion mode before any direct-edit
+  capability; comments; revisiting the bolt-on once/if BookStack's own Lexical/Yjs-ready editor
+  migration lands native collaboration. See REPORT.md.

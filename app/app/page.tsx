@@ -53,6 +53,9 @@ export default async function Dashboard({
   const intakeHref = team ? `/app/intake?team=${team.id}` : "/app/intake";
   const chatHref = team ? `/app/chat?team=${team.id}` : "/app/chat";
   const agentsHref = team ? `/app/agents?team=${team.id}` : "/app/agents";
+  const liveEditHref = team
+    ? `/app/live-edit?team=${team.id}`
+    : "/app/live-edit";
   const isOwner = !team || team.owner_user_id === session.user.id;
   const userId = session.user.id;
   const ownsTeam = teams.some((t) => t.owner_user_id === userId);
@@ -432,6 +435,9 @@ export default async function Dashboard({
                       </a>
                       <a className="button-secondary mt-3" href={agentsHref}>
                         Agents (beta)
+                      </a>
+                      <a className="button-secondary mt-3" href={liveEditHref}>
+                        Live Edit (beta)
                       </a>
                     </>
                   )}

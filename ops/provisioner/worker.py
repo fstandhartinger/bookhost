@@ -18,6 +18,7 @@ from bookstack_api_token import store_token
 from capacity import disk_state, running_tenants, thresholds, CUSTOMER_ERROR
 from storage_usage import record_storage
 from agent_tokens import reconcile_agents
+from live_edit_rollout import reconcile_live_edit
 
 DEFAULT_RESERVED_TEST_PREFIXES = ('rc-', 'fb-', 'nh-', 'dom-', 'bh-', 'tmp-', 'test-')
 
@@ -202,6 +203,10 @@ def once():
             reconcile_agents(db, instance)
         except Exception:
             print('Agent token reconciliation failed; retry next run', flush=True)
+        try:
+            reconcile_live_edit(db, instance)
+        except Exception:
+            print('Live Edit rollout reconciliation failed; retry next run', flush=True)
         # run-worker.sh flock spans the whole command: no live worker is reclaimed.
         stale=db.execute("SELECT id,slug FROM tenants WHERE COALESCE(provisioner_instance,'production')=%s AND status='provisioning' AND updated_at < now()-interval '20 minutes'",(instance,)).fetchall()
         for ident,slug in stale:

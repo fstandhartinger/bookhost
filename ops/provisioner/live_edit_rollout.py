@@ -12,6 +12,7 @@ import json
 import os
 import re
 import shlex
+import time
 import urllib.request
 from pathlib import Path
 from urllib.parse import urlparse
@@ -157,17 +158,25 @@ def _probe_ticket_route(url):
     login-page markers. An unregistered path remains an HTTP 404.
     """
     request = urllib.request.Request(url.rstrip('/') + '/live-edit/ticket/999999999')
-    try:
-        with urllib.request.urlopen(request, timeout=15) as response:
-            body = response.read()
-            return (
-                response.status == 200
-                and urlparse(response.geturl()).path.rstrip('/') == '/login'
-                and b'<title>BookStack' in body
-                and b'>Log in<' in body
-            )
-    except Exception:
-        return False
+    # ready_internal() confirms migrations but not that nginx and the public
+    # proxy have finished switching to the recreated service. Retry transient
+    # 404/502/network responses for a bounded window while the service starts.
+    for attempt in range(12):
+        try:
+            with urllib.request.urlopen(request, timeout=3) as response:
+                body = response.read()
+                if (
+                    response.status == 200
+                    and urlparse(response.geturl()).path.rstrip('/') == '/login'
+                    and b'<title>BookStack' in body
+                    and b'>Log in<' in body
+                ):
+                    return True
+        except Exception:
+            pass
+        if attempt < 11:
+            time.sleep(2)
+    return False
 
 
 def install(path, secret, *, compose_fn=compose, ready_fn=ready_internal, php_fn=php, probe_fn=_probe_ticket_route):

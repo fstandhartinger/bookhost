@@ -1,6 +1,7 @@
 import json
 import tempfile
 import unittest
+import urllib.error
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -53,14 +54,32 @@ class ThemeRouteProbeTests(unittest.TestCase):
         with patch.object(live_edit_rollout.urllib.request, 'urlopen', return_value=response):
             self.assertTrue(live_edit_rollout._probe_ticket_route('https://acme.bookhost.co'))
 
-    def test_rejects_unregistered_path_that_stays_404(self):
+    def test_retries_transient_gateway_error_until_the_login_redirect_is_live(self):
         response = MagicMock()
-        response.status = 404
-        response.geturl.return_value = 'https://acme.bookhost.co/live-edit/ticket/999999999'
+        response.status = 200
+        response.geturl.return_value = 'https://acme.bookhost.co/login'
         response.read.return_value = b'<title>BookStack</title><a>Log in</a>'
         response.__enter__.return_value = response
-        with patch.object(live_edit_rollout.urllib.request, 'urlopen', return_value=response):
+        gateway_error = urllib.error.HTTPError(
+            'https://acme.bookhost.co/live-edit/ticket/999999999', 502,
+            'Bad Gateway', {}, None,
+        )
+        with patch.object(
+            live_edit_rollout.urllib.request, 'urlopen', side_effect=[gateway_error, response]
+        ), patch.object(live_edit_rollout.time, 'sleep') as sleep:
+            self.assertTrue(live_edit_rollout._probe_ticket_route('https://acme.bookhost.co'))
+        sleep.assert_called_once_with(2)
+
+    def test_rejects_an_unregistered_path_that_stays_404(self):
+        not_found = urllib.error.HTTPError(
+            'https://acme.bookhost.co/live-edit/ticket/999999999', 404,
+            'Not Found', {}, None,
+        )
+        with patch.object(
+            live_edit_rollout.urllib.request, 'urlopen', side_effect=not_found
+        ) as open_url, patch.object(live_edit_rollout.time, 'sleep'):
             self.assertFalse(live_edit_rollout._probe_ticket_route('https://acme.bookhost.co'))
+        self.assertEqual(open_url.call_count, 12)
 
     def test_rejects_a_200_response_that_did_not_redirect_to_login(self):
         response = MagicMock()

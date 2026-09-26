@@ -29,7 +29,7 @@ export default function Privacy() {
           We measure aggregate usage of our own offer with first-party visitor statistics. For
           whitelisted public page views we record the page path without query strings, the
           referring site reduced to its domain, and sanitized UTM campaign labels (source, medium,
-          campaign).           We also count events: demo clicks, checkout starts, successful trials, the
+          campaign). We also count events: demo clicks, checkout starts, successful trials, the
           first paid invoice of a team without its amount, workspaces created, workspace opens
           (one event per open; the time of the first open is kept on the team), document drafts
           created or published, and completed onboarding steps (step name and time only: password

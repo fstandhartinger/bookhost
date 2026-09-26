@@ -45,6 +45,10 @@ class EnvWriteTests(unittest.TestCase):
 
 
 class ThemeRouteProbeTests(unittest.TestCase):
+    def test_save_route_uses_bookstacks_default_auth_guard(self):
+        source = live_edit_rollout.THEME_SOURCE.read_text()
+        self.assertIn('Auth::guard()->onceUsingId($bookstackUserId)', source)
+
     def test_accepts_registered_route_redirecting_to_bookstack_login(self):
         response = MagicMock()
         response.status = 200

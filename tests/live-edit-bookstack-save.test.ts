@@ -111,4 +111,19 @@ describe("BookStack Live Edit saves", () => {
     expect(error).toBeInstanceOf(BookStackSaveError);
     expect(error).toMatchObject({ retryable: true });
   });
+
+  it("retains BookStack's stable rejection code without copying response content", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ error: "invalid_signature", detail: "private page html" }),
+        { status: 403 },
+      ),
+    );
+    const error = await saveBookStackPage(input).catch((value: unknown) => value);
+
+    if (!(error instanceof BookStackSaveError)) throw error;
+    expect(error).toMatchObject({ retryable: false });
+    expect(error.message).toContain("invalid_signature");
+    expect(error.message).not.toContain("private page html");
+  });
 });

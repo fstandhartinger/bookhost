@@ -116,8 +116,12 @@ export async function saveBookStackPage(
   }
   if (!response.ok) {
     const retryable = response.status >= 500 || response.status === 429;
+    const rejectionCode =
+      typeof result.error === "string" && /^[a-z][a-z0-9_]{0,63}$/.test(result.error)
+        ? `: ${result.error}`
+        : "";
     throw new BookStackSaveError(
-      `BookStack rejected a Live Edit save (HTTP ${response.status}).`,
+      `BookStack rejected a Live Edit save (HTTP ${response.status}${rejectionCode}).`,
       retryable,
     );
   }

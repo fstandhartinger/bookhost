@@ -130,7 +130,10 @@ Theme::listen(ThemeEvents::ROUTES_REGISTER_WEB, function (Router $router) {
             return response()->json(['error' => 'invalid_signature'], 403);
         }
 
-        if (!Auth::guard('web')->onceUsingId($bookstackUserId)) {
+        // BookStack's userCan() and user() helpers read the configured default
+        // guard ("standard"), so authenticate on that same guard before checking
+        // page-update. The conventional Laravel "web" guard is separate here.
+        if (!Auth::guard()->onceUsingId($bookstackUserId)) {
             return response()->json(['error' => 'user_unavailable'], 403);
         }
 

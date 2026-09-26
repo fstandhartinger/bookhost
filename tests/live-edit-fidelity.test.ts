@@ -35,11 +35,39 @@ describe("live edit content fidelity blockers", () => {
     }
   });
 
+  it("blocks pages with a details/summary collapsible section", () => {
+    const html = "<details><summary>More</summary><p>hidden</p></details>";
+    expect(fidelityBlockers(html, "wysiwyg").some((b) => /collapsible/.test(b.reason))).toBe(true);
+  });
+
+  it("blocks pages with a task list checkbox", () => {
+    const html = '<ul><li><input type="checkbox" disabled> todo</li></ul>';
+    expect(fidelityBlockers(html, "wysiwyg").some((b) => /task list/.test(b.reason))).toBe(true);
+  });
+
+  it("blocks pages with an embedded iframe", () => {
+    const html = '<iframe src="https://example.com"></iframe>';
+    expect(fidelityBlockers(html, "wysiwyg").some((b) => /embed/.test(b.reason))).toBe(true);
+  });
+
+  it("blocks pages with inline text styling", () => {
+    for (const html of [
+      '<p style="color: red">warning</p>',
+      '<p style="text-align: center">centered</p>',
+      '<span style="font-size: 18px">big</span>',
+    ]) {
+      expect(fidelityBlockers(html, "wysiwyg").some((b) => /custom text styling/.test(b.reason))).toBe(true);
+    }
+  });
+
   it("does not false-positive on unrelated content containing similar substrings", () => {
     expect(
       fidelityBlockers('<p class="my-callout-widget">Not a real callout</p>', "wysiwyg"),
     ).toEqual([]);
     expect(fidelityBlockers("<p>Price: {{ not an include }}</p>", "wysiwyg")).toEqual(
+      [],
+    );
+    expect(fidelityBlockers('<p data-style="fancy">no real style attr</p>', "wysiwyg")).toEqual(
       [],
     );
   });

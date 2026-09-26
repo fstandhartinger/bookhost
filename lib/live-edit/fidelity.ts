@@ -32,6 +32,37 @@ const CHECKS: { test: RegExp; reason: string }[] = [
     reason:
       "This page contains a callout box. Live Edit doesn't support callouts yet — edit this page in BookStack's normal editor.",
   },
+  {
+    // <details><summary> (resources/js/wysiwyg-tinymce/plugins-details.js).
+    // No Tiptap node for it; StarterKit would drop the tags and flatten the
+    // collapsible section into plain paragraphs.
+    test: /<details\b/i,
+    reason:
+      "This page contains a collapsible details block. Live Edit doesn't support those yet — edit this page in BookStack's normal editor.",
+  },
+  {
+    // Task lists render as <input type="checkbox"> (plugins-tasklist.js).
+    // Tiptap's schema has no matching node in our extension list, so a
+    // checked/unchecked task item's state would be silently lost.
+    test: /<input\b[^>]*\btype="checkbox"/i,
+    reason:
+      "This page contains a task list. Live Edit doesn't support checkboxes yet — edit this page in BookStack's normal editor.",
+  },
+  {
+    // Embeds (video/iframe) aren't in our Tiptap extension list at all.
+    test: /<iframe\b/i,
+    reason:
+      "This page contains an embedded video or iframe. Live Edit doesn't support embeds yet — edit this page in BookStack's normal editor.",
+  },
+  {
+    // Inline `style="..."` (TinyMCE's default text-color/alignment/font-size
+    // toolbar output) has no home in our Tiptap schema or the save-back
+    // sanitizer allowlist (lib/live-edit/tiptap-bridge.ts) — it would be
+    // silently stripped on the very next save.
+    test: /\sstyle="[^"]*[a-z]/i,
+    reason:
+      "This page uses custom text styling (color, alignment or size) that Live Edit can't preserve yet — edit this page in BookStack's normal editor.",
+  },
 ];
 
 export function fidelityBlockers(

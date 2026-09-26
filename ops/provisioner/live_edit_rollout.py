@@ -20,16 +20,27 @@ from bookstack_api_token import decrypt, kms_key
 THEME_SOURCE = Path(__file__).resolve().parent / 'themes' / 'live-edit' / 'functions.php'
 STALE_MINUTES = 20
 
+# Read-modify-write, not a blind overwrite: preserves any pre-existing
+# app-custom-head content (a tenant could already use Custom HTML Head
+# Content for something else). Idempotent re-runs replace only our own
+# marked block instead of appending a duplicate.
 SET_CUSTOM_HEAD = r"""
 $v=json_decode(stream_get_contents(STDIN),true);
-app('BookStack\Settings\SettingService')->put('app-custom-head', $v['html']);
+$service=app('BookStack\Settings\SettingService');
+$existing=(string)$service->get('app-custom-head','');
+$start='<!-- bookhost-live-edit:start -->';
+$end='<!-- bookhost-live-edit:end -->';
+$startPos=strpos($existing,$start);
+$endPos=strpos($existing,$end);
+if($startPos!==false && $endPos!==false && $endPos>$startPos){
+$next=substr($existing,0,$startPos).$v['html'].substr($existing,$endPos+strlen($end));
+}else{
+$next=rtrim($existing)."\n".$v['html'];
+}
+$service->put('app-custom-head', ltrim($next));
 echo json_encode(['ok'=>true]);
 """
 
-# Wrapped in markers so a future feature that also needs app-custom-head can
-# find and preserve this block instead of overwriting it wholesale, the way
-# ops/provisioner/demo-publish.py currently does for the (separate, demo-only)
-# banner.
 def _head_snippet():
     return (
         '<!-- bookhost-live-edit:start -->'
@@ -85,6 +96,13 @@ def install(path, secret, *, compose_fn=compose, ready_fn=ready_internal, php_fn
     slug = path.name
     original_env = (path / '.env').read_bytes()
     original_compose = (path / 'docker-compose.yml').read_bytes()
+    # BookStack supports exactly one active theme; refuse before changing
+    # anything rather than silently replacing a tenant's own customization.
+    existing_theme = env_read(path / '.env').get('APP_THEME', '').strip()
+    if existing_theme and existing_theme != 'live-edit':
+        raise RuntimeError(
+            'This workspace already uses a custom BookStack theme (APP_THEME=%s); '
+            'Live Edit cannot be enabled automatically. Contact support.' % existing_theme)
     try:
         theme_dir = path / 'bookstack' / 'www' / 'themes' / 'live-edit'
         theme_dir.mkdir(parents=True, exist_ok=True)

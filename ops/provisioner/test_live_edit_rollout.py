@@ -57,6 +57,29 @@ class InstallTests(unittest.TestCase):
     def tearDown(self):
         self.folder.cleanup()
 
+    def test_refuses_when_tenant_already_has_a_custom_theme(self):
+        (self.tenant / '.env').write_text('APP_URL=https://acme.bookhost.co\nAPP_THEME=acme-custom\n')
+        original_env = (self.tenant / '.env').read_bytes()
+        compose_fn = MagicMock()
+        php_fn = MagicMock()
+        with self.assertRaises(RuntimeError) as ctx:
+            live_edit_rollout.install(self.tenant, 'shh', compose_fn=compose_fn, php_fn=php_fn)
+        self.assertIn('custom BookStack theme', str(ctx.exception))
+        # Refuses before touching anything.
+        compose_fn.assert_not_called()
+        php_fn.assert_not_called()
+        self.assertEqual((self.tenant / '.env').read_bytes(), original_env)
+
+    def test_allows_a_second_run_when_theme_is_already_live_edit(self):
+        (self.tenant / '.env').write_text('APP_URL=https://acme.bookhost.co\nAPP_THEME=live-edit\n')
+        compose_fn = MagicMock()
+        ready_fn = MagicMock()
+        php_fn = MagicMock()
+        probe_fn = MagicMock(return_value=True)
+        self.assertTrue(live_edit_rollout.install(
+            self.tenant, 'shh', compose_fn=compose_fn, ready_fn=ready_fn, php_fn=php_fn, probe_fn=probe_fn,
+        ))
+
     def test_writes_theme_file_and_compose_env_then_probes(self):
         compose_fn = MagicMock()
         ready_fn = MagicMock()

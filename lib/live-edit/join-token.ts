@@ -28,13 +28,21 @@ export function documentNameFor(tenant: string, pageId: number) {
   return `${tenant}:${pageId}`;
 }
 
-export function signJoinToken(payload: Omit<JoinToken, "exp">, ttlSeconds = 90) {
+// Falls back to AUTH_SECRET so enabling Live Edit needs no new required env
+// var. Domain-separated (a fixed prefix folded into the HMAC input) so a
+// join token can never be confused with, or forged by reusing signature
+// material from, any other AUTH_SECRET-signed value elsewhere in the app.
+const DOMAIN = "bookhost-live-edit-join-v1:";
+
+export function signJoinToken(payload: Omit<JoinToken, "exp">, ttlSeconds = 30) {
   const full: JoinToken = {
     ...payload,
     exp: Math.floor(Date.now() / 1000) + ttlSeconds,
   };
   const json = Buffer.from(JSON.stringify(full), "utf8").toString("base64url");
-  const sig = createHmac("sha256", secret()).update(json).digest("base64url");
+  const sig = createHmac("sha256", secret())
+    .update(DOMAIN + json)
+    .digest("base64url");
   return `${json}.${sig}`;
 }
 
@@ -48,7 +56,7 @@ export function verifyJoinToken(token: string): JoinToken | null {
   let given: Buffer;
   try {
     expected = Buffer.from(
-      createHmac("sha256", secret()).update(json).digest("base64url"),
+      createHmac("sha256", secret()).update(DOMAIN + json).digest("base64url"),
     );
     given = Buffer.from(sig);
   } catch {

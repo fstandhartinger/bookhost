@@ -65,11 +65,14 @@ describe("public reliability evidence", () => {
       " ",
     );
     expect(pricing).toContain("Ask your wiki");
-    expect(pricing).toContain("names the page and section behind every answer");
+    expect(pricing).toContain("page and section behind every answer");
     expect(pricing).toContain(
       "the betas are released for personal content per our DPA annex 3",
     );
     expect(pricing).not.toContain("ask only about non-personal content");
+    expect(pricing.split("behind every answer").length - 1).toBe(1);
+    expect(pricing).not.toContain("named behind every answer");
+    expect(pricing).toContain("you stay the controller");
   });
 
   // The wiki chat beta reaches the same external model without any upload, so

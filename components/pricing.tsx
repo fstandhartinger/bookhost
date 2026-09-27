@@ -92,11 +92,10 @@ export function Pricing() {
                 released for personal content per the DPA annex 3 release. */}
             <li>
               &ldquo;Ask your wiki&rdquo; — available now (beta) for owners and
-              admins: it names the page and section behind every answer.
-              Answers are AI-written from your pages, with the page and section
-              named behind every answer; the betas are released for personal
-              content per our DPA annex 3, and you stay the controller for
-              what your workspace holds.
+              admins. Answers are AI-written from your pages and name the page
+              and section behind every answer; the betas are released for
+              personal content per our DPA annex 3, and you stay the controller
+              for what your workspace holds.
             </li>
             <li>{DRAFT_COPY}</li>
             <li>Summary, tags and reviewer checklist for each draft</li>

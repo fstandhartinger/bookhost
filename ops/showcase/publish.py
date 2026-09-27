@@ -7,10 +7,15 @@ from pathlib import Path
 
 PROVISIONER = Path(__file__).resolve().parents[1] / 'provisioner'
 sys.path.insert(0, str(PROVISIONER))
-from tenant import ROOT, TENANT_DOMAIN, env_read, php  # noqa: E402
+from tenant import ROOT, env_read, php  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 SLUG = 'showcase-northwind'
+CANONICAL_APP_URL = f'https://{SLUG}.bookhost.co'
+
+
+def valid_showcase_app_url(app_url):
+    return app_url == CANONICAL_APP_URL
 BOOKS = [
     ('Northwind Studio Handbook', 'Fictional studio agreements and onboarding.', [
         ('Studio handbook', 'handbook.md'),
@@ -84,7 +89,7 @@ def publish():
     if path.is_symlink() or not (path / '.initialized').is_file():
         raise RuntimeError('Initialized showcase tenant required')
     values = env_read(path / '.env')
-    if values.get('APP_URL') != f'https://{SLUG}.{TENANT_DOMAIN}':
+    if not valid_showcase_app_url(values.get('APP_URL', '')):
         raise RuntimeError('Showcase URL mismatch')
     existing = json.loads(php(path, READ))
     books, pages = plan(existing)

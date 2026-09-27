@@ -68,6 +68,14 @@ it("sanitizes UTM labels and excludes private paths and referrer secrets", () =>
     "/self-hosted-vs-managed-bookstack",
   );
   expect(publicPath("/eu-hosted-team-wiki")).toBe("/eu-hosted-team-wiki");
+  expect(publicPath("/agents")).toBe("/agents");
+  expect(publicPath("/bookstack-mcp")).toBe("/bookstack-mcp");
+  expect(publicPath("/agents/x")).toBeNull();
+  expect(publicPath("/agentsx")).toBeNull();
+  expect(publicPath("/bookstack-mcp/foo")).toBeNull();
+  expect(publicPath("/app/agents")).toBeNull();
+  expect(publicPath("/agents?x=1")).toBeNull();
+  expect(publicPath("/join")).toBeNull();
   expect(publicPath("/blog")).toBe("/blog");
   expect(publicPath("/blog/moving-self-hosted-bookstack-to-managed-hosting")).toBe(
     "/blog/moving-self-hosted-bookstack-to-managed-hosting",

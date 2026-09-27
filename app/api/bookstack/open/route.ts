@@ -24,9 +24,10 @@ export async function GET(request: Request) {
   );
   const {
     rows: [subscription],
-  } = await db.query("SELECT * FROM effective_subscriptions WHERE team_id=$1", [
-    teamId,
-  ]);
+  } = await db.query(
+    "SELECT s.*,t.is_showcase FROM teams t LEFT JOIN effective_subscriptions s ON s.team_id=t.id WHERE t.id=$1",
+    [teamId],
+  );
   if (
     !tenant ||
     tenant.status !== "running" ||
@@ -40,7 +41,7 @@ export async function GET(request: Request) {
       [teamId],
     );
     await c.query(
-      `INSERT INTO events(name,team_id,utm_source) SELECT 'bookstack_opened',id,utm_source FROM teams WHERE id=$1 AND NOT analytics_opt_out`,
+      `INSERT INTO events(name,team_id,utm_source) SELECT 'bookstack_opened',id,utm_source FROM teams WHERE id=$1 AND NOT analytics_opt_out AND NOT is_showcase`,
       [teamId],
     );
   });

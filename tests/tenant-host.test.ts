@@ -152,6 +152,27 @@ it("stores the new workspace host when inserting the pending tenant", async () =
     [id, "new-team", undefined, "new-team.bookhost.co"],
   );
 });
+it("allows an operator-marked workspace to provision without a subscription", async () => {
+  const { POST: create } = await import("@/app/api/tenants/route");
+  const query = vi
+    .fn()
+    .mockResolvedValueOnce({ rows: [{ id, is_showcase: true }] })
+    .mockResolvedValueOnce({ rowCount: 0 })
+    .mockResolvedValue({ rows: [] });
+  mocks.transaction.mockImplementation(async (fn) => fn({ query }));
+  const response = await create(
+    new Request("https://bookhost.co/api/tenants", {
+      method: "POST",
+      headers: {
+        origin: "https://bookhost.co",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ slug: "operator-showcase" }),
+    }),
+  );
+  expect(response.status).toBe(201);
+  expect(query.mock.calls.some(([sql]) => String(sql).includes("effective_subscriptions"))).toBe(false);
+});
 it.each([
   "https://foo.example.org",
   "foo.example.org/path",

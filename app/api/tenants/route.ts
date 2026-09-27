@@ -30,15 +30,17 @@ export async function POST(request: Request) {
           error: "Start your free trial before creating a workspace.",
           status: 403,
         };
-      const subscription = await client.query(
-        "SELECT 1 FROM effective_subscriptions WHERE team_id=$1 AND (status='active' OR (status='trialing' AND trial_end>now()))",
-        [team.id],
-      );
-      if (!subscription.rowCount)
-        return {
-          error: "An active subscription or trial is required.",
-          status: 403,
-        };
+      if (!team.is_showcase) {
+        const subscription = await client.query(
+          "SELECT 1 FROM effective_subscriptions WHERE team_id=$1 AND (status='active' OR (status='trialing' AND trial_end>now()))",
+          [team.id],
+        );
+        if (!subscription.rowCount)
+          return {
+            error: "An active subscription or trial is required.",
+            status: 403,
+          };
+      }
       if (
         (
           await client.query("SELECT 1 FROM tenants WHERE team_id=$1", [

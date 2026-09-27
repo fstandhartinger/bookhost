@@ -5,7 +5,7 @@ import { db, transaction } from "@/lib/db";
 import { clientFor, IntakeError } from "./access";
 import { parseEmail, senderAllowed } from "./email";
 import { rateLimit } from "@/lib/security";
-const tenantSql = `SELECT t.*,s.status AS subscription_status FROM tenants t JOIN effective_subscriptions s ON s.team_id=t.team_id WHERE t.slug=$1 AND t.status='running' AND t.desired_state='running' AND (s.status='active' OR (s.status='trialing' AND s.trial_end>now()) OR (s.status IN ('past_due','unpaid') AND (s.payment_grace_until>now() OR s.payment_failure_notified_at IS NULL OR s.payment_failure_notified_at>=now())))`;
+const tenantSql = `SELECT t.*,s.status AS subscription_status FROM tenants t JOIN teams tm ON tm.id=t.team_id JOIN effective_subscriptions s ON s.team_id=t.team_id WHERE t.slug=$1 AND t.status='running' AND t.desired_state='running' AND (tm.is_showcase OR s.status='active' OR (s.status='trialing' AND s.trial_end>now()) OR (s.status IN ('past_due','unpaid') AND (s.payment_grace_until>now() OR s.payment_failure_notified_at IS NULL OR s.payment_failure_notified_at>=now())))`;
 // The caller supplies the connection; this helper never acquires a pool connection.
 async function replay(c: Pool | PoolClient, messageId: string, teamId: string) {
   const previous = (
@@ -52,7 +52,7 @@ export async function acceptEmail(mail: ReturnType<typeof parseEmail>) {
     )
   ) {
     await db.query(
-      "INSERT INTO events(name,team_id) VALUES('inbound_rejected',$1)",
+      "INSERT INTO events(name,team_id) SELECT 'inbound_rejected',$1 WHERE EXISTS(SELECT 1 FROM teams WHERE id=$1 AND NOT is_showcase)",
       [tenant.team_id],
     );
     throw new IntakeError("Sender is not allowed.", 403);
@@ -169,7 +169,7 @@ export async function acceptEmail(mail: ReturnType<typeof parseEmail>) {
   } catch (error) {
     if (error instanceof IntakeError && error.status === 403)
       await db.query(
-        "INSERT INTO events(name,team_id) VALUES('inbound_rejected',$1)",
+        "INSERT INTO events(name,team_id) SELECT 'inbound_rejected',$1 WHERE EXISTS(SELECT 1 FROM teams WHERE id=$1 AND NOT is_showcase)",
         [tenant.team_id],
       );
     throw error;

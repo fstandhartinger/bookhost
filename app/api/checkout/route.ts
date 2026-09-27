@@ -51,6 +51,11 @@ export async function POST(request: Request) {
         ).rows[0]
       : null;
     teamId = team?.id;
+    if (team?.is_showcase)
+      return Response.json(
+        { error: "Billing is disabled for this internal showcase workspace." },
+        { status: 403 },
+      );
     // A member of another team starts a trial for a new team of their own.
     // Only an explicit reference to a team the caller does not own is refused:
     // managing a foreign team's billing remains restricted to its owner.
@@ -161,7 +166,7 @@ export async function POST(request: Request) {
       const analyticsCorrelation = correlationId();
       await db
         .query(
-          "INSERT INTO events(name,team_id,utm_source,visitor_hash) VALUES('checkout_start',$1,$2,$3)",
+          "INSERT INTO events(name,team_id,utm_source,visitor_hash) SELECT 'checkout_start',$1,$2,$3 WHERE $1::uuid IS NULL OR EXISTS(SELECT 1 FROM teams WHERE id=$1 AND NOT is_showcase)",
           [team?.id || null, utmSource, requestHash(request)],
         )
         .catch((error) =>

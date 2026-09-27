@@ -181,8 +181,98 @@ it.skipIf(process.env.NOTIFICATIONS_DB_TEST !== "1")(
           await client.query(
             "SELECT * FROM notifications WHERE resolved_at IS NULL",
           )
-        ).rows,
+      ).rows,
       ).toHaveLength(0);
+      const showcaseUser = (
+        await client.query("INSERT INTO users(email) VALUES($1) RETURNING id", [
+          `showcase-${crypto.randomUUID()}@example.invalid`,
+        ])
+      ).rows[0].id;
+      const showcaseTeam = (
+        await client.query(
+          "INSERT INTO teams(name,owner_user_id,stripe_customer_id,is_showcase) VALUES('Northwind showcase',$1,'cus_showcase',true) RETURNING id",
+          [showcaseUser],
+        )
+      ).rows[0].id;
+      await client.query(
+        "INSERT INTO tenants(team_id,slug,host,status,desired_state) VALUES($1,'showcase-fixture','showcase-fixture.wissen.app.mintapis.com','running','running')",
+        [showcaseTeam],
+      );
+      const expiredShowcaseTrial = new Date(now.getTime() - 86400000);
+      await client.query(
+        "INSERT INTO subscriptions(team_id,stripe_subscription_id,status,trial_end) VALUES($1,'sub_showcase','trialing',$2)",
+        [showcaseTeam, expiredShowcaseTrial],
+      );
+      await client.query(
+        "INSERT INTO notifications(user_id,kind,period,payload,subscription_id) VALUES($1,'trial_ending_1d','showcase-pending','{}','sub_showcase')",
+        [showcaseUser],
+      );
+      const showcaseMail = vi.fn(async () => undefined);
+      await deliverNotifications(client, showcaseMail);
+      expect(showcaseMail).not.toHaveBeenCalled();
+      await run((c) =>
+        syncSubscription(c, {
+          ...subscription(
+            "sub_showcase",
+            "past_due",
+            Math.floor(now.getTime() / 1000),
+          ),
+          customer: "cus_showcase",
+          trial_end: Math.floor(expiredShowcaseTrial.getTime() / 1000),
+        }),
+      );
+      await run((c) => generateNotifications(c, now));
+      expect(
+        (
+          await client.query(
+            "SELECT status,contract_ended_at FROM subscriptions WHERE stripe_subscription_id='sub_showcase'",
+          )
+        ).rows[0],
+      ).toMatchObject({ status: "trialing", contract_ended_at: null });
+      expect(
+        (
+          await client.query(
+            "SELECT desired_state FROM tenants WHERE team_id=$1",
+            [showcaseTeam],
+          )
+        ).rows[0].desired_state,
+      ).toBe("running");
+      expect(
+        (
+          await client.query(
+            "SELECT count(*)::int n FROM notifications WHERE user_id=$1 AND kind LIKE 'trial_%'",
+            [showcaseUser],
+          )
+        ).rows[0].n,
+      ).toBe(1);
+      await client.query(
+        `INSERT INTO subscriptions(team_id,stripe_subscription_id,status,has_payment_method)
+         VALUES($1,'sub_showcase_past_due','past_due',false)`,
+        [showcaseTeam],
+      );
+      await run((c) =>
+        generateNotifications(c, new Date(now.getTime() + 30 * 86400000)),
+      );
+      expect(
+        (
+          await client.query(
+            `SELECT payment_grace_started_at,payment_grace_until,contract_ended_at
+             FROM subscriptions WHERE stripe_subscription_id='sub_showcase_past_due'`,
+          )
+        ).rows[0],
+      ).toEqual({
+        payment_grace_started_at: null,
+        payment_grace_until: null,
+        contract_ended_at: null,
+      });
+      expect(
+        (
+          await client.query(
+            "SELECT desired_state FROM tenants WHERE team_id=$1",
+            [showcaseTeam],
+          )
+        ).rows[0].desired_state,
+      ).toBe("running");
       await client.query("BEGIN");
       await client.query("SELECT pg_advisory_xact_lock(827492015)");
       expect(await run((c) => generateNotifications(c, now))).toBe(0);

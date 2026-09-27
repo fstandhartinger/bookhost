@@ -275,5 +275,5 @@ it("answers the active team in exactly one place", async () => {
     expect(source).toMatch(/activeTeamId\(\s*session\.user\.id/);
   }
   const intake = await fs.readFile("app/app/intake/page.tsx", "utf8");
-  expect(intake).toMatch(/FROM tenants t WHERE t\.team_id=\$1/);
+  expect(intake).toMatch(/FROM tenants t(?: JOIN teams tm ON tm\.id=t\.team_id)? WHERE t\.team_id=\$1/);
 });

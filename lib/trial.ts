@@ -2,6 +2,7 @@ export const WORKSPACE_UNAVAILABLE_MESSAGE =
   "Your previous workspace is unavailable. Contact support at info@productivity-boost.com before starting another subscription; payment cannot restore deleted data.";
 export type BillingState = {
   status: string;
+  is_showcase?: boolean;
   trial_end: Date | string | null;
   current_period_end: Date | string | null;
   cancel_at_period_end?: boolean;
@@ -27,6 +28,7 @@ export function billingEligible(
   s: BillingState | null | undefined,
   now = new Date(),
 ) {
+  if (s?.is_showcase) return true;
   return Boolean(
     s &&
     (s.status === "active" ||
@@ -42,6 +44,13 @@ export function billingNotice(
   now = new Date(),
   role: "owner" | "admin" | "member" = "owner",
 ) {
+  if (s?.is_showcase)
+    return {
+      urgent: false,
+      kind: "showcase",
+      action: "none" as const,
+      text: "This is an internal BookHost showcase workspace. Billing is disabled.",
+    };
   if (role === "member" && !s)
     return {
       urgent: true,

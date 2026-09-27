@@ -12,10 +12,15 @@ export async function POST(request: Request) {
   try {
     const team = (
       await db.query(
-        "SELECT stripe_customer_id FROM teams WHERE owner_user_id=$1",
+        "SELECT stripe_customer_id,is_showcase FROM teams WHERE owner_user_id=$1",
         [session.user.id],
       )
     ).rows[0];
+    if (team?.is_showcase)
+      return Response.json(
+        { error: "Billing is disabled for this internal showcase workspace." },
+        { status: 403 },
+      );
     if (!team) {
       const membership = await db.query(
         "SELECT 1 FROM memberships WHERE user_id=$1 LIMIT 1",

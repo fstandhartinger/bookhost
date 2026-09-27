@@ -24,6 +24,7 @@ export async function syncCheckout(
     [customer],
   );
   if (existing.rows[0]) {
+    if (existing.rows[0].is_showcase) return existing.rows[0];
     await client.query(
       "UPDATE teams SET utm_source=COALESCE(utm_source,$2),analytics_opt_out=$3 WHERE id=$1",
       [
@@ -86,6 +87,7 @@ export async function cancelDuplicateCheckout(
   const existing = await client.query(
     `SELECT s.stripe_subscription_id FROM users u JOIN teams t ON t.owner_user_id=u.id
      JOIN subscriptions s ON s.team_id=t.id WHERE ${customer ? "(t.stripe_customer_id=$1 OR (NOT EXISTS(SELECT 1 FROM teams bound WHERE bound.stripe_customer_id=$1) AND lower(u.email)=$3))" : "lower(u.email)=$1"}
+     AND NOT t.is_showcase
      AND s.status IN ('trialing','active','past_due','unpaid','incomplete','paused') AND s.stripe_subscription_id<>$2 LIMIT 1`,
     customer ? [customer, id, email || null] : [email, id],
   );
@@ -113,10 +115,10 @@ export async function syncSubscription(
   const customer =
     typeof sub.customer === "string" ? sub.customer : sub.customer.id;
   const team = await client.query(
-    "SELECT id FROM teams WHERE stripe_customer_id=$1",
+    "SELECT id,is_showcase FROM teams WHERE stripe_customer_id=$1",
     [customer],
   );
-  if (!team.rows[0]) return;
+  if (!team.rows[0] || team.rows[0].is_showcase) return;
   const item = sub.items.data[0];
   const graceDays = Math.max(
     1,
@@ -220,7 +222,7 @@ export async function recordPaidConversion(
     await client.query(
       `INSERT INTO events(name,team_id,utm_source)
        SELECT 'paid_conversion',t.id,t.utm_source FROM subscriptions s JOIN teams t ON t.id=s.team_id
-       WHERE s.stripe_subscription_id=$1 AND NOT t.analytics_opt_out
+       WHERE s.stripe_subscription_id=$1 AND NOT t.analytics_opt_out AND NOT t.is_showcase
          AND NOT EXISTS(SELECT 1 FROM events e WHERE e.team_id=t.id AND e.name='paid_conversion')`,
       [subscriptionId],
     );
@@ -297,7 +299,8 @@ export async function handleStripeEvent(
     const customer = event.data.object as Stripe.Customer;
     const subscriptions = await client.query(
       `SELECT s.stripe_subscription_id FROM subscriptions s
-      JOIN teams t ON t.id=s.team_id WHERE t.stripe_customer_id=$1 AND s.status IN ('trialing','active','past_due')`,
+      JOIN teams t ON t.id=s.team_id WHERE t.stripe_customer_id=$1 AND NOT t.is_showcase
+      AND s.status IN ('trialing','active','past_due')`,
       [customer.id],
     );
     for (const row of subscriptions.rows)

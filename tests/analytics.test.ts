@@ -287,6 +287,8 @@ it("shares consistent source/day totals with zero-filled daily series", async ()
     String(sql).includes("FROM events"),
   )?.[0] as string;
   expect(funnelSql).toContain("name='paid_conversion'");
+  expect(funnelSql).toMatch(/NOT EXISTS\s*\(\s*SELECT 1 FROM teams/);
+  expect(funnelSql).toContain("is_showcase");
   // The operator dashboard shows the full funnel, including the paid step.
   vi.stubEnv("ADMIN_EMAILS", "owner@example.org");
   mocks.auth.mockResolvedValue({

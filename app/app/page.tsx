@@ -84,16 +84,21 @@ export default async function Dashboard({
         )
       ).rows
     : [];
-  const subscription = team
+  const subscriptionRow = team
     ? (
         await db.query(
-          "SELECT * FROM effective_subscriptions WHERE team_id=$1",
+          "SELECT s.*,t.is_showcase FROM teams t LEFT JOIN effective_subscriptions s ON s.team_id=t.id WHERE t.id=$1",
           [team.id],
         )
       ).rows[0]
     : null;
+  const subscription =
+    subscriptionRow?.status || subscriptionRow?.is_showcase
+      ? subscriptionRow
+      : null;
   if (
     isOwner &&
+    !subscription?.is_showcase &&
     subscription?.status === "active" &&
     !subscription.cancel_at_period_end
   )
@@ -260,7 +265,14 @@ export default async function Dashboard({
                   tenant_status: tenant?.status,
                   tenant_error: tenant?.error,
                 }
-              : null
+              : team?.is_showcase
+                ? {
+                    status: "active",
+                    is_showcase: true,
+                    trial_end: null,
+                    current_period_end: null,
+                  }
+                : null
           }
         />
       )}

@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
       phase = "analytics_insert";
       if (checkout.metadata?.no_analytics !== "1")
         await client.query(
-          "INSERT INTO events(name,team_id,utm_source) SELECT 'trial_started',id,utm_source FROM teams WHERE id=$1 AND EXISTS(SELECT 1 FROM subscriptions WHERE team_id=$1 AND status='trialing')",
+          "INSERT INTO events(name,team_id,utm_source) SELECT 'trial_started',id,utm_source FROM teams WHERE id=$1 AND NOT is_showcase AND EXISTS(SELECT 1 FROM subscriptions WHERE team_id=$1 AND status='trialing')",
           [team.id],
         );
       return { cookie, token, teamId: team.id };

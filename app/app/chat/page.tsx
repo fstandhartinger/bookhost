@@ -32,7 +32,7 @@ export default async function ChatPage({
   const tenants = membership
     ? (
         await db.query(
-          "SELECT t.id,t.team_id,t.slug FROM tenants t WHERE t.team_id=$1 AND t.status='running' AND t.desired_state='running' AND (SELECT CASE WHEN status='trialing' THEN trial_end>now() ELSE status='active' END FROM effective_subscriptions s WHERE s.team_id=t.team_id)",
+          "SELECT t.id,t.team_id,t.slug FROM tenants t JOIN teams tm ON tm.id=t.team_id WHERE t.team_id=$1 AND t.status='running' AND t.desired_state='running' AND (tm.is_showcase OR (SELECT CASE WHEN status='trialing' THEN trial_end>now() ELSE status='active' END FROM effective_subscriptions s WHERE s.team_id=t.team_id))",
           [membership.team_id],
         )
       ).rows

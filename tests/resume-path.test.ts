@@ -184,9 +184,11 @@ async function query(sql: string, values: unknown[] = []) {
   if (sql.includes("FROM users u JOIN teams t")) return result(); // no competing subscription
   if (sql.includes("FROM memberships m WHERE m.user_id"))
     return { rows: [{ team_id: "team-1", role: "owner" }] };
-  if (sql.includes("FROM tenants t WHERE t.team_id")) {
-    // Same eligibility the page enforces: running tenant and a live subscription.
+  if (sql.includes("FROM tenants t ") && sql.includes("WHERE t.team_id")) {
+    // Same eligibility the page enforces: a running tenant and a live subscription,
+    // with the operator showcase exemption.
     expect(sql).toContain("t.status='running' AND t.desired_state='running'");
+    expect(sql).toContain("tm.is_showcase OR");
     return result(
       tenant &&
         tenant.status === "running" &&
@@ -196,7 +198,7 @@ async function query(sql: string, values: unknown[] = []) {
         : [],
     );
   }
-  if (sql.includes("FROM tenants t JOIN memberships")) {
+  if (sql.includes("FROM tenants t") && sql.includes("JOIN memberships m")) {
     if (sql.includes("WHERE m.user_id=$1")) {
       expect(sql).toContain("t.status='running' AND t.desired_state='running'");
       expect(sql).toContain("trial_end<=now()");
@@ -242,6 +244,17 @@ async function query(sql: string, values: unknown[] = []) {
   )
     return result();
   if (sql.startsWith("SELECT m.user_id")) return result();
+  if (
+    sql.includes("FROM teams t LEFT JOIN effective_subscriptions s")
+  )
+    return result([
+      {
+        ...subscription,
+        is_showcase: false,
+        desired_state: tenant?.desired_state,
+        tenant_status: tenant?.status,
+      },
+    ]);
   if (sql.includes("FROM teams")) return result([team]);
   if (sql.includes("FROM effective_subscriptions"))
     return result([

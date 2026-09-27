@@ -42,30 +42,39 @@ export async function generateNotifications(db: Queryable, now = new Date()) {
   await db.query(
     `UPDATE subscriptions SET payment_grace_started_at=COALESCE(payment_grace_started_at,$1),
      payment_grace_until=COALESCE(payment_grace_until,$1::timestamptz+($2||' days')::interval)
-     WHERE status IN ('past_due','unpaid') AND (payment_grace_started_at IS NULL OR payment_grace_until IS NULL)`,
+     WHERE status IN ('past_due','unpaid') AND (payment_grace_started_at IS NULL OR payment_grace_until IS NULL)
+       AND NOT EXISTS (SELECT 1 FROM teams t WHERE t.id=subscriptions.team_id AND t.is_showcase)`,
     [now, graceDays],
   );
   await db.query(
     `UPDATE subscriptions SET contract_ended_at=COALESCE(contract_ended_at,trial_end)
-     WHERE status='trialing' AND trial_end<=$1 AND NOT has_payment_method`,
+     WHERE status='trialing' AND trial_end<=$1 AND NOT has_payment_method
+       AND NOT EXISTS (SELECT 1 FROM teams t WHERE t.id=subscriptions.team_id AND t.is_showcase)`,
     [now],
   );
   await db.query(
     `UPDATE tenants n SET desired_state='suspended',updated_at=$1
     FROM effective_subscriptions s WHERE s.team_id=n.team_id AND s.status='trialing'
-    AND s.trial_end <= $1 AND n.desired_state<>'suspended'`,
+    AND s.trial_end <= $1 AND n.desired_state<>'suspended'
+    AND EXISTS (SELECT 1 FROM teams t WHERE t.id=n.team_id AND NOT t.is_showcase)`,
     [now],
   );
   await db.query(
     `UPDATE tenants n SET desired_state='suspended',updated_at=$1
      FROM effective_subscriptions s WHERE s.team_id=n.team_id
      AND s.status IN ('past_due','unpaid') AND s.payment_grace_until<=$1
-     AND s.payment_failure_notified_at<$1 AND n.desired_state<>'suspended'`,
+     AND s.payment_failure_notified_at<$1 AND n.desired_state<>'suspended'
+     AND EXISTS (SELECT 1 FROM teams t WHERE t.id=n.team_id AND NOT t.is_showcase)`,
     [now],
   );
   await db.query(
     `UPDATE notifications n SET resolved_at=$1 FROM teams t
-    WHERE n.user_id=t.owner_user_id AND n.resolved_at IS NULL AND NOT EXISTS (
+     WHERE n.user_id=t.owner_user_id AND t.is_showcase AND n.resolved_at IS NULL`,
+    [now],
+  );
+  await db.query(
+    `UPDATE notifications n SET resolved_at=$1 FROM teams t
+    WHERE n.user_id=t.owner_user_id AND NOT t.is_showcase AND n.resolved_at IS NULL AND NOT EXISTS (
       SELECT 1 FROM effective_subscriptions s WHERE s.team_id=t.id
       AND s.stripe_subscription_id=COALESCE(n.subscription_id,split_part(n.period,':',1))
       AND ((n.kind LIKE 'trial_ending%' AND s.status='trialing' AND NOT s.has_payment_method AND s.trial_end>$1
@@ -92,7 +101,8 @@ export async function generateNotifications(db: Queryable, now = new Date()) {
       OR (status='trialing' AND trial_end>$1)) candidates
     JOIN effective_subscriptions s ON s.team_id=candidates.team_id
     JOIN teams t ON t.id=s.team_id JOIN users u ON u.id=t.owner_user_id
-    LEFT JOIN tenants n ON n.team_id=t.id`,
+    LEFT JOIN tenants n ON n.team_id=t.id
+    WHERE NOT t.is_showcase`,
     [now],
   );
   let created = 0;
@@ -191,7 +201,8 @@ export async function generateNotifications(db: Queryable, now = new Date()) {
     `UPDATE tenants n SET desired_state='suspended',updated_at=$1
      FROM effective_subscriptions s WHERE s.team_id=n.team_id
      AND s.status IN ('past_due','unpaid') AND s.payment_grace_until<=$1
-     AND s.payment_failure_notified_at<$1 AND n.desired_state<>'suspended'`,
+     AND s.payment_failure_notified_at<$1 AND n.desired_state<>'suspended'
+     AND EXISTS (SELECT 1 FROM teams t WHERE t.id=n.team_id AND NOT t.is_showcase)`,
     [now],
   );
   return created;
@@ -206,6 +217,7 @@ export async function deliverNotifications(db: Queryable, send: NoticeMail) {
       SELECT id FROM notifications
       WHERE resolved_at IS NULL AND mail_status='pending' AND attempts=0
         AND mail_claimed_at IS NULL AND kind=ANY($1::text[])
+        AND NOT EXISTS (SELECT 1 FROM teams t WHERE t.owner_user_id=notifications.user_id AND t.is_showcase)
       ORDER BY created_at,id LIMIT 300 FOR UPDATE SKIP LOCKED
     )
     UPDATE notifications n SET mail_claimed_at=clock_timestamp(),mail_status='claimed',attempts=n.attempts+1

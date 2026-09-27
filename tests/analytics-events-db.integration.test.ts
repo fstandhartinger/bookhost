@@ -7,11 +7,13 @@ it.skipIf(process.env.INTAKE_DB_TEST !== "1")(
     const teamIds: string[] = [];
     let tenant: string | undefined;
     let optOutTenant: string | undefined;
+    let showcaseTenant: string | undefined;
     let draftItem: string | undefined;
     let failedItem: string | undefined;
     let publishedItem: string | undefined;
     try {
       for (const email of [
+        `analytics-db-${crypto.randomUUID()}@example.invalid`,
         `analytics-db-${crypto.randomUUID()}@example.invalid`,
         `analytics-db-${crypto.randomUUID()}@example.invalid`,
       ])
@@ -38,6 +40,14 @@ it.skipIf(process.env.INTAKE_DB_TEST !== "1")(
           )
         ).rows[0].id,
       );
+      teamIds.push(
+        (
+          await db.query(
+            "INSERT INTO teams(name,owner_user_id,is_showcase) VALUES('Showcase analytics integration',$1,true) RETURNING id",
+            [userIds[2]],
+          )
+        ).rows[0].id,
+      );
       tenant = (
         await db.query(
           "INSERT INTO tenants(team_id,slug,host,status,desired_state) VALUES($1,$2,$2||'.wissen.app.mintapis.com','failed','suspended') RETURNING id",
@@ -48,6 +58,12 @@ it.skipIf(process.env.INTAKE_DB_TEST !== "1")(
         await db.query(
           "INSERT INTO tenants(team_id,slug,host,status,desired_state) VALUES($1,$2,$2||'.wissen.app.mintapis.com','failed','suspended') RETURNING id",
           [teamIds[1], `analytics-optout-${crypto.randomUUID()}`],
+        )
+      ).rows[0].id;
+      showcaseTenant = (
+        await db.query(
+          "INSERT INTO tenants(team_id,slug,host,status,desired_state) VALUES($1,$2,$2||'.wissen.app.mintapis.com','failed','suspended') RETURNING id",
+          [teamIds[2], `analytics-showcase-${crypto.randomUUID()}`],
         )
       ).rows[0].id;
       const countEvents = async (teamId: string, name: string) =>
@@ -75,6 +91,13 @@ it.skipIf(process.env.INTAKE_DB_TEST !== "1")(
       ).toBe("qa-funnel");
       expect(await countEvents(teamIds[1], "workspace_created")).toBe(0);
       expect(await countFunnelEvents(teamIds[1])).toBe(0);
+      expect(await countEvents(teamIds[2], "workspace_created")).toBe(0);
+      expect(await countFunnelEvents(teamIds[2])).toBe(0);
+      await db.query(
+        "UPDATE teams SET bookstack_opened_at=now() WHERE id=$1",
+        [teamIds[2]],
+      );
+      expect(await countEvents(teamIds[2], "onboarding_step_done")).toBe(0);
       const insertItem = async (status: string) =>
         (
           await db.query(
@@ -102,6 +125,16 @@ it.skipIf(process.env.INTAKE_DB_TEST !== "1")(
       ]);
       expect(await countEvents(teamIds[0], "intake_published")).toBe(1);
       expect(await countFunnelEvents(teamIds[0])).toBe(3);
+      const showcaseItem = (
+        await db.query(
+          "INSERT INTO intake_items(team_id,tenant_id,filename,mime,target_book_id,status) VALUES($1,$2,'showcase.txt','text/plain',1,'drafting') RETURNING id",
+          [teamIds[2], showcaseTenant],
+        )
+      ).rows[0].id;
+      await db.query("UPDATE intake_items SET status='draft' WHERE id=$1", [
+        showcaseItem,
+      ]);
+      expect(await countFunnelEvents(teamIds[2])).toBe(0);
     } finally {
       for (const teamId of teamIds)
         await db.query("DELETE FROM events WHERE team_id=$1", [teamId]);
@@ -110,6 +143,8 @@ it.skipIf(process.env.INTAKE_DB_TEST !== "1")(
       if (tenant) await db.query("DELETE FROM tenants WHERE id=$1", [tenant]);
       if (optOutTenant)
         await db.query("DELETE FROM tenants WHERE id=$1", [optOutTenant]);
+      if (showcaseTenant)
+        await db.query("DELETE FROM tenants WHERE id=$1", [showcaseTenant]);
       for (const teamId of teamIds)
         await db.query("DELETE FROM teams WHERE id=$1", [teamId]);
       for (const userId of userIds)

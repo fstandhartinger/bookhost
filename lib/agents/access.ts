@@ -15,7 +15,7 @@ export type AgentWorkspace = {
   running: boolean;
 };
 
-const SUBSCRIPTION_STATUS = `(SELECT CASE WHEN status='trialing' AND (trial_end IS NULL OR trial_end<=now()) THEN 'expired' WHEN status IN ('past_due','unpaid') AND payment_grace_until<=now() AND payment_failure_notified_at<now() THEN 'expired' ELSE status END FROM effective_subscriptions WHERE team_id=t.team_id)`;
+const SUBSCRIPTION_STATUS = `(CASE WHEN EXISTS (SELECT 1 FROM teams team WHERE team.id=t.team_id AND team.is_showcase) THEN 'active' ELSE (SELECT CASE WHEN status='trialing' AND (trial_end IS NULL OR trial_end<=now()) THEN 'expired' WHEN status IN ('past_due','unpaid') AND payment_grace_until<=now() AND payment_failure_notified_at<now() THEN 'expired' ELSE status END FROM effective_subscriptions WHERE team_id=t.team_id) END)`;
 
 export function requestHost(request: Request): string | null {
   const host = (request.headers.get("host") || "")

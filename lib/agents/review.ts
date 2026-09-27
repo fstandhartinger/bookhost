@@ -55,7 +55,7 @@ export async function publishAgentProposal(item: Item, userId: string) {
   const client = await clientFor({ id: item.tenant_id, slug: item.slug, host });
   const claimed = await db.query(
     `UPDATE intake_items i SET status='approved',updated_at=now()
-     WHERE i.id=$1 AND i.status IN ('draft','failed') AND EXISTS(SELECT 1 FROM tenants t JOIN memberships m ON m.team_id=t.team_id WHERE t.id=i.tenant_id AND t.status='running' AND t.desired_state='running' AND m.user_id=$2 AND m.role IN ('owner','admin') AND (SELECT CASE WHEN status='trialing' AND (trial_end IS NULL OR trial_end<=now()) THEN 'expired' WHEN status IN ('past_due','unpaid') AND payment_grace_until<=now() AND payment_failure_notified_at<now() THEN 'expired' ELSE status END FROM effective_subscriptions WHERE team_id=t.team_id) IN ('trialing','active','past_due','unpaid')) RETURNING id`,
+     WHERE i.id=$1 AND i.status IN ('draft','failed') AND EXISTS(SELECT 1 FROM tenants t JOIN teams tm ON tm.id=t.team_id JOIN memberships m ON m.team_id=t.team_id WHERE t.id=i.tenant_id AND t.status='running' AND t.desired_state='running' AND m.user_id=$2 AND m.role IN ('owner','admin') AND (tm.is_showcase OR (SELECT CASE WHEN status='trialing' AND (trial_end IS NULL OR trial_end<=now()) THEN 'expired' WHEN status IN ('past_due','unpaid') AND payment_grace_until<=now() AND payment_failure_notified_at<now() THEN 'expired' ELSE status END FROM effective_subscriptions WHERE team_id=t.team_id) IN ('trialing','active','past_due','unpaid'))) RETURNING id`,
     [item.id, userId],
   );
   if (!claimed.rowCount)

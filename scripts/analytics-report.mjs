@@ -11,15 +11,16 @@ export async function analyticsReport(db) {
       FROM page_views WHERE ts >= (date_trunc('day',now() AT TIME ZONE 'UTC')-interval '13 days') AT TIME ZONE 'UTC'
       GROUP BY 1,2
     ), funnel AS (
-      SELECT (ts AT TIME ZONE 'UTC')::date AS day, COALESCE(utm_source,'(direct)') AS source,
-        count(*) FILTER (WHERE name='demo_click')::int AS demo_click,
-        count(*) FILTER (WHERE name='checkout_start')::int AS checkout_start,
-        count(*) FILTER (WHERE name='trial_started')::int AS trial_started,
-        count(*) FILTER (WHERE name='workspace_created')::int AS workspace_created,
-        count(*) FILTER (WHERE name='intake_draft')::int AS intake_draft,
-        count(*) FILTER (WHERE name='intake_published')::int AS intake_published,
-        count(*) FILTER (WHERE name='paid_conversion')::int AS paid_conversion
-      FROM events WHERE ts >= (date_trunc('day',now() AT TIME ZONE 'UTC')-interval '13 days') AT TIME ZONE 'UTC'
+      SELECT (e.ts AT TIME ZONE 'UTC')::date AS day, COALESCE(e.utm_source,'(direct)') AS source,
+        count(*) FILTER (WHERE e.name='demo_click')::int AS demo_click,
+        count(*) FILTER (WHERE e.name='checkout_start')::int AS checkout_start,
+        count(*) FILTER (WHERE e.name='trial_started')::int AS trial_started,
+        count(*) FILTER (WHERE e.name='workspace_created')::int AS workspace_created,
+        count(*) FILTER (WHERE e.name='intake_draft')::int AS intake_draft,
+        count(*) FILTER (WHERE e.name='intake_published')::int AS intake_published,
+        count(*) FILTER (WHERE e.name='paid_conversion')::int AS paid_conversion
+      FROM events e WHERE e.ts >= (date_trunc('day',now() AT TIME ZONE 'UTC')-interval '13 days') AT TIME ZONE 'UTC'
+        AND NOT EXISTS (SELECT 1 FROM teams t WHERE t.id=e.team_id AND t.is_showcase)
       GROUP BY 1,2
     ) SELECT COALESCE(v.day,f.day)::text AS day, COALESCE(v.source,f.source) AS source,
       COALESCE(visits,0) AS visits, COALESCE(demo_click,0) AS demo_click,

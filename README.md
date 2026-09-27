@@ -75,6 +75,21 @@ Stripe reference: [no-card trials](https://docs.stripe.com/payments/checkout/fre
 
 `db/migrations/002_tenants.sql` reproduces the provisioner's table contract exactly. An additional partial unique index enforces one tenant per team. Requests require an active or unexpired trial subscription and owner authentication. Reserved addresses are rejected before insert, and uniqueness is also enforced in PostgreSQL.
 
+### Operator showcase tenants
+
+Migration `040_showcase_tenants.sql` adds `teams.is_showcase` (false by default). It is an
+operator-only marker: there is no customer API or dashboard control. Use
+`node ops/showcase/mark-team.mjs <exact-tenant-slug> on|off` from an operator shell to change
+it; the command requires exactly one existing tenant and prints the team id before updating.
+Marking a team resolves its queued owner notices. Keep this flag limited to synthetic internal
+workspaces.
+
+Marked teams remain provisionable and usable, but are excluded from provisioning-watchdog
+alerts, trial reminders and billing lifecycle changes, customer funnel analytics, and analytics
+reports. Onboarding history remains available internally while its customer-funnel events are
+suppressed. See [the permanent Northwind showcase runbook](ops/showcase/README.md) for the
+retained `showcase-northwind` workspace and its content reset procedure.
+
 The provisioner owns transitions from `pending` to `provisioning`, `running`, `failed` or `suspended`. The dashboard polls every 15 seconds while pending/provisioning. It does not display raw provisioner errors, which may contain operational details.
 
 The initial password is selected only by a separate owner-authenticated POST. A row lock ensures only one response gets it; the database value is deleted in that transaction. It never appears in HTML/server component payloads. If delivery fails after deletion, reset it in BookStack or through support. This intentionally favors one-time handling over repeated recovery of a plaintext password.

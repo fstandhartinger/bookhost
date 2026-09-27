@@ -34,14 +34,14 @@ export default async function IntakePage({
   const tenants = membership
     ? (
         await db.query(
-          "SELECT t.id,t.team_id,t.slug FROM tenants t WHERE t.team_id=$1 AND t.status='running' AND t.desired_state='running' AND (SELECT CASE WHEN status='trialing' THEN trial_end>now() ELSE status='active' END FROM effective_subscriptions s WHERE s.team_id=t.team_id)",
+          "SELECT t.id,t.team_id,t.slug FROM tenants t JOIN teams tm ON tm.id=t.team_id WHERE t.team_id=$1 AND t.status='running' AND t.desired_state='running' AND (tm.is_showcase OR (SELECT CASE WHEN status='trialing' THEN trial_end>now() ELSE status='active' END FROM effective_subscriptions s WHERE s.team_id=t.team_id))",
           [membership.team_id],
         )
       ).rows
     : [];
   const subscription = (
     await db.query(
-      "SELECT s.*,n.desired_state,n.status AS tenant_status FROM effective_subscriptions s LEFT JOIN tenants n ON n.team_id=s.team_id WHERE s.team_id=$1",
+      "SELECT s.*,tm.is_showcase,n.desired_state,n.status AS tenant_status FROM teams tm LEFT JOIN effective_subscriptions s ON s.team_id=tm.id LEFT JOIN tenants n ON n.team_id=tm.id WHERE tm.id=$1",
       [membership?.team_id],
     )
   ).rows[0];
@@ -51,7 +51,15 @@ export default async function IntakePage({
       <Link href="/app" className="text-sm underline">
         ← Your workspace
       </Link>
-      <BillingNotice subscription={subscription || null} role={role} compact />
+      <BillingNotice
+        subscription={
+          subscription?.status || subscription?.is_showcase
+            ? subscription
+            : null
+        }
+        role={role}
+        compact
+      />
       <p className="eyebrow mt-8">DOCUMENT INTAKE · BETA</p>
       <h1 className="text-4xl">Turn documents into shared knowledge.</h1>
       <p className="mt-4 max-w-2xl text-slate-600">

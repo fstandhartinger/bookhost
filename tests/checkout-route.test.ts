@@ -4,6 +4,7 @@ const state = vi.hoisted(() => ({
   status: "active",
   previous: false,
   customer: "cus_existing",
+  isShowcase: false,
   create: vi
     .fn<
       (
@@ -40,7 +41,15 @@ vi.mock("@/lib/db", () => ({
       if (sql.includes("FROM tenants WHERE team_id"))
         return { rows: [{ status: "suspended", error: null }], rowCount: 1 };
       if (sql.includes("FROM teams"))
-        return { rows: [{ id: "team", stripe_customer_id: state.customer }] };
+        return {
+          rows: [
+            {
+              id: "team",
+              stripe_customer_id: state.customer,
+              is_showcase: state.isShowcase,
+            },
+          ],
+        };
       return {
         rows: [],
         rowCount:
@@ -56,14 +65,33 @@ vi.mock("@/lib/stripe", () => ({
   stripeClient: () => ({ checkout: { sessions: { create: state.create } } }),
 }));
 import { POST } from "@/app/api/checkout/route";
+import { POST as portal } from "@/app/api/portal/route";
 const request = () =>
   new Request("http://localhost/api/checkout", { method: "POST", body: "{}" });
 beforeEach(() => {
   state.create.mockClear();
   state.customer = "cus_existing";
+  state.isShowcase = false;
   state.failQuery = "";
   state.sql = [];
   process.env.STRIPE_PRICE_TEAM = "price_fixture";
+});
+
+it("does not start checkout or open a Stripe portal for a marked showcase team", async () => {
+  state.isShowcase = true;
+  const checkoutResponse = await POST(request());
+  expect(checkoutResponse.status).toBe(403);
+  expect(await checkoutResponse.json()).toMatchObject({
+    error: "Billing is disabled for this internal showcase workspace.",
+  });
+  expect(state.create).not.toHaveBeenCalled();
+
+  const portalResponse = await portal(request());
+  expect(portalResponse.status).toBe(403);
+  expect(await portalResponse.json()).toMatchObject({
+    error: "Billing is disabled for this internal showcase workspace.",
+  });
+  expect(state.create).not.toHaveBeenCalled();
 });
 
 it("reports checkout-attempt persistence failures with a safe user-visible correlation", async () => {

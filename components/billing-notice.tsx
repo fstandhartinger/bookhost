@@ -20,6 +20,7 @@ export function BillingNotice({
         }
       : baseNotice;
   if (!notice) return null;
+  if (notice.kind === "showcase") return null;
   if (compact && !notice.urgent) return null;
   if (notice.kind === "active")
     return <p className="mt-5 text-sm text-slate-600">{notice.text}</p>;

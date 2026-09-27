@@ -131,15 +131,15 @@ def database():
     query = """BEGIN READ ONLY;
 SET LOCAL statement_timeout = '15s';
 SELECT json_build_object(
- 'running', COALESCE((SELECT json_agg(json_build_object('slug',slug,'host',COALESCE(to_jsonb(tenants)->>'host',slug||'.wissen.app.mintapis.com'),'created',extract(epoch from created_at)) ORDER BY slug) FROM tenants WHERE status='running'), '[]'::json),
- 'provisioning', (SELECT count(*) FROM tenants WHERE status='provisioning' AND @OVERDUE_PROVISIONING@),
- 'pending', (SELECT count(*) FROM tenants WHERE status='pending' AND @OVERDUE_PENDING@),
- 'drafting', (SELECT count(*) FROM intake_items WHERE status='drafting' AND @OVERDUE_DRAFTING@),
- 'stranded', COALESCE((SELECT json_agg(slug ORDER BY slug) FROM tenants
-   WHERE desired_state='running' AND status NOT IN ('running','pending','provisioning')), '[]'::json),
- 'unsuspended', COALESCE((SELECT json_agg(slug ORDER BY slug) FROM tenants
-   WHERE desired_state='suspended' AND status='running'
-     AND updated_at < now()-interval '30 minutes'), '[]'::json),
+ 'running', COALESCE((SELECT json_agg(json_build_object('slug',n.slug,'host',COALESCE(to_jsonb(n)->>'host',n.slug||'.wissen.app.mintapis.com'),'created',extract(epoch from n.created_at)) ORDER BY n.slug) FROM tenants n LEFT JOIN teams team ON team.id=n.team_id WHERE n.status='running' AND COALESCE(team.is_showcase,false)=false), '[]'::json),
+ 'provisioning', (SELECT count(*) FROM tenants n LEFT JOIN teams team ON team.id=n.team_id WHERE n.status='provisioning' AND COALESCE(team.is_showcase,false)=false AND @OVERDUE_PROVISIONING@),
+ 'pending', (SELECT count(*) FROM tenants n LEFT JOIN teams team ON team.id=n.team_id WHERE n.status='pending' AND COALESCE(team.is_showcase,false)=false AND @OVERDUE_PENDING@),
+ 'drafting', (SELECT count(*) FROM intake_items i JOIN teams team ON team.id=i.team_id WHERE i.status='drafting' AND NOT team.is_showcase AND @OVERDUE_DRAFTING@),
+ 'stranded', COALESCE((SELECT json_agg(n.slug ORDER BY n.slug) FROM tenants n LEFT JOIN teams team ON team.id=n.team_id
+   WHERE COALESCE(team.is_showcase,false)=false AND n.desired_state='running' AND n.status NOT IN ('running','pending','provisioning')), '[]'::json),
+ 'unsuspended', COALESCE((SELECT json_agg(n.slug ORDER BY n.slug) FROM tenants n LEFT JOIN teams team ON team.id=n.team_id
+   WHERE COALESCE(team.is_showcase,false)=false AND n.desired_state='suspended' AND n.status='running'
+     AND n.updated_at < now()-interval '30 minutes'), '[]'::json),
  -- The hourly in-application job deletes expired rate limits on every pass.
  -- A row still here two hours after it expired means that job is not running,
  -- which is otherwise invisible until a trial ends unreminded.
@@ -151,21 +151,23 @@ SELECT json_build_object(
  -- itself for the other check to notice. Only unambiguous cases, and only after
  -- an hour, so the gap between webhook and sync is not reported as a fault.
  'unpaid_running', COALESCE((SELECT json_agg(te.slug ORDER BY te.slug) FROM tenants te
-   JOIN subscriptions s ON s.team_id=te.team_id
-   WHERE te.desired_state='running'
+   LEFT JOIN teams team ON team.id=te.team_id JOIN subscriptions s ON s.team_id=te.team_id
+   WHERE COALESCE(team.is_showcase,false)=false AND te.desired_state='running'
      AND (s.status IN ('canceled','incomplete_expired')
           OR (s.status='trialing' AND s.trial_end IS NOT NULL AND s.trial_end < now()))
      AND s.updated_at < now()-interval '1 hour'), '[]'::json),
  -- The cancellation form issues a receipt promising action within two working
  -- days. Nothing has ever read that table; an unhandled row is a promise we are
  -- already breaking, and the customer has a legal claim to it being kept.
- 'cancellations', COALESCE((SELECT json_agg(id ORDER BY created_at) FROM cancellation_requests
-   WHERE handled_at IS NULL AND created_at < now()-interval '24 hours'), '[]'::json),
+ 'cancellations', COALESCE((SELECT json_agg(c.id ORDER BY c.created_at) FROM cancellation_requests c
+   WHERE c.handled_at IS NULL AND c.created_at < now()-interval '24 hours'
+     AND NOT EXISTS (SELECT 1 FROM users u JOIN teams team ON team.owner_user_id=u.id
+       WHERE lower(u.email)=lower(c.email) AND team.is_showcase)), '[]'::json),
  -- A trial that runs out while nobody was told is a customer lost in silence.
  -- The hourly job writes the notice; nothing until now checked that it did.
  'unreminded', COALESCE((SELECT json_agg(t.name ORDER BY t.name) FROM subscriptions s
    JOIN teams t ON t.id=s.team_id
-   WHERE s.status='trialing' AND NOT s.has_payment_method
+   WHERE NOT t.is_showcase AND s.status='trialing' AND NOT s.has_payment_method
      AND s.trial_end IS NOT NULL
      AND s.trial_end BETWEEN now() AND now()+interval '2 days'
      AND NOT EXISTS (SELECT 1 FROM notifications n
@@ -173,9 +175,9 @@ SELECT json_build_object(
 ROLLBACK;
 """
     query = (query
-             .replace('@OVERDUE_PROVISIONING@', overdue('updated_at', 20))
-             .replace('@OVERDUE_PENDING@', overdue('created_at', 15))
-             .replace('@OVERDUE_DRAFTING@', overdue('updated_at', 30)))
+             .replace('@OVERDUE_PROVISIONING@', overdue('n.updated_at', 20))
+             .replace('@OVERDUE_PENDING@', overdue('n.created_at', 15))
+             .replace('@OVERDUE_DRAFTING@', overdue('i.updated_at', 30)))
     with tempfile.TemporaryDirectory(prefix='wissen-watchdog-tls-') as tmp:
         ca = Path(tmp) / 'ca.pem'
         ca.write_bytes(base64.b64decode(os.environ['DATABASE_SSL_CA_BASE64'], validate=True))

@@ -22,6 +22,7 @@ function mockDb(
   duplicate = false,
   status = "trialing",
   customerSubs: string[] = [],
+  isShowcase = false,
 ) {
   const query = vi.fn(async (sql: string) => {
     if (sql.startsWith("INSERT INTO stripe_events"))
@@ -29,8 +30,11 @@ function mockDb(
         rows: duplicate ? [] : [{ id: "evt" }],
         rowCount: duplicate ? 0 : 1,
       };
-    if (sql.startsWith("SELECT id FROM teams"))
-      return { rows: [{ id: "team_1" }], rowCount: 1 };
+    if (sql.startsWith("SELECT id") && sql.includes("FROM teams"))
+      return {
+        rows: [{ id: "team_1", is_showcase: isShowcase }],
+        rowCount: 1,
+      };
     if (sql.startsWith("SELECT s.stripe_subscription_id FROM subscriptions s"))
       return {
         rows: customerSubs.map((id) => ({ stripe_subscription_id: id })),
@@ -49,6 +53,23 @@ const stripe = {
   subscriptions: { retrieve: vi.fn(async () => sub) },
 } as unknown as Pick<Stripe, "subscriptions">;
 describe("webhook processing", () => {
+  it("does not apply billing state or trial expiry to a marked showcase team", async () => {
+    const { query, client } = mockDb(false, "trialing", [], true);
+    await syncSubscription(client, sub);
+
+    expect(
+      query.mock.calls.some(([sql]) =>
+        sql.startsWith("INSERT INTO subscriptions"),
+      ),
+    ).toBe(false);
+    expect(
+      query.mock.calls.some(([sql]) =>
+        sql.includes("INSERT INTO notifications") ||
+        sql.includes("UPDATE tenants"),
+      ),
+    ).toBe(false);
+  });
+
   it("upserts subscription status and trial timestamps", async () => {
     const { query, client } = mockDb();
     await handleStripeEvent(

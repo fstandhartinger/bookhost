@@ -23,9 +23,9 @@ node ops/showcase/bootstrap-northwind.mjs
 The exact SQL targets and credential-file path are printed before any rows are created. Keep
 `/home/flori/ventures2/bookstack/work/showcase-northwind-users.env` private; the script creates
 it with mode `0600`. The provisioner then handles `showcase-northwind` through its normal queue.
-The account names are Mira Chen (owner) and Sam Patel (member). Sam's BookStack account is
-created through the normal BookHost team invite/join flow after the tenant is running, so the
-BookHost managed-login record stays consistent.
+The account names are Mira Chen (owner) and Sam Patel (member). After the tenant is running,
+Mira and Sam each create their BookStack login through the normal BookHost managed-login
+flow. This keeps each dashboard account linked to its BookStack identity.
 
 ## Content and reset
 

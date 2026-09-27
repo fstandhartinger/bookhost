@@ -168,9 +168,10 @@ export default function Reliability() {
               and admins. It searches your own pages and shows the passages it
               found. Its AI answers are live: asking a question sends the
               question and those passages to the same external model as intake —
-              with no upload involved — and the same limit applies as there: use
-              it only on workspaces without personal data, until the updated
-              processing conditions are independently verified.
+              with no upload involved — under the same documented conditions
+              (processing in Dublin and Helsinki, zero retained prompts and
+              completions under the vendor DPA), and
+              you stay the controller for what your workspace holds.
             </p>
             <p>
               Document intake is available in beta. Each upload sends extracted text,
@@ -179,8 +180,9 @@ export default function Reliability() {
               after 30 days from creation in the next hourly cleanup. TensorX&rsquo;s
               documented GPU infrastructure is in Dublin and Helsinki, and its
               vendor DPA provides zero retention of prompts and completions in
-              ephemeral processing. Until the updated processing conditions are
-              independently verified, use only non-personal example documents. See our{" "}
+              ephemeral processing. The vendor&rsquo;s processing conditions are
+              documented in our privacy policy and DPA, and
+              you stay the controller for what your workspace holds. See our{" "}
               <Link className="text-moss underline" href="/legal/datenschutz">
                 Privacy Policy
               </Link>{" "}

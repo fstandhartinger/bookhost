@@ -141,7 +141,7 @@ describe("mounted WikiChat controlled responses", () => {
     expect(field().value).toBe(question);
     expect(field().disabled).toBe(false);
     expect(workspace().disabled).toBe(false);
-    expect(container.textContent).toContain("non-personal example documents");
+    expect(container.textContent).toContain("Ask your wiki (beta): your question and the passages it answers from go to TensorX in Ireland under its documented data processing agreement");
     expect(chatCalls()).toHaveLength(2);
   });
 

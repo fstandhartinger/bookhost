@@ -343,9 +343,9 @@ export function WikiChat({
           </a>
         </p>
         <p className="text-xs leading-5 text-amber-800">
-          Beta restriction: the final approval of the updated processing
-          conditions is still pending. Until then, ask only about non-personal
-          example documents. See the{" "}
+          Ask your wiki (beta): your question and the passages it answers from
+          go to TensorX in Ireland under its documented data processing
+          agreement; you stay the controller for your content. See the{" "}
           <Link className="underline" href="/legal/datenschutz">
             privacy notice
           </Link>

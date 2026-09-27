@@ -82,21 +82,21 @@ export function Pricing() {
             <li>Seven-day backup retention and restore help</li>
           </ul>
           <p className="mb-4 mt-8 text-xs font-semibold uppercase tracking-[.14em] text-faint">
-            AI betas · non-personal content only
+            AI betas · TensorX in Ireland — conditions documented
           </p>
           <ul className="checklist">
             <li>Reviewed document intake — available now (beta)</li>
             {/* The one thing none of the hosts in our sponsor row offer, and it
                 was missing from the page where people decide. Stated at what it
-                actually does today: AI answers with named sources, beta
-                restricted to non-personal content. */}
+                actually does today: AI answers with named sources; the betas are
+                released for personal content per the DPA annex 3 release. */}
             <li>
               &ldquo;Ask your wiki&rdquo; — available now (beta) for owners and
               admins: it names the page and section behind every answer.
               Answers are AI-written from your pages, with the page and section
-              named behind every answer; until the updated processing
-              conditions are finally approved, ask only about non-personal
-              content.
+              named behind every answer; the betas are released for personal
+              content per our DPA annex 3, and you stay the controller for
+              what your workspace holds.
             </li>
             <li>{DRAFT_COPY}</li>
             <li>Summary, tags and reviewer checklist for each draft</li>

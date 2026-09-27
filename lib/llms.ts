@@ -14,7 +14,7 @@ export function siteLlmsTxt() {
   const url = (path: string) => `${PUBLIC_BASE_URL}${path}`;
   const body = `# BookHost
 
-> Managed BookStack hosting for teams. A private BookStack wiki with hosting, maintenance, security updates, daily backups (seven-day retention) and restore help, on Hetzner infrastructure in Germany or Finland. One plan: €${PLAN.price}/month plus applicable VAT, ${PLAN.trialDays} days free without a card. Optional betas: reviewed document intake, "Ask your wiki" answers with named source pages (non-personal content only while in beta), and agent access over MCP for Claude Code, Cursor, VS Code and Codex.
+> Managed BookStack hosting for teams. A private BookStack wiki with hosting, maintenance, security updates, daily backups (seven-day retention) and restore help, on Hetzner infrastructure in Germany or Finland. One plan: €${PLAN.price}/month plus applicable VAT, ${PLAN.trialDays} days free without a card. Optional betas: reviewed document intake, "Ask your wiki" answers with named source pages (processing conditions documented; personal content in scope under the DPA annex 3 release — you stay the controller), and agent access over MCP for Claude Code, Cursor, VS Code and Codex.
 
 BookHost is an independent hosting service operated by productivity-boost.com Betriebs UG (haftungsbeschränkt) & Co. KG, Passau, Germany. BookStack is MIT-licensed open-source software; BookHost is not affiliated with its maintainers.
 
@@ -91,8 +91,8 @@ export function siteLlmsFullTxt() {
 BookHost hosts a private BookStack wiki for each team: hosting, maintenance, security updates, daily backups and restore help, on Hetzner infrastructure in Germany or Finland. Backups older than seven days are removed at the next daily retention run. BookHost is an independent hosting service operated by productivity-boost.com Betriebs UG (haftungsbeschränkt) & Co. KG, Passau, Germany. BookStack is MIT-licensed open-source software; BookHost is not affiliated with its maintainers.
 
 Optional betas:
-- Document intake: upload a PDF, DOCX, Markdown or TXT file, review an AI draft, and an owner or admin approves publication. Use with non-personal content only while in beta.
-- "Ask your wiki": AI answers for owners and admins that name the source page and section. Use with non-personal content only while in beta.
+- Document intake: upload a PDF, DOCX, Markdown or TXT file, review an AI draft, and an owner or admin approves publication. Processing conditions documented; personal content in scope under the DPA annex 3 release — you stay the controller.
+- "Ask your wiki": AI answers for owners and admins that name the source page and section. Processing conditions documented; personal content in scope under the DPA annex 3 release — you stay the controller.
 - Agent access over MCP: connect your own AI agents to the wiki (details below). BookHost itself sends no page content to an AI model for this feature.
 
 ## Pricing

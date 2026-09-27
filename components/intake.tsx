@@ -246,10 +246,10 @@ export function Intake({
                 retained. Scanned PDFs need OCR first.
               </p>
               <p className="mt-2 text-xs leading-5 text-amber-800">
-                Beta restriction: uploads of documents with personal data remain
-                restricted until the updated processing conditions are
-                independently verified. Until then, upload only documents
-                without personal data. See the{" "}
+                Document intake (beta): the extracted text goes to TensorX in
+                Ireland under its documented data processing agreement (details
+                in the privacy notice and the DPA); you stay the controller for
+                what you upload. See the{" "}
                 <Link className="underline" href="/legal/datenschutz">
                   privacy notice
                 </Link>

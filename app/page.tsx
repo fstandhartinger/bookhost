@@ -251,14 +251,14 @@ export default function Home() {
               checklist, then approve it as an owner or admin for BookStack.{" "}
               {DRAFT_COPY}
             </p>
-            {/* /reliability tells readers to keep personal data out of the beta
-                until the processor agreement and transfer safeguards are
-                documented. Selling the feature without that sentence invites
-                someone to upload a staff handbook on day one. */}
+            {/* Freigabe state: the vendor's processing conditions passed review on 2026-09-26; personal content is in scope per the AVV annex 3 release. Keep this text in sync with /reliability, /legal/datenschutz and /legal/avv. */}
             <p className="mt-3">
-              <strong>While the beta runs, use non-personal example documents only:</strong>{" "}
-              the data protection prerequisites for drafting with an external
-              model are not documented yet. See{" "}
+              <strong>Processing conditions documented and released:</strong>{" "}
+              uploads go to TensorX in Ireland under its data processing
+              agreement — processing in Dublin and Helsinki, zero retained
+              prompts and completions; the release for personal content is
+              recorded in our DPA annex 3, and you stay the controller for
+              what your workspace holds. See{" "}
               <a className="underline underline-offset-2" href="/reliability#limits">
                 what we do and do not promise
               </a>
@@ -315,8 +315,11 @@ export default function Home() {
               from the pages it found, and shows the page and section behind
               every result. Its AI answers are live in beta: each question and
               the passages it answers from go to TensorX (Ireland) for a written
-              answer — and the same limit applies as for intake: use the betas
-              only on workspaces without personal data. Email submission and
+              answer — under the same documented conditions as for intake
+              (processing in Dublin and Helsinki, zero retained prompts and
+              completions); the betas are released for personal content per
+              our DPA annex 3, and you stay the controller for what your
+              workspace holds. Email submission and
               answers scoped to each member&rsquo;s own BookStack permissions
               are planned with no committed release date. The document upload
               and review beta is available now.

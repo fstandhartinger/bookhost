@@ -66,7 +66,10 @@ describe("public reliability evidence", () => {
     );
     expect(pricing).toContain("Ask your wiki");
     expect(pricing).toContain("names the page and section behind every answer");
-    expect(pricing).toContain("ask only about non-personal content");
+    expect(pricing).toContain(
+      "the betas are released for personal content per our DPA annex 3",
+    );
+    expect(pricing).not.toContain("ask only about non-personal content");
   });
 
   // The wiki chat beta reaches the same external model without any upload, so
@@ -82,7 +85,10 @@ describe("public reliability evidence", () => {
     expect(flatReliability).toContain(
       "sends the question and those passages to the same external model as intake",
     );
-    expect(flatReliability).toContain("without personal data");
+    expect(flatReliability).toContain(
+      "you stay the controller for what your workspace holds",
+    );
+    expect(flatReliability).not.toContain("without personal data");
     expect(flatReliability).not.toContain("ships switched off");
     expect(flatReliability).not.toContain(
       "while it is off, asking a question sends nothing to TensorX",
@@ -96,7 +102,12 @@ describe("public reliability evidence", () => {
       flat.includes("goes to TensorX (Ireland)") ||
         flat.includes("to TensorX (Ireland) for a written answer"),
     ).toBe(true);
-    expect(flat).toContain("use the betas only on workspaces without personal data");
+    expect(flat).toContain(
+      "the betas are released for personal content per our DPA annex 3",
+    );
+    expect(flat).not.toContain(
+      "use the betas only on workspaces without personal data",
+    );
     expect(flat).toContain("answers scoped to each member");
     expect(flat).not.toContain(
       "today a question sends nothing to an external model",
@@ -126,7 +137,7 @@ describe("public reliability evidence", () => {
       " ",
     );
     expect(wikiChat).toContain(
-      "final approval of the updated processing conditions",
+      "Ask your wiki (beta): your question and the passages it answers from go to TensorX in Ireland under its documented data processing agreement",
     );
     expect(wikiChat).toContain("switched off in this deployment");
     expect(wikiChat).not.toContain("not complete yet");
@@ -160,10 +171,10 @@ describe("public reliability evidence", () => {
   it("carries the intake data-protection caveat where the beta is advertised", () => {
     const page = readFileSync("app/page.tsx", "utf8");
     expect(page).toContain("Document intake (beta) available now.");
-    expect(page).toContain("use non-personal example documents only");
+    expect(page).toContain("Processing conditions documented and released:");
     expect(page).toContain('href="/reliability#limits"');
     const reliability = readFileSync("app/reliability/page.tsx", "utf8");
-    expect(reliability).toContain("non-personal example documents");
+    expect(reliability).toContain("you stay the controller for what your workspace holds");
     expect(reliability).toContain('id="limits"');
   });
 

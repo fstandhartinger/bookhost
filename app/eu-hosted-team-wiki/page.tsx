@@ -23,7 +23,7 @@ const faqs: Faq[] = [
   {
     question: "Does any data leave the EU with BookHost?",
     answer:
-      "Wiki content and backups at Hetzner are processed in Germany and Finland. Stripe payments and optional Google sign-in can involve international processing, and transactional email is sent through Resend Inc. (USA) with EU data processing under standard contractual clauses. The AI betas use TensorX in Ireland and should only be used with non-personal content for now.",
+      "Wiki content and backups at Hetzner are processed in Germany and Finland. Stripe payments and optional Google sign-in can involve international processing, and transactional email is sent through Resend Inc. (USA) with EU data processing under standard contractual clauses. The AI betas use TensorX in Ireland under its data processing agreement, with processing in Dublin and Helsinki; nothing is sent to TensorX without using or activating those features, and you stay the controller for what your workspace holds.",
   },
   {
     question: "Where are BookHost backups stored?",
@@ -216,9 +216,9 @@ export default function EuHostedTeamWikiPage() {
             infrastructure is in Dublin and Helsinki. It also serves the
             optional semantic wiki indexing (beta), which stays off until an
             owner or admin switches it on. Nothing is sent to TensorX unless
-            someone uses or activates these features. Until the updated processing
-            conditions are independently verified, use the betas only with
-            non-personal content.
+            someone uses or activates these features. The updated processing
+            conditions are documented in our privacy policy and DPA, and you
+            stay the controller for what your workspace holds.
           </li>
         </ul>
 

@@ -37,13 +37,15 @@ pages without replacing the workspace or its account state:
 python3 ops/showcase/publish.py
 ```
 
-The command locks and targets only the exact `showcase-northwind` tenant, and upserts only the
-four named canonical pages in their two Northwind books. It does not delete other workspace
-content, users, agent history, intake drafts or the tenant. Reset temporary intake/agent material
-from the dashboard by selecting the `showcase-northwind` workspace, then rejecting/removing only
-the named showcase drafts and revoking the named showcase agent. Recreate demo drafts and the
-agent in the product UI when preparing the next capture. Keep Live Edit enabled for the two-user
-editing capture.
+The command locks and targets only the exact `showcase-northwind` tenant, validates the canonical
+URL `https://showcase-northwind.bookhost.co` stored in that tenant's private `.env`, and upserts
+only the four named canonical pages in their two Northwind books. It does not depend on the
+provisioner's current default host and does not delete other workspace content, users, agent
+history, intake drafts or the tenant. Reset
+temporary intake/agent material from the dashboard by selecting the `showcase-northwind`
+workspace, then rejecting/removing only the named showcase drafts and revoking the named
+showcase agent. Recreate demo drafts and the agent in the product UI when preparing the next
+capture. Keep Live Edit enabled for the two-user editing capture.
 
 ## Semantic Ask
 

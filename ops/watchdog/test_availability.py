@@ -90,6 +90,29 @@ class AvailabilityTests(unittest.TestCase):
         self.write(['2026-09-11T03:30:02+00:00 Host und Worker: ok — Platte=97.0%; frei=12.5 GiB'])
         self.assertIn('UNTER DER GRENZE', a.report(*a.read(self.log)))
 
+    def test_historical_floor_breach_does_not_claim_current_refusal_after_recovery(self):
+        self.write([
+            '2026-09-15T03:40:02+00:00 Host und Worker: fail — Platte=96.8%; frei=13.4 GiB',
+            '2026-09-29T05:40:02+00:00 Host und Worker: ok — Platte=80.8%; frei=79.3 GiB',
+        ])
+        text = a.report(*a.read(self.log))
+        self.assertIn('HISTORISCH UNTER DER GRENZE', text)
+        self.assertIn('2026-09-15 03:40', text)
+        self.assertIn('2026-09-29 05:40', text)
+        self.assertIn('letzter Messwert 79.3 GiB', text)
+        self.assertNotIn('Kapazitaetsschranke weist Anmeldungen ab', text)
+
+    def test_disk_trend_and_gaps_use_timestamp_order_not_file_order(self):
+        self.write([
+            '2026-09-29T04:10:02+00:00 Host und Worker: ok — Platte=80.0%; frei=79.0 GiB',
+            '2026-09-29T03:30:02+00:00 Host und Worker: fail — Platte=96.8%; frei=13.4 GiB',
+        ])
+        text = a.report(*a.read(self.log))
+        self.assertIn('zuletzt 79.0 GiB', text)
+        self.assertIn('HISTORISCH UNTER DER GRENZE', text)
+        self.assertIn('2026-09-29 03:30', text)
+        self.assertEqual(text.count('LUECKE ohne Waechterzeile'), 1)
+
     def test_without_disk_lines_nothing_is_invented(self):
         self.write(['2026-09-11T03:30:02+00:00 Backups: ok — keine'])
         self.assertNotIn('Platte frei', a.report(*a.read(self.log)))

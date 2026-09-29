@@ -2,6 +2,7 @@
 """Isolated BookStack tenant lifecycle. Never prints subprocess output or secrets."""
 import argparse, signal, hashlib, hmac, datetime, pty, select, termios, tarfile
 import base64, contextlib, fcntl, json, os, re, secrets, shlex, shutil, subprocess, sys, tempfile, time, urllib.request
+from html.parser import HTMLParser
 from urllib.parse import urlsplit
 from pathlib import Path
 ROOT = Path('/home/flori/ventures2/bookstack/tenants')
@@ -412,7 +413,10 @@ def restore_http_probe(path):
     page=sql(path,"SELECT p.id,p.name,p.slug,b.slug FROM entities p JOIN entities b ON b.id=p.book_id AND b.type='book' WHERE p.type='page' AND p.deleted_at IS NULL AND b.deleted_at IS NULL ORDER BY p.updated_at DESC,p.id DESC LIMIT 1;").splitlines()[0].split('\t')
     page_body=curl(['-fsS','http://bookstack/books/'+page[3]+'/page/'+page[2]])
     page_title=re.search(r'<title[^>]*>\s*(.*?)\s*</title>',page_body,re.I|re.S)
-    if not page_title or page[1] not in page_body:
+    heading=PageHeadingParser()
+    heading.feed(page_body)
+    heading_text=' '.join(''.join(heading.parts).split())
+    if not page_title or not page_title.group(1).strip() or ' '.join(page[1].split()) not in heading_text:
         raise RuntimeError('Restore HTTP page probe failed')
     image_url=sql(path,"SELECT url FROM images ORDER BY id LIMIT 1;")
     image_result='not-run'
@@ -423,6 +427,19 @@ def restore_http_probe(path):
             raise RuntimeError('Restore HTTP image probe failed')
         image_result='200 image/png'
     return {'login':'200 '+title.group(1).strip(),'page':'200 '+page[1],'image':image_result}
+
+class PageHeadingParser(HTMLParser):
+    """Collect visible text from h1 elements, decoding HTML character references."""
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.depth=0
+        self.parts=[]
+    def handle_starttag(self, tag, attrs):
+        if tag.lower()=='h1': self.depth+=1
+    def handle_endtag(self, tag):
+        if tag.lower()=='h1' and self.depth: self.depth-=1
+    def handle_data(self, data):
+        if self.depth: self.parts.append(data)
 
 def service_recovered(path):
     """Read-only local HTTP/DB readiness; never enable public access as restore does."""

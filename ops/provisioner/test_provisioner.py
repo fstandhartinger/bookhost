@@ -86,6 +86,36 @@ class LifecycleTests(unittest.TestCase):
                 result=tenant.restore_http_probe(path)
             self.assertEqual(result,{'login':'200 BookStack','page':'200 Fixture Page','image':'200 image/png'})
 
+    def test_restore_http_probe_accepts_html_escaped_page_name(self):
+        with tempfile.TemporaryDirectory() as d:
+            path=Path(d)/'restore-fixture'; path.mkdir()
+            def fake_run(args, data=None):
+                if args[:3]==['sudo','-n','docker'] and args[3]=='inspect':
+                    return b'{"wissen-fixture_private":{"IPAddress":"172.20.0.2"}}'
+                if 'curlimages/curl:8.10.1' in args:
+                    if any('/login' in item for item in args):
+                        return b'HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<title>BookStack</title>'
+                    return b'<title>Harbor &amp; Hearth Launch... | BookStack</title><h1>Harbor &amp; Hearth Launch Checklist</h1>'
+                return b'container-id'
+            with patch.object(tenant,'sql',side_effect=['','42\tHarbor & Hearth Launch Checklist\tharbor-hearth-launch-checklist\tnorthwind-client-projects','']), patch.object(tenant,'compose',return_value=b'container-id'), patch.object(tenant,'run',side_effect=fake_run):
+                result=tenant.restore_http_probe(path)
+            self.assertEqual(result,{'login':'200 BookStack','page':'200 Harbor & Hearth Launch Checklist','image':'not-run'})
+
+    def test_restore_http_probe_requires_page_name_in_visible_heading(self):
+        with tempfile.TemporaryDirectory() as d:
+            path=Path(d)/'restore-fixture'; path.mkdir()
+            def fake_run(args, data=None):
+                if args[:3]==['sudo','-n','docker'] and args[3]=='inspect':
+                    return b'{"wissen-fixture_private":{"IPAddress":"172.20.0.2"}}'
+                if 'curlimages/curl:8.10.1' in args:
+                    if any('/login' in item for item in args):
+                        return b'HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<title>BookStack</title>'
+                    return b'<title>Harbor &amp; Hearth Launch Checklist | BookStack</title><h1>Different page</h1><p>Harbor &amp; Hearth Launch Checklist</p>'
+                return b'container-id'
+            with patch.object(tenant,'sql',side_effect=['','42\tHarbor & Hearth Launch Checklist\tharbor-hearth-launch-checklist\tnorthwind-client-projects','']), patch.object(tenant,'compose',return_value=b'container-id'), patch.object(tenant,'run',side_effect=fake_run):
+                with self.assertRaisesRegex(RuntimeError,'Restore HTTP page probe failed'):
+                    tenant.restore_http_probe(path)
+
     def test_slug_contract(self):
         for slug in json.loads((tenant.HERE/'reserved-slugs.json').read_text())+['restore-x','restoreabc','ab','a--b','a'*31,'../foo','Foo','-foo','foo-']:
             self.assertFalse(tenant.valid_slug(slug),slug)

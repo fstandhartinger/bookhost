@@ -26,31 +26,33 @@ def read(path, since=None):
     """Return counts per check and the observed window."""
     counts = collections.Counter()
     first = last = None
-    gaps = []
-    previous = None
+    timestamps = []
     free = []
-    for raw in open(path, errors='replace'):
-        if SILENCE in raw:
-            continue
-        match = LINE.match(raw)
-        if not match:
-            continue
-        stamp, label, status = match.groups()
-        try:
-            when = datetime.datetime.fromisoformat(stamp)
-        except ValueError:
-            continue
-        if since and when < since:
-            continue
-        counts[(label.strip(), status)] += 1
-        space = FREE.search(raw)
-        if space:
-            free.append((when, float(space.group(1))))
-        first = when if first is None else min(first, when)
-        last = when if last is None else max(last, when)
-        if previous is not None and (when - previous).total_seconds() > 1800:
-            gaps.append((previous, when))
-        previous = when
+    with open(path, errors='replace') as stream:
+        for raw in stream:
+            if SILENCE in raw:
+                continue
+            match = LINE.match(raw)
+            if not match:
+                continue
+            stamp, label, status = match.groups()
+            try:
+                when = datetime.datetime.fromisoformat(stamp)
+            except ValueError:
+                continue
+            if since and when < since:
+                continue
+            counts[(label.strip(), status)] += 1
+            timestamps.append(when)
+            space = FREE.search(raw)
+            if space:
+                free.append((when, float(space.group(1))))
+            first = when if first is None else min(first, when)
+            last = when if last is None else max(last, when)
+    timestamps.sort()
+    gaps = [(previous, when) for previous, when in zip(timestamps, timestamps[1:])
+            if (when - previous).total_seconds() > 1800]
+    free.sort(key=lambda item: item[0])
     return counts, first, last, gaps, free
 
 
@@ -60,11 +62,17 @@ def disk_trend(free, floor=20.0):
         return []
     values = [gib for _, gib in free]
     low = min(free, key=lambda item: item[1])
-    lines = [f'Platte frei: zuletzt {values[-1]:.1f} GiB, '
-             f'Tiefstand {low[1]:.1f} GiB um {low[0]:%H:%M}, '
+    latest = max(free, key=lambda item: item[0])
+    lines = [f'Platte frei: zuletzt {latest[1]:.1f} GiB, '
+             f'Tiefstand {low[1]:.1f} GiB am {low[0]:%Y-%m-%d um %H:%M}, '
              f'Hoechststand {max(values):.1f} GiB, {len(values)} Messungen']
-    if low[1] < floor:
-        lines.append(f'UNTER DER GRENZE von {floor:.0f} GiB — Kapazitaetsschranke weist Anmeldungen ab')
+    if latest[1] < floor:
+        lines.append(f'LETZTE MESSUNG UNTER DER GRENZE von {floor:.0f} GiB am '
+                     f'{latest[0]:%Y-%m-%d um %H:%M} — die freie-GiB-Bedingung der Anmeldesperre war in diesem Messwert verletzt')
+    elif low[1] < floor:
+        lines.append(f'HISTORISCH UNTER DER GRENZE von {floor:.0f} GiB am '
+                     f'{low[0]:%Y-%m-%d um %H:%M}; letzter Messwert {latest[1]:.1f} GiB am '
+                     f'{latest[0]:%Y-%m-%d um %H:%M} — das historische Minimum allein bedeutet keine aktuelle Ablehnung')
     return lines
 
 

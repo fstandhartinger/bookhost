@@ -85,37 +85,84 @@ def stamp(now):
 
 
 def transition(previous, ok, now):
-    """Return candidate state and optional notification. Commit only after delivery."""
-    old = previous or {'status': 'ok', 'since': stamp(now), 'failures': 0, 'alerted': False}
+    """Return candidate state and optional notification. Commit only after delivery.
+
+    Recovery needs two consecutive OK runs while alerted: a single green pass
+    between failures used to close the incident and re-arm the alert, so one
+    flapping condition produced failure, recovery, failure messages. `oks`
+    counts consecutive OK runs; `fail_since` keeps when the current fail
+    streak began so the recovery can say how long it lasted.
+    """
+    old = previous or {'status': 'ok', 'since': stamp(now), 'failures': 0,
+                       'oks': 0, 'fail_since': stamp(now), 'alerted': False}
     status = 'ok' if ok else 'fail'
     state = {'status': status, 'since': old['since'] if old['status'] == status else stamp(now),
              'failures': 0 if ok else old.get('failures', 0) + 1,
+             'oks': old.get('oks', 0) + 1 if ok else 0,
+             'fail_since': (old.get('fail_since') or old['since']) if ok or old['status'] == 'fail'
+                           else stamp(now),
              'alerted': old.get('alerted', False)}
     event = None
     if ok:
-        if state['alerted']:
+        if state['alerted'] and state['oks'] >= 2:
             event = 'recovery'
-        state['alerted'] = False
+            state['alerted'] = False
     elif state['failures'] >= 2 and not state['alerted']:
         event = 'failure'
         state['alerted'] = True
     return state, event
 
 
-def message(label, state, event):
-    first = (f'BookHost: {label} ausgefallen seit {state["since"]}' if event == 'failure'
-             else f'BookHost: {label} wieder ok seit {state["since"]}')
-    return first + '\n' + ('Bitte Ursache prüfen.' if event == 'failure' else 'Störung beendet.') + f'\nLog: {LOG}'
+NAMES = {'Control-Plane': 'BookHost website and sign-in',
+         'Demo': 'public demo (demo.bookhost.co)',
+         'Tenant-Logins': 'customer workspace logins',
+         'Bereitstellung': 'workspace provisioning',
+         'Backups': 'tenant backups',
+         'Host und Worker': 'Sandy server capacity / provisioning worker',
+         'Dokument-Eingang': 'document intake'}
 
 
-def send(text):
-    # Never include API URL, response body, credentials or exception text in logs.
-    token, chat = os.environ['TG_BOT_TOKEN'], os.environ['TG_CHAT_ID']
-    data = urllib.parse.urlencode({'chat_id': chat, 'text': text}).encode()
-    request = urllib.request.Request(f'https://api.telegram.org/bot{token}/sendMessage', data=data)
-    with urllib.request.urlopen(request, timeout=15) as response:
-        if not json.load(response).get('ok'):
-            raise RuntimeError('Delivery rejected')
+def message(label, state, event, cause=None):
+    """English alert text; the label maps to a name an operator recognises."""
+    name = NAMES.get(label, label)
+    moment = dt.datetime.fromisoformat(state['since'])
+    if event == 'failure':
+        if cause:
+            reason = cause[:350]
+        elif state.get('detail'):
+            reason = 'Check detail: ' + state['detail'][:300]
+        else:
+            reason = 'see log'
+        return (f'BookHost: {name} failing since {moment:%H:%M} UTC {moment:%Y-%m-%d}.\n'
+                f'Cause: {reason}\nLog: {LOG}')
+    begin = dt.datetime.fromisoformat(state.get('fail_since') or state['since'])
+    return (f'BookHost: {name} OK again since {moment:%H:%M} UTC '
+            f'(failing since {begin:%H:%M} UTC).\nLog: {LOG}')
+
+
+NOTIFY = '/home/flori/bin/notify'
+URGENT = {'Control-Plane', 'Demo', 'Tenant-Logins', 'Bereitstellung'}
+
+
+def send(label, event, text):
+    """Deliver through ~/bin/notify; raises on failure so main() retries.
+
+    Every automatic message on Sandy goes through notify — the status line it
+    requires is prepended here. Customer-facing checks interrupt; the rest
+    queue in the digest so a noisy night does not wake anybody.
+    """
+    if label in URGENT:
+        argv = [NOTIFY, 'urgent', '🚨 DRINGEND\n' + text] if event == 'failure' \
+            else [NOTIFY, 'now', '✅ ERLEDIGT\n' + text]
+    else:
+        argv = [NOTIFY, 'digest', 'bookhost-watchdog', text]
+    if os.environ.get('WATCHDOG_NOTIFY_DRY_RUN'):
+        argv.insert(2, '--dry-run')
+    # Never log notify's stdout/stderr: the preview can echo message text.
+    result = subprocess.run(argv, timeout=60, capture_output=True, stdin=subprocess.DEVNULL)
+    if result.returncode:
+        raise RuntimeError('notify delivery failed')
+    return result
 
 
 def database():
@@ -494,10 +541,16 @@ def checks():
     results = {}
     def check(label, fn):
         try:
-            ok, detail = fn()
+            outcome = fn()
+            ok, detail = outcome[0], outcome[1]
             results[label] = {'ok': bool(ok), 'detail': detail}
+            if len(outcome) > 2:
+                results[label]['cause'] = outcome[2]
         except Exception:
-            results[label] = {'ok': False, 'detail': 'Prüfung fehlgeschlagen; Verbindung/Konfiguration lokal prüfen'}
+            results[label] = {'ok': False,
+                              'detail': 'Prüfung fehlgeschlagen; Verbindung/Konfiguration lokal prüfen',
+                              'cause': 'the check itself could not run '
+                                       '(connection or configuration error on Sandy)'}
     base = os.environ.get('WATCHDOG_TEST_URL', 'https://bookhost.co/healthz')
     # healthz only runs SELECT 1, so it says nothing about whether customers can
     # actually sign in. The sign-in page has to render its form as well.
@@ -578,16 +631,37 @@ def checks():
         capacity_ok, capacity = tenant_capacity_state(count, config.get('MAX_TENANTS'))
         warning = 'WARNUNG: Plattenreserve knapp; ' if percent >= config['DISK_WARN_PERCENT'] else ''
         if age is None:
-            return False, (warning + f"Platte={percent:.1f}%; frei={disk['free_gib']:.1f} GiB; "
-                           + capacity + '; Worker-Log: Alter nicht vertrauenswuerdig '
-                           '(fehlt oder Zeitstempel in der Zukunft); '
-                           + version_state(ROOT / 'bookstack-version.log', now) + '; '
-            + stripe_config_state(ROOT / 'stripe-config.log', now))
-        return percent < config['DISK_FAIL_PERCENT'] and age < 180 and capacity_ok, (
-            warning + f"Platte={percent:.1f}%; frei={disk['free_gib']:.1f} GiB; "
-            + capacity + f'; Worker-Log={age:.0f}s alt; '
-            + version_state(ROOT / 'bookstack-version.log', now) + '; '
-            + stripe_config_state(ROOT / 'stripe-config.log', now))
+            detail = (warning + f"Platte={percent:.1f}%; frei={disk['free_gib']:.1f} GiB; "
+                      + capacity + '; Worker-Log: Alter nicht vertrauenswuerdig '
+                      '(fehlt oder Zeitstempel in der Zukunft); '
+                      + version_state(ROOT / 'bookstack-version.log', now) + '; '
+                      + stripe_config_state(ROOT / 'stripe-config.log', now))
+        else:
+            detail = (warning + f"Platte={percent:.1f}%; frei={disk['free_gib']:.1f} GiB; "
+                      + capacity + f'; Worker-Log={age:.0f}s alt; '
+                      + version_state(ROOT / 'bookstack-version.log', now) + '; '
+                      + stripe_config_state(ROOT / 'stripe-config.log', now))
+        # The alert says in English which of the three sub-conditions fired;
+        # "host and worker down" sent Florian chasing a dead worker that was
+        # in fact running while only the shared disk was full.
+        causes = []
+        if percent >= config['DISK_FAIL_PERCENT']:
+            causes.append(
+                f"Sandy server disk {percent:.1f}% full (BookHost alarm limit "
+                f"{config['DISK_FAIL_PERCENT']:g}%); {disk['free_gib']:.1f} GiB free. "
+                f"New signups only stop at {config['MAX_DISK_PERCENT']:g}% or below "
+                f"{config['MIN_FREE_DISK_GB']:g} GiB free")
+        if age is None:
+            causes.append('provisioning worker log missing or has a future timestamp')
+        elif age >= 180:
+            causes.append(f'provisioning worker has not logged for {age:.0f}s')
+        if not capacity_ok:
+            causes.append(f'tenant limit reached ({capacity})')
+        cause = '; '.join(causes) or None
+        if cause and age is not None and age < 180:
+            cause += ' The provisioning worker itself is running normally.'
+        return percent < config['DISK_FAIL_PERCENT'] and age is not None and age < 180 \
+            and capacity_ok, detail, cause
     check(LABELS[5], host)
     check(LABELS[6], lambda: background_state(db))
     return results
@@ -614,7 +688,7 @@ def simulate():
             deliveries.append(event)
             print('TEST-Empfänger (nur stdout):\n' + text)
     assert deliveries == ['failure', 'recovery']
-    print('SIMULATION OK: genau eine Fehlermeldung beim zweiten Fehlerlauf und eine Erholung; keine Telegram-Anfrage')
+    print('SIMULATION OK: eine Fehlermeldung beim zweiten Fehlerlauf; Erholung erst nach dem zweiten OK-Lauf; kein Versand')
 
 
 def main():
@@ -648,10 +722,11 @@ def main():
             candidate, event = transition(state.get(label), result['ok'], time.time())
             print(f'{stamp(time.time())} {label}: {"ok" if result["ok"] else "fail"} — {result["detail"]}', flush=True)
             if event:
+                candidate['detail'] = result['detail']
                 try:
-                    send(message(label, candidate, event))
+                    send(label, event, message(label, candidate, event, result.get('cause')))
                 except Exception:
-                    print(f'{stamp(time.time())} Telegram-Zustellung fehlgeschlagen: {label}; nächster Lauf versucht erneut', flush=True)
+                    print(f'{stamp(time.time())} Benachrichtigung fehlgeschlagen: {label}; nächster Lauf versucht erneut', flush=True)
                     continue
             state[label] = candidate
             save(path, state)

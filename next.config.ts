@@ -43,7 +43,9 @@ const config: NextConfig = {
   poweredByHeader: false,
   experimental: { cpus: 2 },
   async headers() {
+    const noindex = [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
     return [
+      ...["/app", "/app/:path*", "/welcome", "/welcome/:path*", "/login", "/join/:path*"].map((source) => ({ source, headers: noindex })),
       {
         source: "/:path*",
         headers: [

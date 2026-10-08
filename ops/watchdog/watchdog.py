@@ -15,6 +15,7 @@ import sys
 import subprocess
 import tempfile
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from urllib.parse import urlsplit
@@ -237,28 +238,55 @@ ROLLBACK;
         return json.loads(result.stdout)
 
 
-def http(url, health=False, contains=None):
-    """A page counts as healthy only if it is still ours and shows its content.
-
-    Status 200 alone proved too little: urlopen follows redirects, so a proxy
-    could answer with a maintenance page, a different workspace or another site
-    entirely and the check stayed green. The final host must therefore match the
-    one we asked for, and the body must carry a marker only the real page has.
-    """
+def http_result(url, health=False, contains=None):
+    """Return the measured result, without response bodies or exception secrets."""
     start = time.monotonic()
+    endpoint = urlsplit(url).path or '/'
+    def result(ok, reason):
+        return ok, f'{endpoint}: {reason}; elapsed={time.monotonic() - start:.3f}s'
     request = urllib.request.Request(url, headers={'User-Agent': 'BookHost-Operator-Watchdog/1.0'})
-    with urllib.request.urlopen(request, timeout=5) as response:
-        if response.status != 200:
-            return False
-        if urlsplit(response.geturl()).hostname != urlsplit(url).hostname:
-            return False
-        if health:
-            body = json.loads(response.read(65536))
-            return body.get('db') is True and time.monotonic() - start < 5
-        if contains is not None:
-            body = response.read(262144).decode('utf-8', 'replace')
-            return contains in body
-        return True
+    try:
+        with urllib.request.urlopen(request, timeout=5) as response:
+            if response.status != 200:
+                return result(False, f'HTTP {response.status}')
+            if urlsplit(response.geturl()).hostname != urlsplit(url).hostname:
+                return result(False, 'HTTP 200; unexpected final host')
+            if health:
+                try:
+                    body = json.loads(response.read(65536))
+                except (ValueError, UnicodeError):
+                    return result(False, 'HTTP 200; invalid health JSON')
+                if not isinstance(body, dict) or body.get('db') is not True:
+                    return result(False, 'HTTP 200; db is not true')
+                if time.monotonic() - start >= 5:
+                    return result(False, 'HTTP 200; db=true; health latency >=5s')
+                return result(True, 'HTTP 200; db=true; health latency <5s')
+            if contains is not None:
+                body = response.read(262144).decode('utf-8', 'replace')
+                if contains not in body:
+                    return result(False, 'HTTP 200; required page marker missing')
+                return result(True, 'HTTP 200; required page marker present')
+            return result(True, 'HTTP 200')
+    except urllib.error.HTTPError as exc:
+        return result(False, f'HTTP {exc.code}')
+    except Exception as exc:
+        # Never include exception text: it can contain proxy credentials or data.
+        return result(False, f'probe unavailable ({type(exc).__name__})')
+
+
+def http(url, health=False, contains=None):
+    # Preserve the boolean contract used by demo and workspace checks.
+    return http_result(url, health=health, contains=contains)[0]
+
+
+def control_plane_state(base):
+    health_ok, health_detail = http_result(base, health=True)
+    if not health_ok:
+        return False, health_detail, health_detail
+    login = base.replace('/healthz', '/login')
+    login_ok, login_detail = http_result(login, contains='name="password"')
+    detail = health_detail + '; ' + login_detail
+    return login_ok, detail, None if login_ok else login_detail
 
 
 # A backup that the watchdog counts must look like a backup, not merely carry
@@ -554,10 +582,7 @@ def checks():
     base = os.environ.get('WATCHDOG_TEST_URL', 'https://bookhost.co/healthz')
     # healthz only runs SELECT 1, so it says nothing about whether customers can
     # actually sign in. The sign-in page has to render its form as well.
-    login_probe = base.replace('/healthz', '/login')
-    check(LABELS[0], lambda: (
-        http(base, True) and http(login_probe, contains='name="password"'),
-        'HTTP 200, db=true, <5s, Anmeldeformular vorhanden'))
+    check(LABELS[0], lambda: control_plane_state(base))
     # The public demo is what visitors see; follow its configured host, not a fixed one.
     demo_url = os.environ.get('DEMO_URL', 'https://demo.bookhost.co')
     check(LABELS[1], lambda: (

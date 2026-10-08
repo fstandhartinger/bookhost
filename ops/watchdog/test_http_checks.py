@@ -65,3 +65,46 @@ class HttpCheckTests(unittest.TestCase):
     def test_non_200_is_not_healthy(self):
         with answering(FakeResponse(b'<input name="password">', status=503)):
             self.assertFalse(w.http('https://bookhost.co/login', contains='name="password"'))
+
+
+class ControlPlaneDetailTests(unittest.TestCase):
+    def test_slow_healthy_body_reports_latency_failure(self):
+        response = FakeResponse(b'{"db":true}', url='https://bookhost.co/healthz')
+        with answering(response), mock.patch.object(w.time, 'monotonic', side_effect=[0, 5.2, 5.2]):
+            ok, detail, cause = w.control_plane_state('https://bookhost.co/healthz')
+        self.assertFalse(ok)
+        self.assertIn('health latency >=5s', cause)
+        self.assertIn('elapsed=5.200s', detail)
+        self.assertNotIn('marker present', detail)
+
+    def test_missing_form_reports_login_failure(self):
+        responses = [FakeResponse(b'{"db":true}', url='https://bookhost.co/healthz'),
+                     FakeResponse(b'<h1>Maintenance</h1>')]
+        with mock.patch.object(w.urllib.request, 'urlopen', side_effect=responses):
+            ok, detail, cause = w.control_plane_state('https://bookhost.co/healthz')
+        self.assertFalse(ok)
+        self.assertIn('/login: HTTP 200; required page marker missing', cause)
+        self.assertNotIn('marker present', detail)
+
+    def test_timeout_reason_does_not_expose_exception_text(self):
+        with mock.patch.object(w.urllib.request, 'urlopen', side_effect=TimeoutError('SECRET')):
+            ok, detail, cause = w.control_plane_state('https://bookhost.co/healthz')
+        self.assertFalse(ok)
+        self.assertIn('TimeoutError', cause)
+        self.assertNotIn('SECRET', detail)
+
+    def test_healthy_probes_report_both_measurements(self):
+        responses = [FakeResponse(b'{"db":true}', url='https://bookhost.co/healthz'),
+                     FakeResponse(b'<input name="password">')]
+        with mock.patch.object(w.urllib.request, 'urlopen', side_effect=responses):
+            ok, detail, cause = w.control_plane_state('https://bookhost.co/healthz')
+        self.assertTrue(ok)
+        self.assertEqual(detail.count('elapsed='), 2)
+        self.assertIsNone(cause)
+
+    def test_db_failure_reports_actual_db_predicate(self):
+        with answering(FakeResponse(b'{"db":false}', url='https://bookhost.co/healthz')):
+            ok, detail, cause = w.control_plane_state('https://bookhost.co/healthz')
+        self.assertFalse(ok)
+        self.assertIn('db is not true', cause)
+        self.assertNotIn('db=true', detail)

@@ -10,10 +10,15 @@ vi.mock("@/lib/intake/access", async (original) => ({
 }));
 vi.mock("@/lib/chat/quota", () => ({ chatQuota: vi.fn(), refundChat: vi.fn() }));
 vi.mock("@/lib/chat/ask", () => ({ aiEnabled: vi.fn(), askWiki: vi.fn() }));
+vi.mock("@/lib/security", async (original) => ({
+  ...(await original<typeof import("@/lib/security")>()),
+  rateLimit: vi.fn(async () => true),
+}));
 import { auth } from "@/auth";
 import { clientFor, workspace } from "@/lib/intake/access";
 import { chatQuota, refundChat } from "@/lib/chat/quota";
 import { aiEnabled, askWiki } from "@/lib/chat/ask";
+import { rateLimit } from "@/lib/security";
 import { POST } from "@/app/api/chat/route";
 
 const request = (payload: unknown) =>
@@ -25,6 +30,7 @@ const request = (payload: unknown) =>
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(rateLimit).mockResolvedValue(true);
   vi.mocked(auth).mockResolvedValue({ user: { id: "user" } } as never);
   vi.mocked(workspace).mockResolvedValue({
     id: "tenant",
@@ -97,4 +103,16 @@ it("validates the question before touching the workspace", async () => {
   const response = await POST(request({ tenant: "tenant", question: "hi" }));
   expect(response.status).toBe(400);
   expect(workspace).not.toHaveBeenCalled();
+});
+
+it("refuses a burst of questions before spending the allowance", async () => {
+  vi.mocked(aiEnabled).mockReturnValue(true);
+  vi.mocked(rateLimit).mockResolvedValueOnce(false);
+  const response = await POST(
+    request({ tenant: "tenant", question: "Where is the bike parking?" }),
+  );
+  expect(response.status).toBe(429);
+  expect(chatQuota).not.toHaveBeenCalled();
+  expect(askWiki).not.toHaveBeenCalled();
+  expect(vi.mocked(rateLimit).mock.calls[0]).toEqual(["chat-user:user", 20, 60]);
 });

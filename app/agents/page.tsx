@@ -67,7 +67,7 @@ export default function AgentsDocsPage() {
     <>
       <JsonLd data={breadcrumb} />
       <article className="section mx-auto max-w-3xl">
-        <p className="eyebrow">AGENT ACCESS · MCP · BETA</p>
+        <p className="eyebrow">AGENT ACCESS · MCP · AVAILABLE NOW</p>
         <h1>{title}</h1>
         <p className="lede">
           Every BookHost workspace has its own MCP server. Coding and chat
@@ -77,8 +77,11 @@ export default function AgentsDocsPage() {
           existing permissions decide what it sees.
         </p>
         <p className="mt-5 text-sm text-muted">
-          Beta. Client instructions checked against each client&rsquo;s own
-          documentation on <time dateTime={AGENT_DOCS_CHECKED}>{checked}</time>.
+          Included in every workspace. Tested end to end with Claude Code, the
+          Codex CLI and Claude Desktop&rsquo;s mcp-remote bridge on 12 October
+          2026; client instructions checked against
+          each client&rsquo;s own documentation on{" "}
+          <time dateTime={AGENT_DOCS_CHECKED}>{checked}</time>.
         </p>
 
         <div className="prose-guide mt-12">

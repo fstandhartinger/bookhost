@@ -74,7 +74,7 @@ describe("public wording matches implemented behaviour", () => {
   it("A01 app/reliability/page.tsx 12", async () => {
     const text = await readFile("app/reliability/page.tsx", "utf8");
     expect(text).not.toContain("Document intake is a beta feature. AI processing remains disabled\n              while we do not have a documented data processing agreement with\n              the model provider and the required safeguards for international\n              transfers. See our");
-    expect(text).toContain("Document intake is available in beta. Each upload sends extracted text,\n              not the original file, to TensorX (Ireland) for AI drafting. Source text is removed on");
+    expect(text).toContain("Document intake is available. Each upload sends extracted text,\n              not the original file, to TensorX (Ireland) for AI drafting. Source text is removed on");
   });
   it("A07 content/legal/avv.md 13", async () => {
     const text = await readFile("content/legal/avv.md", "utf8");

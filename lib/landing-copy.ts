@@ -10,7 +10,7 @@ export const faqs = [
   ],
   [
     "Where is our data hosted?",
-    "Our core hosting and backups use Hetzner infrastructure in Germany or Finland, within the EU. This does not mean every service processes data only in the EU: Stripe payments and optional Google sign-in can involve international processing. Document intake (beta) sends the text of each uploaded document to our EU AI provider TensorX (Ireland) when your team requests a draft, under the processing terms described in our German privacy notice and data processing agreement; TensorX's documented GPU infrastructure is in Dublin and Helsinki.",
+    "Our core hosting and backups use Hetzner infrastructure in Germany or Finland, within the EU. This does not mean every service processes data only in the EU: Stripe payments and optional Google sign-in can involve international processing. The AI features use our EU AI provider TensorX (Ireland): document intake sends the text of each uploaded document when your team requests a draft, AI search sends a question and the passages it answers from, and matching by meaning (opt-in) sends page text to build the search index, under the processing terms described in our German privacy notice and data processing agreement; TensorX's documented GPU infrastructure is in Dublin and Helsinki.",
   ],
   [
     "What happens if we need a backup restored?",
@@ -30,15 +30,19 @@ export const faqs = [
   ],
   [
     "How does document intake work?",
-    `Document intake is available now in beta. Upload a PDF, DOCX, Markdown or TXT file to get a draft with a summary, tags and a reviewer checklist. Check and edit the suggestion; only a team owner or admin can approve publication to BookStack. ${DRAFT_COPY} Files can be up to 10 MB and 60,000 extracted characters; scanned PDFs need OCR first. AI output can contain mistakes.`,
+    `Document intake is available now. Upload a PDF, DOCX, Markdown or TXT file to get a draft with a summary, tags and a reviewer checklist. Check and edit the suggestion; only a team owner or admin can approve publication to BookStack. ${DRAFT_COPY} Files can be up to 10 MB and 60,000 extracted characters; scanned PDFs need OCR first. AI output can contain mistakes.`,
   ],
   [
     "Who can see drafts, and what is still planned?",
-    "Intake is a shared inbox for your BookHost dashboard team: all team members can see its drafts and available destinations. It does not mirror each person's BookStack permissions. Only workspace owners/admins can publish; members can upload and review. BookStack page permissions apply after publication. A beta \"Ask your wiki\" is available now to workspace owners and admins: it finds the matching pages and shows the page and section behind each one. The beta already writes its answers with AI and names the source page and section behind every answer. Email intake and answers scoped to each member's own BookStack permissions are planned and are not available today. There is no committed release date for the planned parts.",
+    "Intake is a shared inbox for your BookHost dashboard team: all team members can see its drafts and available destinations. It does not mirror each person's BookStack permissions. Only workspace owners/admins can publish; members can upload and review. BookStack page permissions apply after publication. AI search (\"Ask your wiki\") is available now to workspace owners and admins: it finds the matching pages, writes its answer with AI and names the source page and section behind every answer. Email intake, answers scoped to each member's own BookStack permissions and OAuth sign-in for web connectors are planned and are not available today. Matching by meaning and Live Edit are in beta. There is no committed release date for the planned parts.",
   ],
   [
     "Can AI agents such as Claude Code or Cursor use our wiki?",
-    "Yes, in beta. Every workspace has an MCP endpoint that Claude Code, Cursor, VS Code and the Codex CLI can connect to; Claude Desktop works through the mcp-remote bridge. Owners and admins create an agent user with a BookStack role in the dashboard, so BookStack permissions decide what the agent can read and change. By default, agent edits wait in the review queue for an owner or admin; direct edits can be allowed per workspace. BookHost does not send page content to an AI model for this feature; it goes only to the agent you connect. Claude.ai web connectors and ChatGPT connectors need OAuth sign-in, which is planned and not available yet. Setup: https://bookhost.co/agents",
+    "Yes. Every workspace has an MCP endpoint that Claude Code, Cursor, VS Code and the Codex CLI can connect to; Claude Desktop works through the mcp-remote bridge. Owners and admins create an agent user with a BookStack role in the dashboard, so BookStack permissions decide what the agent can read and change. By default, agent edits wait in the review queue for an owner or admin; direct edits can be allowed per workspace. BookHost does not send page content to an AI model for this feature; it goes only to the agent you connect. Claude.ai web connectors and ChatGPT connectors need OAuth sign-in, which is planned and not available yet. Setup: https://bookhost.co/agents",
+  ],
+  [
+    "Are the AI features included in the price?",
+    "Yes. AI search with sources, MCP agent access and AI drafts are included in the €39/month plan for every workspace, within the monthly allowances shown on the pricing page. There is no separate AI add-on. Details, limits and data handling: https://bookhost.co/ai",
   ],
   [
     "Do I need a card for the trial, and will I be charged automatically?",
@@ -63,7 +67,7 @@ export const benefits = [
   [
     "03",
     "Review before it becomes team knowledge",
-    `Document intake is available now (beta). Upload a document, check its suggested summary, tags and reviewer checklist, then have a team owner or admin approve the page for BookStack. ${DRAFT_COPY}`,
+    `Document intake with AI drafts is available now. Upload a document, check its suggested summary, tags and reviewer checklist, then have a team owner or admin approve the page for BookStack. ${DRAFT_COPY}`,
   ],
 ];
 export const steps = [
@@ -75,7 +79,7 @@ export const steps = [
   [
     "1",
     "Upload a document",
-    "Start a workspace with a 14-day free trial, then upload a PDF, DOCX, Markdown or TXT file and choose a destination book. Document intake is available now in beta.",
+    "Start a workspace with a 14-day free trial, then upload a PDF, DOCX, Markdown or TXT file and choose a destination book. The AI writes a draft page for you.",
   ],
   [
     "2",

@@ -44,7 +44,7 @@ export default async function AgentsPage({
       <Link href="/app" className="text-sm underline">
         ← Your workspace
       </Link>
-      <p className="eyebrow mt-8">AGENTS · BETA</p>
+      <p className="eyebrow mt-8">AGENTS · MCP</p>
       <h1 className="text-4xl">
         Let AI agents work in your wiki — with you in control.
       </h1>

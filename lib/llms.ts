@@ -14,7 +14,7 @@ export function siteLlmsTxt() {
   const url = (path: string) => `${PUBLIC_BASE_URL}${path}`;
   const body = `# BookHost
 
-> Managed BookStack hosting for teams. A private BookStack wiki with hosting, maintenance, security updates, daily backups (seven-day retention) and restore help, on Hetzner infrastructure in Germany or Finland. One plan: €${PLAN.price}/month plus applicable VAT, ${PLAN.trialDays} days free without a card. Optional betas: reviewed document intake, "Ask your wiki" answers with named source pages (processing conditions documented; personal content in scope under the DPA annex 3 release — you stay the controller), and agent access over MCP for Claude Code, Cursor, VS Code and Codex.
+> Managed BookStack hosting for teams. A private BookStack wiki with hosting, maintenance, security updates, daily backups (seven-day retention) and restore help, on Hetzner infrastructure in Germany or Finland. One plan: €${PLAN.price}/month plus applicable VAT, ${PLAN.trialDays} days free without a card. AI included in the plan: AI drafts from uploaded documents with owner/admin approval, "Ask your wiki" answers with named source pages (processing by TensorX in Ireland; personal content in scope under the DPA annex 3 release — you stay the controller), and agent access over MCP for Claude Code, Cursor, VS Code, Codex and Claude Desktop. Beta: matching by meaning (opt-in) and Live Edit.
 
 BookHost is an independent hosting service operated by productivity-boost.com Betriebs UG (haftungsbeschränkt) & Co. KG, Passau, Germany. BookStack is MIT-licensed open-source software; BookHost is not affiliated with its maintainers.
 
@@ -23,10 +23,11 @@ BookHost is an independent hosting service operated by productivity-boost.com Be
 - [Pricing](${url("/pricing")}): the Team plan, limits and trial terms
 - [Move your existing BookStack](${url("/migrate")}): what we need, what we migrate, how cutover works
 - [Backups, reliability and current limits](${url("/reliability")}): what we promise and what we do not
+- [AI features](${url("/ai")}): what is available, beta and planned; limits and EU data handling
 - [Live demo](https://demo.bookhost.co): a read-only BookStack workspace
 
 ## Connect your agent
-- MCP endpoint (Streamable HTTP): https://<workspace>.bookhost.co/mcp — one per workspace, beta
+- MCP endpoint (Streamable HTTP): https://<workspace>.bookhost.co/mcp — one per workspace
 - Authentication: \`Authorization: Bearer <token id>:<token secret>\` — a BookStack API token of a user in that workspace whose role has "Access system API". Owners and admins create a dedicated agent user and token in the dashboard.
 - Every call acts as that BookStack user; BookStack permissions apply. A token works only on its own workspace.
 - Write mode per workspace: Off, Propose only (default: edits wait for owner/admin approval) or Direct.
@@ -85,12 +86,12 @@ export function siteLlmsFullTxt() {
 
   return `# BookHost — full documentation
 
-> Managed BookStack hosting for teams, with agent access over MCP (beta). This file contains the product summary, pricing, limits and the complete agent documentation in one place. The short map is at ${url("/llms.txt")}.
+> Managed BookStack hosting for teams, with AI search with sources, AI drafts with approval and agent access over MCP. This file contains the product summary, pricing, limits and the complete agent documentation in one place. The short map is at ${url("/llms.txt")}.
 
 ## Product
 BookHost hosts a private BookStack wiki for each team: hosting, maintenance, security updates, daily backups and restore help, on Hetzner infrastructure in Germany or Finland. Backups older than seven days are removed at the next daily retention run. BookHost is an independent hosting service operated by productivity-boost.com Betriebs UG (haftungsbeschränkt) & Co. KG, Passau, Germany. BookStack is MIT-licensed open-source software; BookHost is not affiliated with its maintainers.
 
-Optional betas:
+AI features (included in the plan; details at ${url("/ai")}):
 - Document intake: upload a PDF, DOCX, Markdown or TXT file, review an AI draft, and an owner or admin approves publication. Processing conditions documented; personal content in scope under the DPA annex 3 release — you stay the controller.
 - "Ask your wiki": AI answers for owners and admins that name the source page and section. Processing conditions documented; personal content in scope under the DPA annex 3 release — you stay the controller.
 - Agent access over MCP: connect your own AI agents to the wiki (details below). BookHost itself sends no page content to an AI model for this feature.
@@ -108,7 +109,7 @@ Optional betas:
 - Agent access, per token: 120 requests per minute, 1,500 per hour, 60 writes per hour.
 - Fair use applies to CPU and database resources.
 
-## Agent access (MCP, beta)
+## Agent access (MCP)
 Client instructions checked against each client's documentation on ${AGENT_DOCS_CHECKED}.
 
 ### Endpoint and authentication

@@ -11,6 +11,7 @@ import { chatQuota, refundChat } from "@/lib/chat/quota";
 import { aiEnabled, askWiki } from "@/lib/chat/ask";
 import { semanticEnabled } from "@/lib/chat/embeddings";
 import { startWikiIndexBackfill } from "@/lib/chat/indexing";
+import { rateLimit } from "@/lib/security";
 
 export async function POST(request: Request) {
   try {
@@ -28,13 +29,23 @@ export async function POST(request: Request) {
     if (question.length < 3 || question.length > 500)
       throw new IntakeError("Enter a question between 3 and 500 characters.");
     const tenant = await workspace(session.user.id, tenantId);
-    // The workspace API token reads every page, so this beta is limited to the
+    // The workspace API token reads every page, so asking is limited to the
     // people who can already read every page. Member-scoped answers need the
     // requester's own BookStack permissions and are not available yet.
     if (!["owner", "admin"].includes(tenant.role))
       throw new IntakeError(
-        "Only workspace owners and admins can ask the wiki in this beta.",
+        "Only workspace owners and admins can ask the wiki.",
         403,
+      );
+    // Burst guard on top of the monthly allowance: a script or a stuck client
+    // cannot drain the workspace's questions (or provider spend) in minutes.
+    if (
+      !(await rateLimit(`chat-user:${session.user.id}`, 20, 60)) ||
+      !(await rateLimit(`chat-team:${tenant.team_id}`, 200, 3600))
+    )
+      throw new IntakeError(
+        "Too many questions in a short time. Try again in a minute.",
+        429,
       );
     // Passage retrieval is free; only AI synthesis counts against the allowance.
     const quota = aiEnabled()

@@ -164,7 +164,7 @@ export default function Reliability() {
               {/* AI answers are enabled in this deployment (WIKI_CHAT_LLM=1).
                   Keep this text in sync with the flag: if the flag is removed,
                   this text must go back to saying synthesis is switched off. */}
-              &ldquo;Ask your wiki&rdquo; is available in beta to workspace owners
+              &ldquo;Ask your wiki&rdquo; is available to workspace owners
               and admins. It searches your own pages and shows the passages it
               found. Its AI answers are live: asking a question sends the
               question and those passages to the same external model as intake —
@@ -174,7 +174,7 @@ export default function Reliability() {
               you stay the controller for what your workspace holds.
             </p>
             <p>
-              Document intake is available in beta. Each upload sends extracted text,
+              Document intake is available. Each upload sends extracted text,
               not the original file, to TensorX (Ireland) for AI drafting. Source text is removed on
               publication or rejection; intake records and drafts are deleted
               after 30 days from creation in the next hourly cleanup. TensorX&rsquo;s

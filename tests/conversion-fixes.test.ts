@@ -38,11 +38,11 @@ describe("conversion guidance", () => {
   });
 });
 
-it("shows the upload panel's processing-conditions note for the AI beta", async () => {
+it("shows the upload panel's processing-conditions note for AI drafts", async () => {
   const source = await import("node:fs/promises").then((fs) =>
     fs.readFile("components/intake.tsx", "utf8"),
   );
-  expect(source).toContain("Document intake (beta)");
+  expect(source).toContain("Document intake: the extracted text goes to TensorX");
   expect(source).toMatch(/you stay the controller for\s+what you upload/);
   expect(source).toContain("/legal/datenschutz");
 });

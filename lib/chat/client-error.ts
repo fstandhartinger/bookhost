@@ -65,7 +65,7 @@ export function failureForStatus(status: number): ChatFailure {
     case 403:
       return {
         message:
-          "Only workspace owners and admins can ask the wiki in this beta. Please ask a workspace owner or admin to try.",
+          "Only workspace owners and admins can ask the wiki. Please ask a workspace owner or admin to try.",
         retry: false,
       };
     case 404:

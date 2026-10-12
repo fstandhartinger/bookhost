@@ -83,6 +83,7 @@ const footerColumns: [string, [string, string][]][] = [
     [
       ["/#features", "Features"],
       ["/pricing", "Pricing"],
+      ["/ai", "AI features"],
       [DEMO_URL, "Live demo"],
       ["/migrate", "Move your BookStack"],
       ["/agents", "Agents (MCP)"],
@@ -143,6 +144,9 @@ export default function RootLayout({
             <div className="hidden items-center gap-7 text-sm text-muted md:flex">
               <Link href="/#features" className="transition hover:text-ink">
                 Features
+              </Link>
+              <Link href="/ai" className="transition hover:text-ink">
+                AI
               </Link>
               <Link href="/migrate" className="transition hover:text-ink">
                 Migrate

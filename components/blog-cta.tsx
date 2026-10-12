@@ -12,7 +12,8 @@ export default function BlogCta() {
         A home for your team’s knowledge.
       </h2>
       <p className="mt-4 leading-relaxed text-slate-600">
-        Hosted BookStack with reviewed document intake in beta. Team is
+        Hosted BookStack with AI search with sources, MCP access for your AI
+        agents and AI drafts you approve. Team is
         €39/month plus applicable VAT. {MEMBER_COPY} {STORAGE_COPY}
         Try it for 14 days without a card.
       </p>

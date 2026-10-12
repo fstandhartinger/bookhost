@@ -44,7 +44,7 @@ export default async function ChatPage({
       <Link href="/app" className="text-sm underline">
         ← Your workspace
       </Link>
-      <p className="eyebrow mt-8">ASK YOUR WIKI · BETA</p>
+      <p className="eyebrow mt-8">ASK YOUR WIKI · AI SEARCH</p>
       <h1 className="text-4xl">Answers with their sources attached.</h1>
       <p className="mt-4 max-w-2xl text-slate-600">
         Ask a question in your own words. BookHost finds the matching pages in
@@ -59,7 +59,7 @@ export default async function ChatPage({
         </p>
       ) : !canAsk ? (
         <p className="price-card mt-8">
-          This beta is open to workspace owners and admins, because the
+          Asking the wiki is open to workspace owners and admins, because the
           workspace API token reads every page. Answers scoped to each
           member&rsquo;s own BookStack permissions are planned.
         </p>

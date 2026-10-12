@@ -9,6 +9,7 @@ import { Pricing } from "@/components/pricing";
 import { WikiChatDemo } from "@/components/wiki-chat-demo";
 import { faqs, benefits, steps } from "@/lib/landing-copy";
 import { DEMO_URL } from "@/lib/config";
+import { AI_FEATURES } from "@/lib/ai-features";
 import Link from "next/link";
 
 const icons: Record<string, React.ReactNode> = {
@@ -111,6 +112,16 @@ export default function Home() {
           run the server, apply the updates and keep daily backups with restore
           help. One flat price: €39/month plus VAT.
         </p>
+        <p className="mx-auto mt-4 max-w-2xl text-sm text-muted">
+          <span className="font-medium text-ink">AI included:</span> search
+          with sources, MCP access for your AI agents and drafts you approve.{" "}
+          <Link
+            href="/ai"
+            className="font-medium text-ink underline decoration-moss/40 underline-offset-4 hover:decoration-moss"
+          >
+            See the AI features
+          </Link>
+        </p>
         <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row sm:items-start">
           <ActionButton className="button w-full sm:w-auto">
             Start 14-day free trial
@@ -185,6 +196,35 @@ export default function Home() {
         ))}
       </section>
 
+      <section id="ai" aria-labelledby="ai-heading" className="defer section scroll-mt-20">
+        <div className="max-w-2xl">
+          <p className="eyebrow">AI in every workspace · included</p>
+          <h2 id="ai-heading">AI that shows its sources and waits for your approval.</h2>
+          <p className="mt-5 text-sm leading-7 text-muted">
+            Included in the €39 plan, for every workspace. AI processing runs
+            on TensorX in Ireland with zero retained prompts; BookStack
+            permissions and human review stay in charge.
+          </p>
+        </div>
+        <div className="mt-12 grid gap-5 md:grid-cols-3">
+          {AI_FEATURES.map((feature) => (
+            <article key={feature.id} className="card flex flex-col">
+              <span className="w-fit rounded-full bg-moss/10 px-2.5 py-0.5 text-xs font-medium text-moss">
+                Available now
+              </span>
+              <h3 className="mt-5 text-lg font-semibold">{feature.title}</h3>
+              <p className="mt-3 text-sm leading-6 text-muted">{feature.summary}</p>
+              <Link
+                href={feature.href}
+                className="mt-auto inline-block pt-4 text-sm font-medium text-ink underline decoration-moss/40 underline-offset-4 hover:decoration-moss"
+              >
+                How it works →
+              </Link>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section id="features" className="defer section scroll-mt-20">
         <div className="max-w-2xl">
           <p className="eyebrow">Why teams pick BookHost</p>
@@ -237,7 +277,7 @@ export default function Home() {
       <section id="see-it-work" className="defer border-t border-ink/10 py-16 md:py-24">
         <div className="grid gap-10 lg:grid-cols-[1fr_1.1fr] lg:items-end">
           <div>
-            <p className="eyebrow">Document intake · available now in beta</p>
+            <p className="eyebrow">AI drafts with approval · available now</p>
             <h2>Turn a document into a reviewed wiki page.</h2>
             <p className="lede">
               A real upload, AI draft and published page from our demo
@@ -246,7 +286,7 @@ export default function Home() {
           </div>
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900">
             <p>
-              <strong>Document intake (beta) available now.</strong> Upload a
+              <strong>Document intake is available now.</strong> Upload a
               document, review the draft with its summary, tags and reviewer
               checklist, then approve it as an owner or admin for BookStack.{" "}
               {DRAFT_COPY}
@@ -298,7 +338,7 @@ export default function Home() {
             />
           </a>
           <figcaption className="mt-4 text-center text-xs text-faint">
-            A real beta draft in review · Human approval required · Click to
+            A real draft in review · Human approval required · Click to
             enlarge
           </figcaption>
         </figure>
@@ -307,22 +347,20 @@ export default function Home() {
       <section className="defer relative mb-4 overflow-hidden rounded-3xl border border-ink/10 bg-sunken px-5 py-12 sm:px-10 md:py-16">
         <div className="grid gap-10 lg:grid-cols-[1fr_1.15fr] lg:items-start">
           <div>
-            <p className="eyebrow">Ask your wiki · available now in beta</p>
+            <p className="eyebrow">AI search with sources · available now</p>
             <h2>Ask a question. Get the page it came from.</h2>
             <p className="mt-5 text-sm leading-7 text-muted">
-              &ldquo;Ask your wiki&rdquo; is available now in beta to workspace
-              owners and admins: it searches your own workspace, answers only
-              from the pages it found, and shows the page and section behind
-              every result. Its AI answers are live in beta: each question and
-              the passages it answers from go to TensorX (Ireland) for a written
-              answer — under the same documented conditions as for intake
-              (processing in Dublin and Helsinki, zero retained prompts and
-              completions); the betas are released for personal content per
-              our DPA annex 3, and you stay the controller for what your
-              workspace holds. Email submission and
-              answers scoped to each member&rsquo;s own BookStack permissions
-              are planned with no committed release date. The document upload
-              and review beta is available now.
+              &ldquo;Ask your wiki&rdquo; is available now to workspace owners
+              and admins: it searches your own workspace, answers only from the
+              pages it found, and shows the page and section behind every
+              result. Each question and the passages it answers from go to
+              TensorX (Ireland) for a written answer — under the same documented
+              conditions as for intake (processing in Dublin and Helsinki, zero
+              retained prompts and completions); TensorX use for personal
+              content is covered by annex 3 of our DPA, and you stay the
+              controller for what your workspace holds. Answers scoped to each
+              member&rsquo;s own BookStack permissions are planned with no
+              committed release date.
             </p>
           </div>
           <div>
@@ -362,7 +400,7 @@ export default function Home() {
       <section id="agents" className="defer scroll-mt-20 border-t border-ink/10 py-16 md:py-24">
         <div className="grid gap-10 lg:grid-cols-[1fr_1.15fr] lg:items-start">
           <div>
-            <p className="eyebrow">Agent access · beta</p>
+            <p className="eyebrow">Agent access · MCP · available now</p>
             <h2>Human-agent collaboration wiki.</h2>
             <p className="mt-5 text-sm leading-7 text-muted">
               Connect Claude Code, Cursor, VS Code or Codex over MCP. Agents use

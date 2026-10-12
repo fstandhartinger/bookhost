@@ -343,7 +343,7 @@ export function WikiChat({
           </a>
         </p>
         <p className="text-xs leading-5 text-amber-800">
-          Ask your wiki (beta): your question and the passages it answers from
+          Ask your wiki: your question and the passages it answers from
           go to TensorX in Ireland under its documented data processing
           agreement; you stay the controller for your content. See the{" "}
           <Link className="underline" href="/legal/datenschutz">

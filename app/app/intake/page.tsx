@@ -60,7 +60,7 @@ export default async function IntakePage({
         role={role}
         compact
       />
-      <p className="eyebrow mt-8">DOCUMENT INTAKE · BETA</p>
+      <p className="eyebrow mt-8">DOCUMENT INTAKE · AI DRAFTS</p>
       <h1 className="text-4xl">Turn documents into shared knowledge.</h1>
       <p className="mt-4 max-w-2xl text-slate-600">
         Upload a document, review the AI suggestion, then publish it to

@@ -67,7 +67,7 @@ describe("public reliability evidence", () => {
     expect(pricing).toContain("Ask your wiki");
     expect(pricing).toContain("page and section behind every answer");
     expect(pricing).toContain(
-      "the betas are released for personal content per our DPA annex 3",
+      "TensorX use for personal content is covered by annex 3 of our DPA",
     );
     expect(pricing).not.toContain("ask only about non-personal content");
     expect(pricing.split("behind every answer").length - 1).toBe(1);
@@ -100,18 +100,18 @@ describe("public reliability evidence", () => {
     const home = readFileSync("app/page.tsx", "utf8");
     // JSX wraps the sentence across lines; compare on the collapsed text.
     const flat = home.replace(/\s+/g, " ");
-    expect(flat).toContain("Its AI answers are live in beta");
+    expect(flat).toContain("Each question and the passages it answers from go to TensorX (Ireland) for a written answer");
     expect(
       flat.includes("goes to TensorX (Ireland)") ||
         flat.includes("to TensorX (Ireland) for a written answer"),
     ).toBe(true);
     expect(flat).toContain(
-      "the betas are released for personal content per our DPA annex 3",
+      "TensorX use for personal content is covered by annex 3 of our DPA",
     );
     expect(flat).not.toContain(
       "use the betas only on workspaces without personal data",
     );
-    expect(flat).toContain("answers scoped to each member");
+    expect(flat).toMatch(/answers scoped to each member/i);
     expect(flat).not.toContain(
       "today a question sends nothing to an external model",
     );
@@ -123,7 +123,7 @@ describe("public reliability evidence", () => {
     );
     expect(pricing).toContain("Answers are AI-written from your pages");
     expect(pricing).toContain(
-      "Planned: email intake and answers scoped to each member&rsquo;s own BookStack permissions. These are not available today; there is no committed release date.",
+      "Planned: email intake, answers scoped to each member&rsquo;s own BookStack permissions and OAuth for web connectors. Planned items are not available today; there is no committed release date.",
     );
     expect(pricing).not.toContain("permission-aware AI answers");
     expect(pricing).not.toContain("no AI summary yet");
@@ -140,14 +140,14 @@ describe("public reliability evidence", () => {
       " ",
     );
     expect(wikiChat).toContain(
-      "Ask your wiki (beta): your question and the passages it answers from go to TensorX in Ireland under its documented data processing agreement",
+      "Ask your wiki: your question and the passages it answers from go to TensorX in Ireland under its documented data processing agreement",
     );
     expect(wikiChat).toContain("switched off in this deployment");
     expect(wikiChat).not.toContain("not complete yet");
     expect(wikiChat).not.toContain("still being completed");
 
     const landingCopy = readFileSync("lib/landing-copy.ts", "utf8");
-    expect(landingCopy).toContain("The beta already writes its answers with AI");
+    expect(landingCopy).toContain("writes its answer with AI and names the source page and section behind every answer");
     expect(landingCopy).not.toContain("AI-written summaries and answers scoped");
 
     const avv = readFileSync("content/legal/avv.md", "utf8");
@@ -173,7 +173,7 @@ describe("public reliability evidence", () => {
   // data out of it. Whichever way that is resolved, the two must agree.
   it("carries the intake data-protection caveat where the beta is advertised", () => {
     const page = readFileSync("app/page.tsx", "utf8");
-    expect(page).toContain("Document intake (beta) available now.");
+    expect(page).toContain("Document intake is available now.");
     expect(page).toContain("Processing conditions documented and released:");
     expect(page).toContain('href="/reliability#limits"');
     const reliability = readFileSync("app/reliability/page.tsx", "utf8");
@@ -262,7 +262,7 @@ describe("public reliability evidence", () => {
 
   it("labels the live upload beta and explains the actual data transfer", async () => {
     const limits = section(await html(), "limits");
-    expect(limits).toContain("Document intake is available in beta");
+    expect(limits).toContain("Document intake is available.");
     expect(limits).not.toContain("AI processing remains disabled");
     expect(limits).toContain("Each upload sends extracted text, not the original file, to TensorX (Ireland)");
     // The "without an upload nothing is sent" sentence was removed when the

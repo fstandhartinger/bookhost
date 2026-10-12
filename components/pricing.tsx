@@ -82,34 +82,35 @@ export function Pricing() {
             <li>Seven-day backup retention and restore help</li>
           </ul>
           <p className="mb-4 mt-8 text-xs font-semibold uppercase tracking-[.14em] text-faint">
-            AI betas · TensorX in Ireland — conditions documented
+            AI included · processed by TensorX in Ireland
           </p>
           <ul className="checklist">
-            <li>Reviewed document intake — available now (beta)</li>
+            <li>AI drafts from uploaded documents, with approval</li>
             {/* The one thing none of the hosts in our sponsor row offer, and it
                 was missing from the page where people decide. Stated at what it
-                actually does today: AI answers with named sources; the betas are
-                released for personal content per the DPA annex 3 release. */}
+                actually does today: AI answers with named sources; TensorX use for
+                personal content is released per the DPA annex 3. */}
             <li>
-              &ldquo;Ask your wiki&rdquo; — available now (beta) for owners and
+              AI search with sources (&ldquo;Ask your wiki&rdquo;) for owners and
               admins. Answers are AI-written from your pages and name the page
-              and section behind every answer; the betas are released for
-              personal content per our DPA annex 3, and you stay the controller
-              for what your workspace holds.
+              and section behind every answer; TensorX use for personal content
+              is covered by annex 3 of our DPA, and you stay the controller for
+              what your workspace holds.
             </li>
             <li>{DRAFT_COPY}</li>
             <li>Summary, tags and reviewer checklist for each draft</li>
             <li>Owner/admin approval before publication to BookStack</li>
           </ul>
           <p className="mb-4 mt-8 text-xs font-semibold uppercase tracking-[.14em] text-faint">
-            Agent access · beta
+            Agent access · MCP
           </p>
           <ul className="checklist">
             <li>
               Human-agent collaboration wiki: connect Claude Code, Cursor, VS
               Code or Codex over MCP. Agents use their own BookStack user and
               permissions; their edits wait for your approval unless you allow
-              direct edits.{" "}
+              direct edits. No AI provider is involved: content goes only to the
+              agent you connect.{" "}
               <Link className="underline" href="/agents">
                 How it works
               </Link>
@@ -121,9 +122,14 @@ export function Pricing() {
             BookStack page permissions apply after publication.
           </p>
           <p className="mt-6 text-xs leading-5 text-muted">
-            Planned: email intake and answers scoped to each
-            member&rsquo;s own BookStack permissions. These are not available
-            today; there is no committed release date.
+            AI is included in the plan at no extra cost. Beta: matching by
+            meaning (one-click opt-in) and Live Edit. Planned: email intake,
+            answers scoped to each member&rsquo;s own BookStack permissions and
+            OAuth for web connectors. Planned items are not available today;
+            there is no committed release date.{" "}
+            <Link className="underline" href="/ai">
+              All AI features
+            </Link>
           </p>
           <p className="mt-6 border-t border-ink/10 pt-5 text-center text-xs font-medium text-muted">
             No credit card · Cancel anytime · Plus applicable VAT

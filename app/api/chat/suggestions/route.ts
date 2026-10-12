@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     // Same beta gate as /api/chat: the workspace token reads every page.
     if (!["owner", "admin"].includes(tenant.role))
       throw new IntakeError(
-        "Only workspace owners and admins can ask the wiki in this beta.",
+        "Only workspace owners and admins can ask the wiki.",
         403,
       );
     try {

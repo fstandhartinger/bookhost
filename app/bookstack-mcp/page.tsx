@@ -109,7 +109,7 @@ export default function BookstackMcpPage() {
           is to reuse the permissions the wiki already has.
         </p>
 
-        <h2>What BookHost offers (beta)</h2>
+        <h2>What BookHost offers</h2>
         <p>
           Every BookHost workspace has its own MCP server at{" "}
           <code>https://&lt;workspace&gt;.bookhost.co/mcp</code>. Agents

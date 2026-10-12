@@ -41,6 +41,15 @@ export function EmailIntake({ tenant }: { tenant: string }) {
       setBusy(false);
     }
   }
+  // Delivery is switched off on this deployment: do not show an address that
+  // cannot receive mail as if it were a feature. One quiet line is enough.
+  if (data && !data.enabled)
+    return (
+      <p className="mt-8 text-sm text-slate-600">
+        Sending documents by e-mail is planned and not available yet; upload
+        them below.
+      </p>
+    );
   return (
     <section className="price-card mt-8 min-w-0" aria-label="E-mail intake">
       <h2 className="text-2xl">Send documents by e-mail</h2>

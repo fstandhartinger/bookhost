@@ -438,15 +438,15 @@ export default async function Dashboard({
                     Open BookStack ↗
                   </a>
                   <a className="button-secondary mt-3" href={intakeHref}>
-                    Document intake (beta)
+                    Document intake
                   </a>
                   {canManage && (
                     <>
                       <a className="button-secondary mt-3" href={chatHref}>
-                        Ask your wiki (beta)
+                        Ask your wiki
                       </a>
                       <a className="button-secondary mt-3" href={agentsHref}>
-                        Agents (beta)
+                        Agents (MCP)
                       </a>
                       <a className="button-secondary mt-3" href={liveEditHref}>
                         Live Edit (beta)

@@ -9,6 +9,9 @@ COPY --from=deps /bookhost/node_modules ./node_modules
 COPY . .
 RUN npm run build
 FROM node:22-slim AS runner
+# eMudhra CA distrust (Oct 2026): current CA bundle, and make Node trust it instead of its bundled root list
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+ENV NODE_OPTIONS="--use-openssl-ca"
 WORKDIR /bookhost
 ENV TRUST_PROXY=true NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/* && groupadd --system --gid 1001 nodejs && useradd --system --uid 1001 --gid nodejs nextjs

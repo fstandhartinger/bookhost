@@ -5,7 +5,9 @@ export function ActionButton({
   endpoint = "/api/checkout",
   children = "Start free trial",
   className = "button",
+  position,
 }: {
+  position?: "hero" | "pricing_teaser";
   endpoint?: string;
   children?: React.ReactNode;
   className?: string;
@@ -36,7 +38,12 @@ export function ActionButton({
   }
   return (
     <div>
-      <button className={className} onClick={act} disabled={busy}>
+      <button
+        data-trial-position={position}
+        className={className}
+        onClick={act}
+        disabled={busy}
+      >
         {busy ? "Opening secure checkout…" : children}
         {!busy && <span aria-hidden="true"> ↗</span>}
       </button>

@@ -8,20 +8,14 @@ import { ActionButton } from "@/components/action-button";
 import { Pricing } from "@/components/pricing";
 import { WikiChatDemo } from "@/components/wiki-chat-demo";
 import { faqs, benefits, steps } from "@/lib/landing-copy";
-import { DEMO_URL } from "@/lib/config";
+import { DEMO_URL, PLAN } from "@/lib/config";
 import { AI_FEATURES } from "@/lib/ai-features";
 import Link from "next/link";
 
 const icons: Record<string, React.ReactNode> = {
-  server: (
-    <path d="M4 5.5h16v5H4zM4 13.5h16v5H4zM7.5 8h.01M7.5 16h.01" />
-  ),
-  backup: (
-    <path d="M4 12a8 8 0 1 0 2.3-5.6M4 4v4h4M12 8v4l2.5 2.5" />
-  ),
-  review: (
-    <path d="M7 3.5h7l4 4v13H7zM14 3.5v4h4M10 13l2 2 3.5-3.5" />
-  ),
+  server: <path d="M4 5.5h16v5H4zM4 13.5h16v5H4zM7.5 8h.01M7.5 16h.01" />,
+  backup: <path d="M4 12a8 8 0 1 0 2.3-5.6M4 4v4h4M12 8v4l2.5 2.5" />,
+  review: <path d="M7 3.5h7l4 4v13H7zM14 3.5v4h4M10 13l2 2 3.5-3.5" />,
   globe: (
     <path d="M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17ZM3.5 12h17M12 3.5c2.4 2.3 3.5 5.2 3.5 8.5s-1.1 6.2-3.5 8.5c-2.4-2.3-3.5-5.2-3.5-8.5s1.1-6.2 3.5-8.5Z" />
   ),
@@ -83,64 +77,127 @@ const intakeSteps = [
 const comparison: [string, string, string][] = [
   ["Server and TLS certificates", "You set up and monitor them", "Included"],
   ["BookStack and security updates", "You schedule and apply them", "Included"],
-  ["Daily backups", "You script and store them", "Included, seven-day retention"],
-  ["Restoring a backup", "You test and run restores yourself", "Restore help through support"],
-  ["Your own domain", "You configure DNS and certificates", "Add it in the dashboard"],
+  [
+    "Daily backups",
+    "You script and store them",
+    "Included, seven-day retention",
+  ],
+  [
+    "Restoring a backup",
+    "You test and run restores yourself",
+    "Restore help through support",
+  ],
+  [
+    "Your own domain",
+    "You configure DNS and certificates",
+    "Add it in the dashboard",
+  ],
   ["Price", "Server cost plus your time", "€39/month plus VAT, one flat price"],
 ];
+
+function draftCopy(text: string) {
+  if (!text.includes(DRAFT_COPY)) return text;
+  const [before, after] = text.split(DRAFT_COPY);
+  return (
+    <>
+      {before}
+      <Link href="#see-it-work" className="underline underline-offset-4">
+        Draft limits apply — see details
+      </Link>
+      {after}
+    </>
+  );
+}
 
 export default function Home() {
   return (
     <>
       <JsonLd data={homeStructuredData()} />
-      {/* Hero: value, price and the two ways in, before anything else. */}
-      <section className="relative pb-10 pt-14 text-center sm:pt-20 md:pt-24">
+      <section className="relative pb-6 pt-8 text-center sm:pt-10">
         <div
           aria-hidden="true"
           className="glow pointer-events-none absolute inset-x-0 -top-24 -z-10 h-[560px]"
         />
-        <p className="pill">
-          <span className="h-1.5 w-1.5 rounded-full bg-moss" />
-          Managed BookStack hosting · Hosted in the EU
-        </p>
-        <h1 className="mx-auto mt-7 max-w-4xl">
+        <h1 className="mx-auto max-w-4xl">
           Your team’s BookStack.{" "}
           <span className="text-moss">Hosting handled.</span>
         </h1>
-        <p className="lede mx-auto max-w-2xl">
-          A private BookStack wiki for your team, ready in about 5 minutes. We
-          run the server, apply the updates and keep daily backups with restore
-          help. One flat price: €39/month plus VAT.
+        <p className="mx-auto mt-5 max-w-3xl text-lg leading-7 text-muted">
+          A private BookStack wiki for small IT teams and agencies, hosted in
+          the EU, with updates and daily backups handled.
         </p>
-        <p className="mx-auto mt-4 max-w-2xl text-sm text-muted">
-          <span className="font-medium text-ink">AI included:</span> search
-          with sources, MCP access for your AI agents and drafts you approve.{" "}
-          <Link
-            href="/ai"
-            className="font-medium text-ink underline decoration-moss/40 underline-offset-4 hover:decoration-moss"
-          >
-            See the AI features
-          </Link>
+        <p className="mt-3 text-sm font-medium">
+          €{PLAN.price}/month plus VAT · {PLAN.trialDays} days free · No card
+          required
         </p>
-        <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row sm:items-start">
-          <ActionButton className="button w-full sm:w-auto">
+        <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row sm:items-start sm:gap-6">
+          <ActionButton className="button w-full sm:w-auto" position="hero">
             Start 14-day free trial
           </ActionButton>
-          <div className="w-full sm:w-auto">
-            <a href={DEMO_URL} className="button-secondary w-full sm:w-auto">
-              Open live demo <span aria-hidden="true">↗</span>
-            </a>
-            <p className="mt-2 text-xs text-faint">
-              Read-only demo workspace (demo.bookhost.co)
-            </p>
-          </div>
+          <a
+            href={DEMO_URL}
+            className="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-ink underline decoration-moss/40 underline-offset-4 hover:decoration-moss"
+          >
+            Open live demo <span aria-hidden="true">↗</span>
+            <span className="sr-only"> (read-only workspace)</span>
+          </a>
         </div>
-        <p className="mt-6 text-sm text-muted">
-          14 days free · No card required · Cancel monthly
+        <p className="mx-auto mt-3 text-sm text-muted">
+          AI search, agent access and reviewed drafts included.{" "}
+          <Link
+            href="/ai"
+            className="text-ink underline decoration-moss/40 underline-offset-4 hover:decoration-moss"
+          >
+            See AI features
+          </Link>
         </p>
-        {/* People arriving from the BookStack installation docs already run
-            their own instance; their first question is whether they can bring
-            it, so the answer sits in the hero. */}
+      </section>
+
+      <div className="flex flex-col gap-6">
+        <section
+          aria-label="What is included"
+          className="order-2 grid gap-px overflow-hidden rounded-2xl border border-ink/10 bg-ink/10 sm:order-1 sm:grid-cols-2 lg:grid-cols-4"
+        >
+          {facts.map(([icon, title, text]) => (
+            <div key={title} className="flex items-start gap-3 bg-paper p-4">
+              <Icon name={icon} />
+              <div>
+                <p className="text-sm font-semibold">{title}</p>
+                <p className="mt-1 text-xs leading-5 text-muted">
+                  {draftCopy(text)}
+                </p>
+              </div>
+            </div>
+          ))}
+        </section>
+
+        <figure className="relative order-1 mx-auto w-full max-w-5xl sm:order-2">
+          <div className="frame">
+            <div className="frame-bar" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+              <span className="mx-auto rounded-md bg-surface px-3 py-0.5 text-[11px] text-faint">
+                demo.bookhost.co/books/team-handbook/page/onboarding
+              </span>
+            </div>
+            <Image
+              src="/screens/demo-onboarding.webp"
+              alt="The BookHost demo workspace in BookStack, showing the Onboarding page of a fictional team handbook with book navigation on the left"
+              width={1600}
+              height={906}
+              priority
+              className="h-auto w-full"
+              sizes="(min-width: 1024px) 1024px, 100vw"
+            />
+          </div>
+          <figcaption className="mt-4 text-center text-xs text-faint">
+            Our live demo workspace: plain BookStack, hosted by BookHost.
+            Fictional sample content.
+          </figcaption>
+        </figure>
+      </div>
+      <div className="mx-auto mb-12 mt-6 max-w-3xl text-center">
         <p className="mt-3 text-sm text-muted">
           Already running BookStack yourself?{" "}
           <Link
@@ -156,54 +213,22 @@ export default function Home() {
           </summary>
           <PaymentNote />
         </details>
-      </section>
+      </div>
 
-      <figure className="relative mx-auto max-w-5xl">
-        <div className="frame">
-          <div className="frame-bar" aria-hidden="true">
-            <i />
-            <i />
-            <i />
-            <span className="mx-auto rounded-md bg-surface px-3 py-0.5 text-[11px] text-faint">
-              demo.bookhost.co/books/team-handbook/page/onboarding
-            </span>
-          </div>
-          <Image
-            src="/screens/demo-onboarding.webp"
-            alt="The BookHost demo workspace in BookStack, showing the Onboarding page of a fictional team handbook with book navigation on the left"
-            width={1600}
-            height={906}
-            priority
-            className="h-auto w-full"
-            sizes="(min-width: 1024px) 1024px, 100vw"
-          />
-        </div>
-        <figcaption className="mt-4 text-center text-xs text-faint">
-          Our live demo workspace: plain BookStack, hosted by BookHost.
-          Fictional sample content.
-        </figcaption>
-      </figure>
-
-      <section aria-label="What is included" className="mt-20 grid gap-px overflow-hidden rounded-2xl border border-ink/10 bg-ink/10 sm:grid-cols-2 lg:grid-cols-4">
-        {facts.map(([icon, title, text]) => (
-          <div key={title} className="flex items-start gap-4 bg-paper p-6">
-            <Icon name={icon} />
-            <div>
-              <p className="font-semibold">{title}</p>
-              <p className="mt-1 text-sm leading-6 text-muted">{text}</p>
-            </div>
-          </div>
-        ))}
-      </section>
-
-      <section id="ai" aria-labelledby="ai-heading" className="defer section scroll-mt-20">
+      <section
+        id="ai"
+        aria-labelledby="ai-heading"
+        className="defer section scroll-mt-20"
+      >
         <div className="max-w-2xl">
           <p className="eyebrow">AI in every workspace · included</p>
-          <h2 id="ai-heading">AI that shows its sources and waits for your approval.</h2>
+          <h2 id="ai-heading">
+            AI that shows its sources and waits for your approval.
+          </h2>
           <p className="mt-5 text-sm leading-7 text-muted">
-            Included in the €39 plan, for every workspace. AI processing runs
-            on TensorX in Ireland with zero retained prompts; BookStack
-            permissions and human review stay in charge.
+            Included in the €39 plan, for every workspace. AI processing runs on
+            TensorX in Ireland with zero retained prompts; BookStack permissions
+            and human review stay in charge.
           </p>
         </div>
         <div className="mt-12 grid gap-5 md:grid-cols-3">
@@ -213,7 +238,9 @@ export default function Home() {
                 Available now
               </span>
               <h3 className="mt-5 text-lg font-semibold">{feature.title}</h3>
-              <p className="mt-3 text-sm leading-6 text-muted">{feature.summary}</p>
+              <p className="mt-3 text-sm leading-6 text-muted">
+                {feature.summary}
+              </p>
               <Link
                 href={feature.href}
                 className="mt-auto inline-block pt-4 text-sm font-medium text-ink underline decoration-moss/40 underline-offset-4 hover:decoration-moss"
@@ -235,7 +262,9 @@ export default function Home() {
             <article key={n} className="card flex flex-col">
               <Icon name={benefitIcons[i] ?? "server"} />
               <h3 className="mt-6 text-lg font-semibold">{title}</h3>
-              <p className="mt-3 text-sm leading-6 text-muted">{text}</p>
+              <p className="mt-3 text-sm leading-6 text-muted">
+                {draftCopy(text)}
+              </p>
               {title === "Backups with a way back" && (
                 <div className="mt-auto flex flex-wrap gap-x-5 gap-y-1 pt-4">
                   <Link
@@ -257,24 +286,10 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="how-it-works" className="defer border-t border-ink/10 py-16 md:py-24">
-        <div className="max-w-2xl">
-          <p className="eyebrow">From scattered to shared</p>
-          <h2>From sign-up to shared knowledge.</h2>
-        </div>
-        <ol className="mt-12 grid gap-8 md:grid-cols-4">
-          {steps.map(([n, title, text]) => (
-            <li key={n} className="relative border-t border-ink/15 pt-6">
-              <span className="absolute -top-px left-0 h-px w-10 bg-moss" />
-              <span className="font-mono text-xs text-moss">Step {n}</span>
-              <h3 className="mt-3 text-lg font-semibold">{title}</h3>
-              <p className="mt-3 text-sm leading-6 text-muted">{text}</p>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <section id="see-it-work" className="defer border-t border-ink/10 py-16 md:py-24">
+      <section
+        id="see-it-work"
+        className="defer border-t border-ink/10 py-16 md:py-24"
+      >
         <div className="grid gap-10 lg:grid-cols-[1fr_1.1fr] lg:items-end">
           <div>
             <p className="eyebrow">AI drafts with approval · available now</p>
@@ -297,9 +312,12 @@ export default function Home() {
               uploads go to TensorX in Ireland under its data processing
               agreement — processing in Dublin and Helsinki, zero retained
               prompts and completions; the release for personal content is
-              recorded in our DPA annex 3, and you stay the controller for
-              what your workspace holds. See{" "}
-              <a className="underline underline-offset-2" href="/reliability#limits">
+              recorded in our DPA annex 3, and you stay the controller for what
+              your workspace holds. See{" "}
+              <a
+                className="underline underline-offset-2"
+                href="/reliability#limits"
+              >
                 what we do and do not promise
               </a>
               .
@@ -338,8 +356,7 @@ export default function Home() {
             />
           </a>
           <figcaption className="mt-4 text-center text-xs text-faint">
-            A real draft in review · Human approval required · Click to
-            enlarge
+            A real draft in review · Human approval required · Click to enlarge
           </figcaption>
         </figure>
       </section>
@@ -375,7 +392,11 @@ export default function Home() {
         </div>
         <figure className="mx-auto mt-12 flex max-w-3xl flex-col gap-4">
           <figcaption className="order-2 text-xs leading-5 text-faint">
-            Real screenshot from our internal test workspace. There, matching by meaning found the bike-parking page although the question shares no word with it. Customer workspaces match by words unless an owner or admin turns on matching by meaning (beta); every answer still names its source page.
+            Real screenshot from our internal test workspace. There, matching by
+            meaning found the bike-parking page although the question shares no
+            word with it. Customer workspaces match by words unless an owner or
+            admin turns on matching by meaning (beta); every answer still names
+            its source page.
           </figcaption>
           <a
             href="/screens/wiki-chat-answer.webp"
@@ -397,7 +418,10 @@ export default function Home() {
         </figure>
       </section>
 
-      <section id="agents" className="defer scroll-mt-20 border-t border-ink/10 py-16 md:py-24">
+      <section
+        id="agents"
+        className="defer scroll-mt-20 border-t border-ink/10 py-16 md:py-24"
+      >
         <div className="grid gap-10 lg:grid-cols-[1fr_1.15fr] lg:items-start">
           <div>
             <p className="eyebrow">Agent access · MCP · available now</p>
@@ -419,9 +443,7 @@ export default function Home() {
               One MCP endpoint per workspace; owners and admins create an agent
               user and token in the dashboard.
             </li>
-            <li>
-              BookStack roles decide what each agent can read and change.
-            </li>
+            <li>BookStack roles decide what each agent can read and change.</li>
             <li>
               Default &ldquo;Propose only&rdquo;: agent edits land in the review
               queue. Direct edits appear in the revision history under the
@@ -441,7 +463,10 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="live-edit" className="defer scroll-mt-20 border-t border-ink/10 py-16 md:py-24">
+      <section
+        id="live-edit"
+        className="defer scroll-mt-20 border-t border-ink/10 py-16 md:py-24"
+      >
         <div className="grid gap-10 lg:grid-cols-[1fr_1.15fr] lg:items-start">
           <div>
             <p className="eyebrow">Live collaborative editing · beta</p>
@@ -468,6 +493,32 @@ export default function Home() {
         </div>
       </section>
 
+      <section
+        id="how-it-works"
+        className="defer border-t border-ink/10 py-16 md:py-24"
+      >
+        <div className="max-w-2xl">
+          <p className="eyebrow">From scattered to shared</p>
+          <h2>From sign-up to shared knowledge.</h2>
+        </div>
+        <ol className="mt-12 grid gap-8 md:grid-cols-4">
+          {steps.map(([n, title, text]) => (
+            <li key={n} className="relative border-t border-ink/15 pt-6">
+              <span className="absolute -top-px left-0 h-px w-10 bg-moss" />
+              <span className="font-mono text-xs text-moss">Step {n}</span>
+              <h3 className="mt-3 text-lg font-semibold">{title}</h3>
+              <p className="mt-3 text-sm leading-6 text-muted">
+                {draftCopy(text)}
+              </p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <div className="border-t border-ink/10">
+        <Pricing home />
+      </div>
+
       <section className="defer section">
         <div className="grid gap-10 lg:grid-cols-[1fr_1.6fr] lg:items-start">
           <div>
@@ -492,15 +543,26 @@ export default function Home() {
               </caption>
               <thead>
                 <tr className="border-b border-ink/10 text-xs uppercase tracking-[.12em] text-faint">
-                  <th scope="col" className="p-4 font-semibold">Task</th>
-                  <th scope="col" className="p-4 font-semibold">Self-hosted</th>
-                  <th scope="col" className="p-4 font-semibold text-moss">BookHost</th>
+                  <th scope="col" className="p-4 font-semibold">
+                    Task
+                  </th>
+                  <th scope="col" className="p-4 font-semibold">
+                    Self-hosted
+                  </th>
+                  <th scope="col" className="p-4 font-semibold text-moss">
+                    BookHost
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {comparison.map(([task, self, hosted]) => (
-                  <tr key={task} className="border-b border-ink/[.07] last:border-0">
-                    <th scope="row" className="p-4 font-medium">{task}</th>
+                  <tr
+                    key={task}
+                    className="border-b border-ink/[.07] last:border-0"
+                  >
+                    <th scope="row" className="p-4 font-medium">
+                      {task}
+                    </th>
                     <td className="p-4 text-muted">{self}</td>
                     <td className="p-4 font-medium">{hosted}</td>
                   </tr>
@@ -510,10 +572,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      <div className="border-t border-ink/10">
-        <Pricing />
-      </div>
 
       <section
         id="faq"
@@ -545,7 +603,9 @@ export default function Home() {
                   +
                 </span>
               </summary>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-muted">{a}</p>
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-muted">
+                {draftCopy(a)}
+              </p>
             </details>
           ))}
         </div>
@@ -567,13 +627,14 @@ export default function Home() {
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
               href="/pricing"
+              data-trial-position="footer"
               className="inline-flex min-h-11 items-center rounded-full bg-paper px-6 py-3 text-sm font-semibold text-ink transition hover:bg-accent"
             >
               Start free trial
             </Link>
             <a
               href={DEMO_URL}
-              className="inline-flex min-h-11 items-center rounded-full border border-paper/25 px-6 py-3 text-sm font-semibold text-paper transition hover:border-paper/60"
+              className="inline-flex min-h-11 items-center px-2 py-3 text-sm font-semibold text-paper underline underline-offset-4"
             >
               Open live demo <span aria-hidden="true">&nbsp;↗</span>
             </a>

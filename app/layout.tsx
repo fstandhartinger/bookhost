@@ -164,6 +164,7 @@ export default function RootLayout({
                 callToAction={
                   <Link
                     href="/pricing"
+                    data-trial-position="nav"
                     className="whitespace-nowrap rounded-full bg-ink px-4 py-2 font-medium text-white transition hover:bg-moss"
                   >
                     <span className="sm:hidden">Try free</span>

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { publicPath } from "./shared";
+import { publicPath, trialPosition } from "./shared";
 import { attributionFor } from "./attribution";
 // Any workspace domain: the public demo is always the "demo." subdomain.
 const isDemoHost = (host: string) =>
@@ -24,7 +24,7 @@ function attribution() {
 export default function AnalyticsBeacon() {
   const path = usePathname();
   useEffect(() => {
-    const send = (name?: string) => {
+    const send = (name?: string, position?: string) => {
       if (disabled() || !publicPath(location.pathname)) return;
       navigator.sendBeacon(
         "/api/track",
@@ -35,6 +35,7 @@ export default function AnalyticsBeacon() {
               referrer: document.referrer,
               ...attribution(),
               ...(name ? { name } : {}),
+              ...(position ? { position } : {}),
             }),
           ],
           { type: "application/json" },
@@ -43,12 +44,15 @@ export default function AnalyticsBeacon() {
     };
     send();
     const click = (event: MouseEvent) => {
-      const anchor =
-        event.target instanceof Element ? event.target.closest("a") : null;
-      if (
-        anchor &&
-        isDemoHost(new URL(anchor.href).hostname)
-      )
+      const target = event.target instanceof Element ? event.target : null;
+      const trial = target?.closest("[data-trial-position]");
+      const position = trialPosition(
+        trial?.getAttribute("data-trial-position"),
+      );
+      if (position && !(trial instanceof HTMLButtonElement && trial.disabled))
+        send("checkout_start", position);
+      const anchor = target?.closest("a");
+      if (anchor && isDemoHost(new URL(anchor.href).hostname))
         send("demo_click");
     };
     document.addEventListener("click", click, true);

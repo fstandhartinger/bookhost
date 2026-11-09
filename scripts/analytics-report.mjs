@@ -13,7 +13,11 @@ export async function analyticsReport(db) {
     ), funnel AS (
       SELECT (e.ts AT TIME ZONE 'UTC')::date AS day, COALESCE(e.utm_source,'(direct)') AS source,
         count(*) FILTER (WHERE e.name='demo_click')::int AS demo_click,
-        count(*) FILTER (WHERE e.name='checkout_start')::int AS checkout_start,
+        count(*) FILTER (WHERE e.name='checkout_start' AND e.checkout_stage IS NULL)::int AS checkout_start,
+        count(*) FILTER (WHERE e.name='checkout_start' AND e.checkout_stage='click' AND e.cta_position='hero')::int AS trial_click_hero,
+        count(*) FILTER (WHERE e.name='checkout_start' AND e.checkout_stage='click' AND e.cta_position='nav')::int AS trial_click_nav,
+        count(*) FILTER (WHERE e.name='checkout_start' AND e.checkout_stage='click' AND e.cta_position='pricing_teaser')::int AS trial_click_pricing_teaser,
+        count(*) FILTER (WHERE e.name='checkout_start' AND e.checkout_stage='click' AND e.cta_position='footer')::int AS trial_click_footer,
         count(*) FILTER (WHERE e.name='trial_started')::int AS trial_started,
         count(*) FILTER (WHERE e.name='workspace_created')::int AS workspace_created,
         count(*) FILTER (WHERE e.name='intake_draft')::int AS intake_draft,
@@ -25,6 +29,8 @@ export async function analyticsReport(db) {
     ) SELECT COALESCE(v.day,f.day)::text AS day, COALESCE(v.source,f.source) AS source,
       COALESCE(visits,0) AS visits, COALESCE(demo_click,0) AS demo_click,
       COALESCE(checkout_start,0) AS checkout_start, COALESCE(trial_started,0) AS trial_started,
+      COALESCE(trial_click_hero,0) AS trial_click_hero, COALESCE(trial_click_nav,0) AS trial_click_nav,
+      COALESCE(trial_click_pricing_teaser,0) AS trial_click_pricing_teaser, COALESCE(trial_click_footer,0) AS trial_click_footer,
       COALESCE(workspace_created,0) AS workspace_created, COALESCE(intake_draft,0) AS intake_draft,
       COALESCE(intake_published,0) AS intake_published,
       COALESCE(paid_conversion,0) AS paid_conversion
@@ -47,6 +53,10 @@ export async function analyticsReport(db) {
     "visits",
     "demo_click",
     "checkout_start",
+    "trial_click_hero",
+    "trial_click_nav",
+    "trial_click_pricing_teaser",
+    "trial_click_footer",
     "trial_started",
     "workspace_created",
     "intake_draft",
@@ -65,8 +75,8 @@ export async function analyticsReport(db) {
     if (!sources.has(row.source)) sources.set(row.source, empty());
     if (!days.has(row.day)) days.set(row.day, empty());
     for (const key of metrics) {
-      sources.get(row.source)[key] += Number(row[key]);
-      days.get(row.day)[key] += Number(row[key]);
+      sources.get(row.source)[key] += Number(row[key] ?? 0);
+      days.get(row.day)[key] += Number(row[key] ?? 0);
     }
   }
   return {

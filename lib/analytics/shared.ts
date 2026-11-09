@@ -56,7 +56,8 @@ export function referrerHost(value: unknown): string | null {
   }
 }
 // Our own QA agents drive headless browsers and must not count as visitors.
-const AUTOMATED_AGENT_PATTERN = /(?:headlesschrome|playwright|puppeteer|phantomjs|selenium|webdriver|lighthouse|bot|crawler|spider|slurp|curl\/|wget\/|python-requests|python-httpx|node-fetch|undici|axios\/|go-http-client|okhttp|bytespider|gptbot|claudebot|chatgpt-user|perplexitybot|ccbot)/i;
+const AUTOMATED_AGENT_PATTERN =
+  /(?:headlesschrome|playwright|puppeteer|phantomjs|selenium|webdriver|lighthouse|bot|crawler|spider|slurp|curl\/|wget\/|python-requests|python-httpx|node-fetch|undici|axios\/|go-http-client|okhttp|bytespider|gptbot|claudebot|chatgpt-user|perplexitybot|ccbot)/i;
 export function automatedAgent(userAgent: string | null): boolean {
   return !userAgent?.trim() || AUTOMATED_AGENT_PATTERN.test(userAgent);
 }
@@ -66,4 +67,18 @@ export function optedOut(headers: Headers) {
     headers.get("sec-gpc") === "1" ||
     headers.get("x-wissen-no-analytics") === "1"
   );
+}
+
+// Fixed labels only; never accept arbitrary DOM text or query parameters.
+export const TRIAL_POSITIONS = [
+  "hero",
+  "nav",
+  "pricing_teaser",
+  "footer",
+] as const;
+export function trialPosition(value: unknown): string | null {
+  return typeof value === "string" &&
+    (TRIAL_POSITIONS as readonly string[]).includes(value)
+    ? value
+    : null;
 }

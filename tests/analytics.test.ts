@@ -62,7 +62,9 @@ it("sanitizes UTM labels and excludes private paths and referrer secrets", () =>
   expect(publicPath("/reliability")).toBe("/reliability");
   expect(publicPath("/privacy")).toBe("/privacy");
   expect(publicPath("/terms")).toBe("/terms");
-  expect(publicPath("/bookstack-vs-confluence")).toBe("/bookstack-vs-confluence");
+  expect(publicPath("/bookstack-vs-confluence")).toBe(
+    "/bookstack-vs-confluence",
+  );
   expect(publicPath("/bookstack-backup-guide")).toBe("/bookstack-backup-guide");
   expect(publicPath("/self-hosted-vs-managed-bookstack")).toBe(
     "/self-hosted-vs-managed-bookstack",
@@ -77,9 +79,9 @@ it("sanitizes UTM labels and excludes private paths and referrer secrets", () =>
   expect(publicPath("/agents?x=1")).toBeNull();
   expect(publicPath("/join")).toBeNull();
   expect(publicPath("/blog")).toBe("/blog");
-  expect(publicPath("/blog/moving-self-hosted-bookstack-to-managed-hosting")).toBe(
-    "/blog/moving-self-hosted-bookstack-to-managed-hosting",
-  );
+  expect(
+    publicPath("/blog/moving-self-hosted-bookstack-to-managed-hosting"),
+  ).toBe("/blog/moving-self-hosted-bookstack-to-managed-hosting");
   expect(publicPath("/blogg")).toBeNull();
   expect(publicPath("/blog/Foo")).toBeNull();
   expect(publicPath("/blog/foo/bar")).toBeNull();
@@ -279,7 +281,11 @@ it("shares consistent source/day totals with zero-filled daily series", async ()
     paid_conversion: 1,
   });
   expect(report.days).toHaveLength(14);
-  expect(report.days.at(-1)).toMatchObject({ day, visits: 2, paid_conversion: 1 });
+  expect(report.days.at(-1)).toMatchObject({
+    day,
+    visits: 2,
+    paid_conversion: 1,
+  });
   // Top pages share the same window: visits counts every beacon row, uniques
   // the daily hashes behind them; SQL orders by visits DESC, then path.
   expect(report.pages).toEqual([
@@ -317,7 +323,82 @@ it("does not count our own pages as a referring site", () => {
 });
 
 it("keeps a genuine external referrer", () => {
-  expect(referrerHost("https://www.bookstackapp.com/docs/admin/installation/")).toBe(
-    "www.bookstackapp.com",
-  );
+  expect(
+    referrerHost("https://www.bookstackapp.com/docs/admin/installation/"),
+  ).toBe("www.bookstackapp.com");
+});
+
+it.each(["hero", "nav", "pricing_teaser", "footer"])(
+  "records a %s checkout click separately from a created checkout session",
+  async (position) => {
+    expect(
+      (
+        await POST(
+          request({
+            path: "/",
+            name: "checkout_start",
+            position,
+            utm_source: "test",
+          }),
+        )
+      ).status,
+    ).toBe(204);
+    const insert = mocks.query.mock.calls.find(([sql]) =>
+      sql.startsWith("INSERT INTO events"),
+    );
+    expect(insert?.[0]).toContain("checkout_stage,cta_position");
+    expect(insert?.[0]).toContain("'click'");
+    expect(insert?.[1]).toEqual([
+      "test",
+      expect.stringMatching(/^[a-f0-9]{64}$/),
+      position,
+    ]);
+    expect(
+      mocks.query.mock.calls.some(([sql]) =>
+        sql.startsWith("INSERT INTO page_views"),
+      ),
+    ).toBe(false);
+  },
+);
+it.each([undefined, "", "Hero", "other", "person@example.com", ["hero"]])(
+  "ignores invalid checkout click labels: %s",
+  async (position) => {
+    await POST(
+      request({
+        path: "/",
+        name: "checkout_start",
+        position,
+        utm_source: "test",
+      }),
+    );
+    expect(
+      mocks.query.mock.calls.some(([sql]) =>
+        sql.startsWith("INSERT INTO events"),
+      ),
+    ).toBe(false);
+  },
+);
+it.each([
+  { dnt: "1" },
+  { "sec-gpc": "1" },
+  { "user-agent": "HeadlessChrome/120" },
+  { origin: "https://other.invalid" },
+])(
+  "filters checkout clicks with existing privacy and agent guards: %s",
+  async (headers) => {
+    await POST(
+      request({ path: "/", name: "checkout_start", position: "hero" }, headers),
+    );
+    expect(mocks.query).not.toHaveBeenCalled();
+  },
+);
+it("keeps created checkout totals separate from clicks in reports", async () => {
+  mocks.query.mockResolvedValue({ rows: [] });
+  const report = await analyticsReport({ query: mocks.query });
+  const sql = mocks.query.mock.calls[0][0];
+  expect(sql).toContain("e.name='checkout_start' AND e.checkout_stage IS NULL");
+  for (const position of ["hero", "nav", "pricing_teaser", "footer"]) {
+    expect(sql).toContain(`e.cta_position='${position}'`);
+    expect(report.days[0][`trial_click_${position}`]).toBe(0);
+  }
 });

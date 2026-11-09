@@ -7,6 +7,7 @@ import {
   parseUtm,
   publicPath,
   referrerHost,
+  trialPosition,
 } from "@/lib/analytics/shared";
 export const runtime = "nodejs";
 export async function POST(request: Request) {
@@ -57,6 +58,11 @@ export async function POST(request: Request) {
       await db.query(
         "INSERT INTO events(name,utm_source,visitor_hash) VALUES('demo_click',$1,$2)",
         [utm.utm_source, hash],
+      );
+    } else if (body.name === "checkout_start" && trialPosition(body.position)) {
+      await db.query(
+        "INSERT INTO events(name,utm_source,visitor_hash,checkout_stage,cta_position) VALUES('checkout_start',$1,$2,'click',$3)",
+        [utm.utm_source, hash, trialPosition(body.position)],
       );
     } else if (!body.name) {
       await db.query(

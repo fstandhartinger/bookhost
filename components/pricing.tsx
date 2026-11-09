@@ -3,7 +3,7 @@ import { PaymentNote } from "@/components/payment-note";
 import Link from "next/link";
 import { ActionButton } from "./action-button";
 import { PLAN } from "@/lib/config";
-export function Pricing() {
+export function Pricing({ home = false }: { home?: boolean }) {
   return (
     <section id="pricing" className="section scroll-mt-20">
       <div className="grid gap-12 lg:grid-cols-[1fr_1.15fr] lg:items-start">
@@ -50,8 +50,8 @@ export function Pricing() {
             <span className="text-muted">/ month plus VAT</span>
           </p>
           <div id="trial">
-            <ActionButton className="button w-full" />
-            <PaymentNote />
+            <ActionButton className="button w-full" position="pricing_teaser" />
+            {!home && <PaymentNote />}
           </div>
           <p className="mb-4 mt-8 text-xs font-semibold uppercase tracking-[.14em] text-faint">
             Everything included
@@ -91,13 +91,21 @@ export function Pricing() {
                 actually does today: AI answers with named sources; TensorX use for
                 personal content is released per the DPA annex 3. */}
             <li>
-              AI search with sources (&ldquo;Ask your wiki&rdquo;) for owners and
-              admins. Answers are AI-written from your pages and name the page
-              and section behind every answer; TensorX use for personal content
-              is covered by annex 3 of our DPA, and you stay the controller for
-              what your workspace holds.
+              AI search with sources (&ldquo;Ask your wiki&rdquo;) for owners
+              and admins. Answers are AI-written from your pages and name the
+              page and section behind every answer; TensorX use for personal
+              content is covered by annex 3 of our DPA, and you stay the
+              controller for what your workspace holds.
             </li>
-            <li>{DRAFT_COPY}</li>
+            <li>
+              {home ? (
+                <Link className="underline" href="#see-it-work">
+                  Draft limits apply — see details
+                </Link>
+              ) : (
+                DRAFT_COPY
+              )}
+            </li>
             <li>Summary, tags and reviewer checklist for each draft</li>
             <li>Owner/admin approval before publication to BookStack</li>
           </ul>
@@ -116,11 +124,13 @@ export function Pricing() {
               </Link>
             </li>
           </ul>
-          <p className="mt-6 text-xs leading-5 text-muted">
-            Only workspace owners/admins can publish; members can upload and
-            review. Drafts are shared with your BookHost dashboard team;
-            BookStack page permissions apply after publication.
-          </p>
+          {!home && (
+            <p className="mt-6 text-xs leading-5 text-muted">
+              Only workspace owners/admins can publish; members can upload and
+              review. Drafts are shared with your BookHost dashboard team;
+              BookStack page permissions apply after publication.
+            </p>
+          )}
           <p className="mt-6 text-xs leading-5 text-muted">
             AI is included in the plan at no extra cost. Beta: matching by
             meaning (one-click opt-in) and Live Edit. Planned: email intake,

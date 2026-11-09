@@ -130,7 +130,7 @@ export default function Home() {
           €{PLAN.price}/month plus VAT · {PLAN.trialDays} days free · No card
           required
         </p>
-        <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row sm:items-start sm:gap-6">
+        <div className="mt-5 flex flex-col items-center justify-center gap-2">
           <ActionButton className="button w-full sm:w-auto" position="hero">
             Start 14-day free trial
           </ActionButton>

@@ -76,7 +76,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.stubEnv("TRUST_PROXY", "true");
   vi.stubEnv("SMTP_HOST", "fixture");
-  vi.stubEnv("SMTP_FROM", "test@example.com");
+  vi.stubEnv("SMTP_FROM", "noreply@mail.bookhost.co");
 });
 it("empty emails do not consume reset limits; redemption is keyed by token hash and IP", async () => {
   for (let i = 0; i < 5; i++) expect((await POST(req({}))).status).toBe(400);

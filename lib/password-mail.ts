@@ -1,5 +1,5 @@
 import { createTransport } from "nodemailer";
-import { smtpReady } from "./config";
+import { smtpSender } from "./config";
 export function mailTransport() {
   return createTransport({
     host: process.env.SMTP_HOST,
@@ -14,11 +14,12 @@ export function mailTransport() {
   });
 }
 export function notifyPasswordChanged(email: string) {
-  if (!smtpReady()) return;
+  const from = smtpSender();
+  if (!from) return;
   void Promise.resolve()
     .then(() =>
       mailTransport().sendMail({
-        from: process.env.SMTP_FROM,
+        from,
         to: email,
         subject: "Your BookHost password was set or changed",
         text: "Your BookHost password was set or changed. If this was not you, reset your password immediately or contact info@productivity-boost.com.",

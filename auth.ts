@@ -7,7 +7,7 @@ import Google from "next-auth/providers/google";
 import Nodemailer from "next-auth/providers/nodemailer";
 import { createTransport } from "nodemailer";
 import { adapter } from "./lib/auth-adapter";
-import { smtpReady, baseUrl } from "./lib/config";
+import { baseUrl, smtpReady, smtpSender } from "./lib/config";
 import { digest, rateLimit } from "./lib/security";
 export const sessionCookie = () => ({
   name: baseUrl().startsWith("https:")
@@ -50,7 +50,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
                 : undefined,
             },
-            from: process.env.SMTP_FROM || "BookHost <noreply@mail.mintapis.com>",
+            from: smtpSender(),
             maxAge: 900,
             async sendVerificationRequest({ identifier, url, provider }) {
               if (
@@ -60,7 +60,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 ))
               )
                 throw new Error("Please try again later");
-              if (!smtpReady()) {
+              const from = smtpSender();
+              if (!from) {
                 if (process.env.NODE_ENV !== "production")
                   console.info("Development sign-in link:", url);
                 return;
@@ -68,7 +69,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               const transport = createTransport(provider.server);
               await transport.sendMail({
                 to: identifier,
-                from: provider.from,
+                from,
                 subject: "Sign in to BookHost",
                 text: `Sign in to BookHost: ${url}\nThis link expires in 15 minutes. If you did not request it, ignore this email.`,
               });

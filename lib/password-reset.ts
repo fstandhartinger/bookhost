@@ -2,10 +2,12 @@ import { randomBytes } from "node:crypto";
 import { mailTransport, notifyPasswordChanged } from "./password-mail";
 import { normalizeEmail } from "./email";
 import { db, transaction } from "./db";
-import { baseUrl } from "./config";
+import { baseUrl, smtpSender } from "./config";
 import { digest } from "./security";
 import { hashPassword } from "./password";
 export async function sendPasswordReset(email: string) {
+  const from = smtpSender();
+  if (!from) return;
   email = normalizeEmail(email);
   const user = (
     await db.query("SELECT id FROM users WHERE lower(email)=$1", [
@@ -20,7 +22,7 @@ export async function sendPasswordReset(email: string) {
   );
   const transport = mailTransport();
   await transport.sendMail({
-    from: process.env.SMTP_FROM,
+    from,
     to: email,
     subject: "Reset your BookHost password",
     text: `Reset your password: ${baseUrl()}/login/reset?token=${token}\nThis link expires in 30 minutes and can only be used once. If you did not request it, ignore this email.`,

@@ -1,6 +1,6 @@
 import { generateNotifications, deliverNotifications } from "./notifications";
 import { mailTransport } from "./password-mail";
-import { baseUrl } from "./config";
+import { baseUrl, smtpSender } from "./config";
 import { db, transaction } from "./db";
 import { cleanupAgentActivity } from "./agents/activity";
 const state = globalThis as typeof globalThis & {
@@ -23,11 +23,11 @@ export function startAuthCleanup() {
       await db.query("DELETE FROM events WHERE ts<now()-interval '90 days'");
       await cleanupAgentActivity();
       await transaction((client) => generateNotifications(client, new Date()));
-      if (process.env.SMTP_HOST)
+      const from = smtpSender();
+      if (from)
         await deliverNotifications(db, async (email, text) => {
           await mailTransport().sendMail({
-            from:
-              process.env.SMTP_FROM || "BookHost <noreply@mail.mintapis.com>",
+            from,
             to: email,
             subject: "Your BookHost workspace: billing notice",
             text: `${text}\n\nManage billing: ${baseUrl()}/app/billing`,

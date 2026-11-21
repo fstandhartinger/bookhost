@@ -17,6 +17,23 @@ import {
   hocuspocusServer,
   waitForLiveEditFlush,
 } from "@/lib/live-edit/hocuspocus";
+import {
+  captureConsole,
+  createLogger,
+  httpLogger,
+  installProcessHandlers,
+} from "./logkit.cjs";
+
+// Structured JSON logs (logging standard, AGENTS.md): console output from this
+// process (Next's own errors included) becomes one JSON line with a level,
+// crashes are logged with their stack, and every HTTP request gets one access
+// line with a request id that is also handed to Next as x-request-id. The
+// privacy notice (Datenschutz section 2) covers IP, path, status, size and
+// browser data in server logs; the IP is stored only as a keyed hash.
+const log = createLogger({ app: "bookhost" });
+captureConsole(log);
+installProcessHandlers(log);
+const accessLog = httpLogger(log, { skip: ["/healthz", "/_next/static/", "/favicon"] });
 
 // Hocuspocus doesn't publicly export the ClientConnection class its own
 // handleConnection() returns; derive the type from that method instead of
@@ -57,12 +74,16 @@ async function main() {
         });
       },
       error: (peer, error) => {
-        console.error("[live-edit-ws] peer error", error);
+        log.error("live_edit.ws_peer_error", { err: error });
       },
     },
   });
 
-  const server = createServer((req, res) => handle(req, res));
+  const server = createServer((req, res) => {
+    accessLog(req, res);
+    req.headers["x-request-id"] = (req as typeof req & { id?: string }).id;
+    void handle(req, res);
+  });
 
   server.on("upgrade", (request, socket: Socket, head) => {
     const url = request.url || "";

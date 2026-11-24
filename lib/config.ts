@@ -46,7 +46,7 @@ export function smtpSender() {
   const sender = value.trim();
   const displayAddress = /^[^<>,;]+<([^<>]+)>$/.exec(sender);
   const mailbox = displayAddress ? displayAddress[1] : sender;
-  const bookHostMailbox = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@(?:mail\.)?bookhost\.co$/i;
+  const bookHostMailbox = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@mail\.bookhost\.co$/i;
   return bookHostMailbox.test(mailbox) ? sender : undefined;
 }
 export const smtpReady = () => Boolean(smtpSender());

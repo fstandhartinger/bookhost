@@ -65,6 +65,11 @@ it.each([
   undefined,
   "noreply@mail.mintapis.com",
   "noreply@bookhost.co.example.org",
+  "noreply@bookhost.co",
+  "BookHost <noreply@bookhost.co>",
+  "NOREPLY@BOOKHOST.CO",
+  "noreply@other.bookhost.co",
+  "noreply@mail.bookhost.co.example.org",
   "BookHost <noreply@mail.bookhost.co>, other@example.org",
   "BookHost\r\nBcc: external@example.org <noreply@mail.bookhost.co>",
 ])(

@@ -40,5 +40,15 @@ export function baseUrl() {
     PUBLIC_BASE_URL
   ).replace(/\/$/, "");
 }
-export const smtpReady = () =>
-  Boolean(process.env.SMTP_HOST && process.env.SMTP_FROM);
+export function smtpSender() {
+  const value = process.env.SMTP_FROM;
+  if (!process.env.SMTP_HOST || !value || /[\r\n]/.test(value)) return;
+  const sender = value.trim();
+  // Plain display names only: quotes, comments, groups or extra brackets make
+  // the mailer parse a different mailbox than the one checked below.
+  const displayAddress = /^[\p{L}\p{N} .'_-]+<([^<>]+)>$/u.exec(sender);
+  const mailbox = displayAddress ? displayAddress[1] : sender;
+  const bookHostMailbox = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@mail\.bookhost\.co$/i;
+  return bookHostMailbox.test(mailbox) ? sender : undefined;
+}
+export const smtpReady = () => Boolean(smtpSender());

@@ -46,7 +46,7 @@ docker run --rm -p 127.0.0.1:3999:3000 --env-file /secure/path/runtime.env bookh
 | `SMTP_PORT` | SMTP port, default 587; 465 enables implicit TLS. |
 | `SMTP_USER` | SMTP user, if the relay requires authentication. |
 | `SMTP_PASS` | SMTP password, paired with SMTP_USER. |
-| `SMTP_FROM` | Sender identity for magic-link and password-reset messages. |
+| `SMTP_FROM` | Sender identity for magic-link and password-reset messages. Must be an `@mail.bookhost.co` address (optionally with a display name); any other sender disables email sign-in. |
 | `NEXTAUTH_URL` | Legacy fallback for AUTH_URL; prefer AUTH_URL and do not set contradictory values. |
 | `NODE_ENV` | `production` for deployment (set in Docker). |
 | `PORT` | Listen port, default 3000 (set in Docker). |

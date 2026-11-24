@@ -24,9 +24,17 @@ vi.mock("@/lib/db", () => {
 import { sendPasswordReset, resetPassword } from "../lib/password-reset";
 import { db } from "../lib/db";
 beforeEach(() => {
+  vi.stubEnv("SMTP_HOST", "smtp.example.test");
+  vi.stubEnv("SMTP_FROM", "BookHost <noreply@mail.bookhost.co>");
   state.exists = true;
   state.usable = true;
   vi.clearAllMocks();
+});
+it("sends nothing when the sender is not a BookHost address", async () => {
+  vi.stubEnv("SMTP_FROM", "BookHost <noreply@mail.mintapis.com>");
+  await sendPasswordReset("user@example.com");
+  expect(state.mail).not.toHaveBeenCalled();
+  expect(db.query).not.toHaveBeenCalled();
 });
 it("sends a 30 minute token and stores only its SHA256 hash", async () => {
   await sendPasswordReset("user@example.com");

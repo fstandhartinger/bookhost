@@ -17,7 +17,10 @@ vi.mock("@/lib/db", () => ({
 vi.mock("../lib/password-mail", () => ({
   mailTransport: () => ({ sendMail }),
 }));
-vi.mock("../lib/config", () => ({ baseUrl: () => "https://bookhost.example" }));
+vi.mock("../lib/config", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../lib/config")>()),
+  baseUrl: () => "https://bookhost.example",
+}));
 let inTransaction = false;
 const { sendMail } = vi.hoisted(() => ({ sendMail: vi.fn() }));
 import {
@@ -26,6 +29,7 @@ import {
 } from "../lib/notifications";
 import { startAuthCleanup } from "../lib/auth-cleanup";
 afterEach(() => {
+  vi.clearAllMocks();
   vi.clearAllTimers();
   vi.useRealTimers();
   vi.unstubAllEnvs();
@@ -36,7 +40,7 @@ afterEach(() => {
 it("commits generation before dispatch and only supplies transactional mail copy", async () => {
   vi.useFakeTimers();
   vi.stubEnv("SMTP_HOST", "fixture.invalid");
-  vi.stubEnv("SMTP_FROM", "fixture@example.invalid");
+  vi.stubEnv("SMTP_FROM", "BookHost <noreply@mail.bookhost.co>");
   vi.mocked(deliverNotifications).mockImplementation(async (_db, send) => {
     expect(inTransaction).toBe(false);
     await send("owner@example.invalid", "billing", {
@@ -50,9 +54,34 @@ it("commits generation before dispatch and only supplies transactional mail copy
   expect(deliverNotifications).toHaveBeenCalledTimes(1);
   expect(vi.mocked(generateNotifications).mock.calls[0]).toHaveLength(2);
   expect(sendMail).toHaveBeenCalledWith({
-    from: "fixture@example.invalid",
+    from: "BookHost <noreply@mail.bookhost.co>",
     to: "owner@example.invalid",
     subject: "Your BookHost workspace: billing notice",
     text: "billing\n\nManage billing: https://bookhost.example/app/billing",
   });
 });
+
+it.each([
+  undefined,
+  "noreply@mail.mintapis.com",
+  "noreply@bookhost.co.example.org",
+  "noreply@bookhost.co",
+  "BookHost <noreply@bookhost.co>",
+  "NOREPLY@BOOKHOST.CO",
+  "noreply@other.bookhost.co",
+  "noreply@mail.bookhost.co.example.org",
+  "BookHost <noreply@mail.bookhost.co>, other@example.org",
+  "BookHost\r\nBcc: external@example.org <noreply@mail.bookhost.co>",
+])(
+  "does not dispatch billing mail with an invalid sender (%s)",
+  async (sender) => {
+    vi.useFakeTimers();
+    vi.stubEnv("SMTP_HOST", "fixture.invalid");
+    vi.stubEnv("SMTP_FROM", sender);
+    startAuthCleanup();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(generateNotifications).toHaveBeenCalledOnce();
+    expect(deliverNotifications).not.toHaveBeenCalled();
+    expect(sendMail).not.toHaveBeenCalled();
+  },
+);

@@ -11,6 +11,8 @@ const config = [
       // and scripts/build-server.mjs.
       "public/live-edit/embed.js",
       "live-edit-server.js",
+      // Vendored zero-dependency logger (canonical copy /home/flori/tools/logkit).
+      "server-src/logkit.cjs",
     ],
   },
 ];
